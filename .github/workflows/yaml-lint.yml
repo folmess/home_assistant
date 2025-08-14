@@ -1,0 +1,10 @@
+name: YAML Lint
+on: [push, pull_request]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - run: pip install yamllint
+      - run: yamllint -d "{extends: default, rules: {line-length: disable, truthy: disable}}" .
