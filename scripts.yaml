@@ -1,0 +1,669 @@
+despertar_google_nest:
+  sequence:
+  - service: media_player.volume_mute
+    data:
+      is_volume_muted: true
+    target:
+      entity_id: media_player.nest_mini
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - service: media_player.turn_on
+    target:
+      entity_id: media_player.nest_mini
+    data: {}
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 0
+      milliseconds: 800
+  - service: media_player.volume_set
+    target:
+      entity_id: media_player.nest_mini
+    data:
+      volume_level: 0.5
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 0
+      milliseconds: 800
+  - service: media_player.volume_mute
+    data:
+      is_volume_muted: false
+    target:
+      entity_id: media_player.nest_mini
+  mode: single
+  alias: despertar Google Nest
+  icon: mdi:smoke-detector
+tv_living_abrir_flow_app_en_canal_12:
+  alias: Tv Living - Abrir Flow app en canal 12
+  sequence:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: media_player.televisor_living
+        attribute: source
+        state: ar.com.flow.androidtv
+      sequence:
+      - service: media_player.volume_set
+        data:
+          volume_level: 0.4
+        target:
+          entity_id: media_player.chromecast_sala
+      - service: remote.send_command
+        metadata: {}
+        data:
+          command: 1
+        target:
+          entity_id: remote.sala_de_estar
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 600
+      - service: remote.send_command
+        metadata: {}
+        data:
+          command: 2
+        target:
+          entity_id: remote.sala_de_estar
+    - conditions:
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: media_player.televisor_living
+          attribute: source
+          state: ar.com.flow.androidtv
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: media_player.televisor_living
+          state: 'off'
+      sequence:
+      - service: media_player.select_source
+        data:
+          source: ar.com.flow.androidtv
+        target:
+          entity_id: media_player.televisor_living
+      - service: media_player.volume_set
+        data:
+          volume_level: 0.4
+        target:
+          entity_id: media_player.chromecast_sala
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 18
+          milliseconds: 0
+      - service: remote.send_command
+        metadata: {}
+        data:
+          command: 1
+        target:
+          entity_id: remote.sala_de_estar
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 600
+      - service: remote.send_command
+        metadata: {}
+        data:
+          command: 2
+        target:
+          entity_id: remote.sala_de_estar
+    - conditions:
+      - condition: state
+        entity_id: media_player.televisor_living
+        state: 'off'
+      sequence:
+      - service: media_player.turn_on
+        data: {}
+        target:
+          entity_id: media_player.televisor_living
+      - wait_for_trigger:
+        - platform: state
+          entity_id:
+          - media_player.televisor_living
+          to: paused
+        timeout:
+          hours: 0
+          minutes: 0
+          seconds: 40
+          milliseconds: 0
+      - service: media_player.select_source
+        data:
+          source: ar.com.flow.androidtv
+        target:
+          entity_id: media_player.televisor_living
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 10
+          milliseconds: 0
+      - service: media_player.volume_set
+        data:
+          volume_level: 0.4
+        target:
+          entity_id: media_player.chromecast_sala
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 10
+          milliseconds: 0
+      - service: remote.send_command
+        metadata: {}
+        data:
+          command: 1
+        target:
+          entity_id: remote.sala_de_estar
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 600
+      - service: remote.send_command
+        metadata: {}
+        data:
+          command: 2
+        target:
+          entity_id: remote.sala_de_estar
+  mode: single
+  icon: mdi:television-classic
+led_rack_on:
+  alias: Led rack - on
+  sequence:
+  - service: remote.send_command
+    data:
+      device: Ledrack
+      command: 'on'
+    target:
+      entity_id: remote.broadlink_sala_remote
+  - service: input_boolean.turn_on
+    data: {}
+    target:
+      entity_id: input_boolean.ledrack
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 0
+      milliseconds: 800
+  mode: single
+led_rack_off:
+  alias: Led rack - off
+  sequence:
+  - service: remote.send_command
+    data:
+      device: Ledrack
+      command: 'off'
+    target:
+      entity_id: remote.broadlink_sala_remote
+  - service: input_boolean.turn_off
+    data: {}
+    target:
+      entity_id: input_boolean.ledrack
+  mode: single
+led_cama_on:
+  alias: Led cama - on
+  sequence:
+  - service: remote.send_command
+    data:
+      device: Ledpieza
+      command: poweron
+    target:
+      entity_id: remote.broadlink_pieza_remote
+  mode: single
+led_cama_off:
+  alias: Led cama - off
+  sequence:
+  - service: remote.send_command
+    data:
+      device: Ledpieza
+      command: poweroff
+    target:
+      entity_id: remote.broadlink_pieza_remote
+  mode: single
+'1676784977286':
+  alias: Sala de estar - Scene Toggle
+  use_blueprint:
+    path: panhans/scene_toggle.yaml
+    input:
+      included_scenes:
+      - scene.sala_de_estar_100_daylight
+      - scene.modo_relax
+      - scene.sala_de_estar_25_dim_warm
+      - scene.sala_de_estar_tranqui_dim_2spots
+      - scene.sala_de_estar_tv_friendly_cozy_spots
+      - scene.sala_de_estar_warm_night
+      transition: 3
+luz_mesa_feedback_brillo_3x:
+  alias: Luz Barra - feedback brillo 3x
+  sequence:
+  - repeat:
+      count: 2
+      sequence:
+      - data:
+          color_temp: 291
+          brightness_pct: 10
+        target:
+          entity_id:
+          - light.barra
+        action: light.turn_on
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 610
+      - data:
+          color_temp: 291
+          brightness_pct: 100
+        target:
+          entity_id:
+          - light.barra
+        action: light.turn_on
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 800
+  mode: single
+  description: ''
+scene_toggle_sala_colours:
+  alias: Sala - cycle scenes
+  use_blueprint:
+    path: panhans/scene_toggle.yaml
+    input:
+      included_scenes:
+      - scene.sala_de_estar_100_daylight
+      - scene.sala_de_estar_25_dim_warm
+      - scene.sala_de_estar_cozy_club
+      - scene.sala_de_estar_cozy_ocean
+      - sala
+      transition: 3.4
+  description: ''
+  icon: mdi:palette-outline
+luces_sala_de_estar_prendido_1by1:
+  sequence:
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+    target:
+      entity_id: light.barra1
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+    target:
+      entity_id: light.barra2
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 90
+    target:
+      entity_id: light.riel1
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 90
+    target:
+      entity_id:
+      - light.riel2
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2184
+      brightness_pct: 90
+    target:
+      entity_id:
+      - light.riel3
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2133
+      brightness_pct: 90
+    target:
+      entity_id: light.riel4
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 5051
+      brightness_pct: 91
+    target:
+      entity_id: light.riel
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 75
+    target:
+      entity_id: light.rgb
+  alias: Luces Sala de estar - Prendido 1by1
+  description: ''
+flash_sala:
+  sequence:
+  - action: scene.create
+    metadata: {}
+    data:
+      scene_id: instantanea
+      snapshot_entities:
+      - light.riel
+      - light.barra
+      - light.luz_rack
+      - light.rgb
+  - repeat:
+      count: 3
+      sequence:
+      - action: light.turn_on
+        metadata: {}
+        data:
+          color_temp_kelvin: 4949
+          brightness_pct: 100
+        target:
+          entity_id: light.riel
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 500
+      - action: light.turn_on
+        metadata: {}
+        data:
+          color_temp_kelvin: 4949
+          brightness_pct: 22
+        target:
+          entity_id: light.riel
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 500
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: scene.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: scene.instantanea
+  alias: Flash sala
+  description: ''
+snapshot_saver:
+  sequence:
+  - action: input_text.set_value
+    metadata: {}
+    target:
+      entity_id: input_text.sala_snapshot_targets
+    data:
+      value: "{%- set luces = expand(area_entities('sala_de_estar'))\n      | selectattr('domain','eq','light')\n
+        \     | list -%}\n{%- set ns = namespace(obj={}) -%}\n{%- for e in luces -%}\n
+        \ {%- set id = e.entity_id -%}\n  {%- if e.state == 'on' -%}\n    {%- set
+        bri = (state_attr(id,'brightness') | int(255)) -%}\n    {%- set pct = (bri
+        / 2.55) | round(0) | int -%}\n    {%- set ns.obj = ns.obj | combine({ id:
+        pct }) -%}\n  {%- endif -%}\n{%- endfor -%}\n{{ ns.obj | tojson }}\n"
+  alias: Sala - Snapshot para Encendido suave
+  description: ''
+snapshot_gradual_restore:
+  alias: Sala - Encendido suave desde snapshot
+  description: Transición manual hacia los brillos guardados en sala_snapshot_targets
+  mode: restart
+  fields:
+    duration:
+      description: Duración total en segundos
+      default: 10
+    steps:
+      description: Número de pasos
+      default: 20
+    min_pct:
+      description: Piso mínimo de brillo (para luces que no aceptan menos)
+      default: 10
+  sequence:
+  - variables:
+      targets: '{{ states(''input_text.sala_snapshot_targets'') | default(''{}'',
+        true) | from_json }}'
+      luces: '{{ (targets.keys() if targets is mapping else []) | list }}'
+      steps_i: '{{ (steps | default(30)) | int }}'
+      duration_s: '{{ (duration | default(10)) | float }}'
+      intervalo_ms: '{{ (duration_s * 1000 / (steps_i if steps_i > 0 else 1)) | round(0)
+        | int }}'
+      min_floor: '{{ (min_pct | default(10)) | int }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ luces | length == 0 or steps_i <= 0 }}'
+      sequence: []
+    default:
+    - repeat:
+        count: '{{ steps_i }}'
+        sequence:
+        - variables:
+            idx: '{{ repeat.index }}'
+            frac: '{{ (repeat.index | float) / (steps_i | float) }}'
+        - repeat:
+            for_each: '{{ luces }}'
+            sequence:
+            - variables:
+                e: '{{ repeat.item }}'
+                objetivo: '{{ targets[e] | int }}'
+                bri_cur_255: '{{ state_attr(e,''brightness'') | default(0, true) |
+                  int }}'
+                pct0: '{{ (bri_cur_255 / 2.55) | round(0) | int }}'
+                start: "{% if objetivo > 0 %}\n  {{ pct0 if pct0 > 0 else min_floor
+                  }}\n{% else %}\n  {{ pct0 }}\n{% endif %}\n"
+                next_raw: '{{ (start + (frac | float) * (objetivo - start)) | round(0)
+                  | int }}'
+                next_pct: "{% if objetivo > 0 %}\n  {{ [ [ next_raw, 0 ] | max, min_floor
+                  ] | max | int }}\n{% else %}\n  {{ [ next_raw, 0 ] | max | int }}\n{%
+                  endif %}\n"
+            - target:
+                entity_id: '{{ e }}'
+              data:
+                brightness_pct: '{{ next_pct }}'
+              action: light.turn_on
+            - choose:
+              - conditions:
+                - condition: template
+                  value_template: '{{ objetivo == 0 and idx == steps_i }}'
+                sequence:
+                - target:
+                    entity_id: '{{ e }}'
+                  action: light.turn_off
+                  data: {}
+        - delay:
+            milliseconds: '{{ intervalo_ms }}'
+sala_apagado_suave:
+  alias: Sala - Apagado suave
+  mode: restart
+  fields:
+    duration:
+      description: Duración total en segundos
+      default: 5
+    steps:
+      description: Número de pasos
+      default: 10
+    min_pct:
+      description: Piso mínimo de brillo antes del apagado final
+      default: 10
+  sequence:
+  - variables:
+      luces_on: "{{ expand(area_entities('sala_de_estar'))\n   | selectattr('domain','eq','light')\n
+        \  | selectattr('state','eq','on')\n   | map(attribute='entity_id') | list
+        }}\n"
+      steps_i: '{{ (steps | default(10)) | int }}'
+      duration_s: '{{ (duration | default(5)) | float }}'
+      intervalo_ms: '{{ (duration_s * 1000 / (steps_i if steps_i > 0 else 1)) | round(0)
+        | int }}'
+      min_floor: '{{ (min_pct | default(10)) | int }}'
+  - choose:
+    - conditions: '{{ luces_on | length == 0 or steps_i <= 0 }}'
+      sequence: []
+    default:
+    - repeat:
+        count: '{{ steps_i }}'
+        sequence:
+        - variables:
+            idx: '{{ repeat.index }}'
+            frac: '{{ (repeat.index | float) / (steps_i | float) }}'
+        - repeat:
+            for_each: '{{ luces_on }}'
+            sequence:
+            - variables:
+                e: '{{ repeat.item }}'
+                bri0_255: '{{ state_attr(e,''brightness'') | default(255, true) |
+                  int }}'
+                pct0: '{{ (bri0_255 / 2.55) | round(0) | int }}'
+                next_raw: '{{ (pct0 - (frac | float) * (pct0 - min_floor)) | round(0)
+                  | int }}'
+                next_pct: '{{ [ [ next_raw, 0 ] | max, min_floor ] | max | int }}'
+            - target:
+                entity_id: '{{ e }}'
+              data:
+                brightness_pct: '{{ next_pct }}'
+              action: light.turn_on
+        - delay:
+            milliseconds: '{{ intervalo_ms }}'
+    - target:
+        area_id: sala_de_estar
+      action: light.turn_off
+  description: ''
+sala_encendido_gradual_de_todas_las_luces:
+  alias: Sala - Encendido gradual de todas las luces
+  mode: restart
+  fields:
+    duration:
+      description: Duración total en segundos
+      default: 5
+    steps:
+      description: Número de pasos
+      default: 10
+    min_pct:
+      description: Brillo mínimo inicial si la luz estaba apagada
+      default: 10
+    target_pct:
+      description: Brillo final objetivo
+      default: 100
+  sequence:
+  - variables:
+      luces_area: "{{ expand(area_entities('sala_de_estar'))\n   | selectattr('domain','eq','light')\n
+        \  | map(attribute='entity_id') | list }}\n"
+      steps_i: '{{ (steps | default(10)) | int }}'
+      duration_s: '{{ (duration | default(5)) | float }}'
+      intervalo_ms: '{{ (duration_s * 1000 / (steps_i if steps_i > 0 else 1)) | round(0)
+        | int }}'
+      min_floor: '{{ (min_pct | default(10)) | int }}'
+      objetivo_final: '{{ (target_pct | default(100)) | int }}'
+  - choose:
+    - conditions: '{{ luces_area | length == 0 or steps_i <= 0 }}'
+      sequence: []
+    default:
+    - repeat:
+        count: '{{ steps_i }}'
+        sequence:
+        - variables:
+            frac: '{{ (repeat.index | float) / (steps_i | float) }}'
+        - repeat:
+            for_each: '{{ luces_area }}'
+            sequence:
+            - variables:
+                e: '{{ repeat.item }}'
+                bri_cur_255: '{{ state_attr(e,''brightness'') | default(0, true) |
+                  int }}'
+                pct0: "{% if is_state(e, 'on') %}\n  {{ (bri_cur_255 / 2.55) | round(0)
+                  | int }}\n{% else %}\n  {{ min_floor }}\n{% endif %}\n"
+                next_raw: '{{ (pct0 + (frac | float) * (objetivo_final - pct0)) |
+                  round(0) | int }}'
+                next_pct: '{{ [ [ next_raw, 0 ] | max, min_floor ] | max | int }}'
+            - target:
+                entity_id: '{{ e }}'
+              data:
+                brightness_pct: '{{ next_pct }}'
+              action: light.turn_on
+        - delay:
+            milliseconds: '{{ intervalo_ms }}'
+  description: ''
+sala_fade_de_luces_encendidas_del_area_a_objetivo:
+  alias: Sala - Fade de luces encendidas del área a % objetivo
+  mode: restart
+  fields:
+    target_pct:
+      description: Porcentaje final objetivo (0-100)
+      default: 50
+    duration:
+      description: Duración total en segundos
+      default: 3
+    steps:
+      description: Cantidad de pasos (más pasos = más suave)
+      default: 12
+  sequence:
+  - variables:
+      luces_on: "{{ expand(area_entities('sala_de_estar'))\n   | selectattr('domain','eq','light')\n
+        \  | selectattr('state','eq','on')\n   | map(attribute='entity_id') | list
+        }}\n"
+      objetivo: '{{ (target_pct | default(50)) | int }}'
+      steps_i: '{{ (steps | default(12)) | int }}'
+      duration_s: '{{ (duration | default(3)) | float }}'
+      intervalo_ms: '{{ (duration_s * 1000 / (steps_i if steps_i > 0 else 1)) | round(0)
+        | int }}'
+  - choose:
+    - conditions: '{{ luces_on | length == 0 or steps_i <= 0 }}'
+      sequence: []
+    default:
+    - repeat:
+        count: '{{ steps_i }}'
+        sequence:
+        - variables:
+            frac: '{{ (repeat.index | float) / (steps_i | float) }}'
+        - repeat:
+            for_each: '{{ luces_on }}'
+            sequence:
+            - variables:
+                e: '{{ repeat.item }}'
+                bri0_255: '{{ state_attr(e,''brightness'') | default(0, true) | int
+                  }}'
+                pct0: '{{ (bri0_255 / 2.55) | round(0) | int }}'
+                next_pct: '{{ (pct0 + (frac | float) * (objetivo - pct0)) | round(0)
+                  | int }}'
+            - target:
+                entity_id: '{{ e }}'
+              data:
+                brightness_pct: '{{ next_pct }}'
+              action: light.turn_on
+        - delay:
+            milliseconds: '{{ intervalo_ms }}'
+  description: ''

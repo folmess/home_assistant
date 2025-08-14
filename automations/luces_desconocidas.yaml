@@ -1,0 +1,28 @@
+- alias: Alertar - Luces fuera de línea
+  id: alertar_luces_fuera_de_linea_on
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.luces_fuera_de_linea
+      to: 'on'
+  action:
+    - service: persistent_notification.create
+      data:
+        title: "Luces fuera de línea"
+        message: >-
+          Se detectaron {{ state_attr('binary_sensor.luces_fuera_de_linea','cantidad') }} luces en estado 'unknown' o 'unavailable':
+          
+          {{ states('sensor.luces_fuera_de_linea_lista') }}
+        notification_id: "luces_fuera_de_linea"  # ID fijo para poder cerrar
+
+- alias: Alertar - Luces fuera de línea (clear)
+  id: alertar_luces_fuera_de_linea_off
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.luces_fuera_de_linea
+      to: 'off'
+  action:
+    - service: persistent_notification.dismiss
+      data:
+        notification_id: "luces_fuera_de_linea"

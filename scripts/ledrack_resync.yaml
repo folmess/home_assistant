@@ -1,0 +1,44 @@
+led_rack_resync:
+  alias: Led rack - Resync a orange
+  mode: single
+  sequence:
+    # Intento: apagar para partir de estado conocido
+    - service: remote.send_command
+      target:
+        entity_id: remote.broadlink_sala_remote
+      data:
+        device: Ledrack
+        command: 'off'
+    - delay: '00:00:01'
+    # Encender + fijar naranja
+    - service: remote.send_command
+      target:
+        entity_id: remote.broadlink_sala_remote
+      data:
+        device: Ledrack
+        command: 'on'
+    - delay: '00:00:01'
+    - service: remote.send_command
+      target:
+        entity_id: remote.broadlink_sala_remote
+      data:
+        device: Ledrack
+        command: orange
+
+    # (Opcional) Normalizar brillo: bajar a mínimo y subir a un punto medio
+    # - service: remote.send_command
+    #   target: { entity_id: remote.broadlink_sala_remote }
+    #   data: { device: Ledrack, command: down, num_repeats: 25 }
+    # - service: remote.send_command
+    #   target: { entity_id: remote.broadlink_sala_remote }
+    #   data: { device: Ledrack, command: up, num_repeats: 10 }
+
+    # Sincronizar helpers/estado lógico
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.ledrack
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.ledrackcolores
+      data:
+        option: orange

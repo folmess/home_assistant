@@ -1,0 +1,170 @@
+# ===========================
+#  Switch Zigbee de sala
+#  Maneja todos los botones en una sola automatizacion
+#  Unificado (tap / double / hold)
+# ===========================
+- alias: Switch sala
+  id: switch_sala_1
+  mode: single
+  trigger:
+    # --- TAP (single) ---
+    - id: b1_single
+      platform: device
+      domain: mqtt
+      device_id: 6a1775371239157ec4543f3c5d7fb5b5
+      type: action
+      subtype: 1_single
+      discovery_id: 0xb4e3f9fffe14e641 action_1_single
+
+    - id: b2_single
+      platform: device
+      domain: mqtt
+      device_id: 6a1775371239157ec4543f3c5d7fb5b5
+      type: action
+      subtype: 2_single
+      discovery_id: 0xb4e3f9fffe14e641 action_2_single
+
+    - id: b3_single
+      platform: device
+      domain: mqtt
+      device_id: 6a1775371239157ec4543f3c5d7fb5b5
+      type: action
+      subtype: 3_single
+      discovery_id: 0xb4e3f9fffe14e641 action_3_single
+
+    - id: b4_single
+      platform: device
+      domain: mqtt
+      device_id: 6a1775371239157ec4543f3c5d7fb5b5
+      type: action
+      subtype: 4_single
+      discovery_id: 0xb4e3f9fffe14e641 action_4_single
+
+    # --- DOUBLE TAP ---
+    - id: b1_double
+      platform: device
+      domain: mqtt
+      device_id: 6a1775371239157ec4543f3c5d7fb5b5
+      type: action
+      subtype: 1_double
+      discovery_id: 0xb4e3f9fffe14e641 action_1_double
+
+    - id: b2_double
+      platform: device
+      domain: mqtt
+      device_id: 6a1775371239157ec4543f3c5d7fb5b5
+      type: action
+      subtype: 2_double
+      discovery_id: 0xb4e3f9fffe14e641 action_2_double
+
+    - id: b3_double
+      platform: device
+      domain: mqtt
+      device_id: 6a1775371239157ec4543f3c5d7fb5b5
+      type: action
+      subtype: 3_double
+      discovery_id: 0xb4e3f9fffe14e641 action_3_double
+
+    - id: b4_double
+      platform: device
+      domain: mqtt
+      device_id: 6a1775371239157ec4543f3c5d7fb5b5
+      type: action
+      subtype: 4_double
+      discovery_id: 0xb4e3f9fffe14e641 action_4_double
+
+    # --- HOLD ---
+    - id: b3_hold
+      platform: device
+      domain: mqtt
+      device_id: 6a1775371239157ec4543f3c5d7fb5b5
+      type: action
+      subtype: 3_hold
+      discovery_id: 0xb4e3f9fffe14e641 action_3_hold
+
+    - id: b4_hold
+      platform: device
+      domain: mqtt
+      device_id: 6a1775371239157ec4543f3c5d7fb5b5
+      type: action
+      subtype: 4_hold
+      discovery_id: 0xb4e3f9fffe14e641 action_4_hold
+
+  condition: []
+
+  action:
+    - choose:
+        # ========= SINGLE =========
+        - conditions: { condition: trigger, id: b1_single }
+          sequence:
+            - service: scene.turn_on
+              target: { entity_id: scene.sala_de_estar_100_daylight }
+
+        - conditions: { condition: trigger, id: b2_single }
+          sequence:
+            - service: scene.turn_on
+              target: { entity_id: scene.sala_de_estar_100_warm }
+
+        - conditions: { condition: trigger, id: b3_single }
+          sequence:
+            - service: scene.turn_on
+              target: { entity_id: scene.sala_de_estar_warm_night }
+
+        - conditions: { condition: trigger, id: b4_single }
+          sequence:
+            - service: scene.turn_on
+              target: { entity_id: scene.sala_de_estar_cozy_ocean }
+
+        # ========= DOUBLE =========
+        - conditions: { condition: trigger, id: b1_double }
+          sequence:
+            - service: climate.turn_on
+              target: { entity_id: climate.aire_living }
+
+        - conditions: { condition: trigger, id: b2_double }
+          sequence:
+            - service: climate.turn_off
+              target: { entity_id: climate.aire_living }
+
+        - conditions: { condition: trigger, id: b3_double }
+          sequence:
+            - service: scene.turn_on
+              target: { entity_id: scene.sala_de_estar_cozy_ocean }
+
+        - conditions: { condition: trigger, id: b4_double }
+          sequence:
+            - service: script.lights_fade_to_pct
+              data:
+                area_id: sala_de_estar
+                target_pct: 25
+                duration: 1.2
+                steps: 8
+                min_pct: 10
+
+        # ========= HOLD =========
+        - conditions: { condition: trigger, id: b3_hold }
+          sequence:
+            # Toggle de mantener_luces
+            - service: input_boolean.toggle
+              target:
+                entity_id: input_boolean.mantener_luces
+            - service: light.turn_off
+              data:
+                target:
+                  area_id: sala_de_estar
+
+        - conditions: { condition: trigger, id: b4_hold }
+          sequence:
+            - service: script.lights_fx_feedback_flash
+              data:
+                entity_id:
+                  - light.riel
+                repeats: 3
+                mode: kelvin
+                kelvin: 4949
+                restore: true
+            # Apagado de toda la sala
+            - service: light.turn_off
+              data:
+                target:
+                  area_id: sala_de_estar

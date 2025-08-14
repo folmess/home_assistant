@@ -1,0 +1,147 @@
+lights_fx_feedback_flash:
+  alias: Lights FX - Feedback Flash
+  description: Destello rápido (100%↔22%) con Kelvin o RGB, con snapshot/restore.
+  mode: restart
+
+  fields:
+    entity_id:
+      name: Luces
+      description: Luces a parpadear
+      required: true
+      selector:
+        entity:
+          domain: light
+          multiple: true
+
+    repeats:
+      name: Repeticiones
+      description: Cantidad de ciclos ON(100%) → ON(22%)
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 20
+          step: 1
+          mode: slider
+
+    mode:
+      name: Modo de color
+      description: Elegí si usás Kelvin o RGB
+      default: kelvin
+      selector:
+        select:
+          options:
+            - kelvin
+            - rgb
+
+    kelvin:
+      name: Color temp (Kelvin)
+      description: Usado si modo = kelvin
+      default: 4949
+      selector:
+        number:
+          min: 153
+          max: 6500
+          step: 1
+          unit_of_measurement: "K"
+
+    color_rgb:
+      name: Color RGB
+      description: Usado si modo = rgb
+      default: [255, 136, 0]
+      selector:
+        color_rgb: {}
+
+    restore:
+      name: Restaurar al finalizar
+      default: true
+      selector:
+        boolean: {}
+
+  sequence:
+    - variables:
+        luces: >-
+          {% set e = entity_id if entity_id is defined else [] %}
+          {% if e is string %} [e] {% else %} {{ e | list }} {% endif %}
+        rep: "{{ (repeats | default(3)) | int }}"
+        mode_sel: "{{ mode | default('kelvin') }}"
+        is_kelvin: "{{ mode_sel == 'kelvin' }}"
+        k: "{{ (kelvin | default(4949)) | int }}"
+        rgb: >-
+          {% set c = color_rgb if color_rgb is defined else [255,136,0] %}
+          {{ [ (c[0]|int), (c[1]|int), (c[2]|int) ] }}
+        do_restore: "{{ restore | default(true) }}"
+
+    # Nada que hacer si no hay luces
+    - choose:
+        - conditions: "{{ luces | length == 0 }}"
+          sequence: []
+      default:
+        # Snapshot opcional
+        - choose:
+            - conditions: "{{ do_restore }}"
+              sequence:
+                - service: scene.create
+                  data:
+                    scene_id: lights_fx_feedback_flash_snapshot
+                    snapshot_entities: "{{ luces }}"
+          default: []
+
+        # Repeticiones: 100% -> 22%, con 500 ms entre pasos
+        - repeat:
+            count: "{{ rep }}"
+            sequence:
+              # Paso a 100%
+              - choose:
+                  - conditions: "{{ is_kelvin }}"
+                    sequence:
+                      - service: light.turn_on
+                        target: { entity_id: "{{ luces }}" }
+                        data:
+                          color_temp_kelvin: "{{ k }}"
+                          brightness_pct: 100
+                          transition: 0
+                  - conditions: "{{ not is_kelvin }}"
+                    sequence:
+                      - service: light.turn_on
+                        target: { entity_id: "{{ luces }}" }
+                        data:
+                          rgb_color: "{{ rgb }}"
+                          brightness_pct: 100
+                          transition: 0
+              - delay:
+                  milliseconds: 500
+
+              # Paso a 22%
+              - choose:
+                  - conditions: "{{ is_kelvin }}"
+                    sequence:
+                      - service: light.turn_on
+                        target: { entity_id: "{{ luces }}" }
+                        data:
+                          color_temp_kelvin: "{{ k }}"
+                          brightness_pct: 22
+                          transition: 0
+                  - conditions: "{{ not is_kelvin }}"
+                    sequence:
+                      - service: light.turn_on
+                        target: { entity_id: "{{ luces }}" }
+                        data:
+                          rgb_color: "{{ rgb }}"
+                          brightness_pct: 22
+                          transition: 0
+              - delay:
+                  milliseconds: 500
+
+        # Pausa final como en tu ejemplo
+        - delay:
+            seconds: 1
+
+        # Restauración
+        - choose:
+            - conditions: "{{ do_restore }}"
+              sequence:
+                - service: scene.turn_on
+                  target:
+                    entity_id: scene.lights_fx_feedback_flash_snapshot
+          default: []

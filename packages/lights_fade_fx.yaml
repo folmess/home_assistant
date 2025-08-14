@@ -1,0 +1,151 @@
+script:
+  lights_fade_fx:
+    alias: "Lights — Fade FX"
+    mode: restart
+    description: "Transición suave de brillo para luces: encender, apagar o ir a un brillo objetivo en N pasos."
+    fields:
+      target:
+        name: Luces / Dispositivos / Áreas
+        description: Seleccioná destinos (entidades light, dispositivos o áreas).
+        selector:
+          target:
+            entity:
+              domain: light
+
+      action:
+        name: Acción
+        description: Qué hacer con las luces seleccionadas.
+        default: "to"
+        selector:
+          select:
+            options:
+              - label: "Encender al 100%"
+                value: "turn_on"
+              - label: "Apagar"
+                value: "turn_off"
+              - label: "Ir a brillo específico"
+                value: "to"
+
+      target_brightness_pct:
+        name: Brillo objetivo (%)
+        description: Se usa si acción = "to".
+        required: false
+        default: 100
+        selector:
+          number:
+            min: 0
+            max: 100
+            step: 1
+            unit_of_measurement: "%"
+
+      duration:
+        name: Duración (segundos)
+        default: 5
+        selector:
+          number:
+            min: 1
+            max: 300
+            step: 1
+            unit_of_measurement: "s"
+
+      steps:
+        name: Pasos
+        default: 15
+        selector:
+          number:
+            min: 1
+            max: 200
+            step: 1
+
+    variables:
+      # Expande target en una lista final de entidades light.*
+      _entities: >-
+        {% set ns = namespace(ids=[]) %}
+        {% for e in target.entity_id|default([]) %}
+          {% set ns.ids = ns.ids + [e] %}
+        {% endfor %}
+        {% for d in target.device_id|default([]) %}
+          {% set ns.ids = ns.ids + device_entities(d) %}
+        {% endfor %}
+        {% for a in target.area_id|default([]) %}
+          {% set ns.ids = ns.ids + area_entities(a) %}
+        {% endfor %}
+        {{ ns.ids | select('match','^light\\.') | unique | list }}
+
+      _tgt_pct: >-
+        {% if action == 'turn_on' %}100{% elif action == 'turn_off' %}0{% else %}{{ (target_brightness_pct|default(100))|int }}{% endif %}
+      _tgt_bri: >-
+        {{ (_tgt_pct | int * 255 / 100) | round(0) | int }}
+
+      _steps: "{{ [1, (steps|int(15))] | max }}"
+      _delay_ms: >-
+        {{ ((duration|int(5)) * 1000 / _steps) | round(0) | int }}
+      _range: "{{ range(1, _steps + 1) | list }}"
+
+    sequence:
+      # Si no hay luces válidas, notifica y sale
+      - choose:
+          - conditions: "{{ _entities | count == 0 }}"
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  title: "lights_fade_fx"
+                  message: "No se encontraron luces en el target."
+              - stop: "Sin luces para controlar."
+
+      # Bucle de pasos (fade por software)
+      - repeat:
+          for_each: "{{ _range }}"
+          sequence:
+            - variables:
+                _step_index0: "{{ repeat.index0 }}"
+            - repeat:
+                for_each: "{{ _entities }}"
+                sequence:
+                  - variables:
+                      _e: "{{ repeat.item }}"
+                      _supports_bri: >-
+                        {% set modes = state_attr(_e,'supported_color_modes') or [] %}
+                        {{ (modes | select('in', ['brightness','hs','rgb','xy','color_temp','rgbw','rgbww','white']) | list | count) > 0 }}
+                      _is_on: "{{ is_state(_e, 'on') }}"
+                      _cur_b: >-
+                        {% set b = state_attr(_e,'brightness') %}
+                        {{ (b | int(0)) if _is_on else 0 }}
+                      _dist: "{{ _tgt_bri - _cur_b }}"
+                      _remain: "{{ _steps - _step_index0 }}"
+                      _step_sz: >-
+                        {% set rem = _remain if _remain > 0 else 1 %}
+                        {{ ( (abs(_dist) / rem) | round(0, 'ceil') | int ) if abs(_dist) > 0 else 0 }}
+                      _new_b: >-
+                        {% if _step_sz == 0 %}
+                          {{ _cur_b }}
+                        {% elif _dist > 0 %}
+                          {{ [_cur_b + _step_sz, 255] | min }}
+                        {% else %}
+                          {{ [_cur_b - _step_sz, 0] | max }}
+                        {% endif %}
+                  - choose:
+                      # Si la luz es dimerizable, aplicamos el paso
+                      - conditions: "{{ _supports_bri }}"
+                        sequence:
+                          - service: light.turn_on
+                            data:
+                              entity_id: "{{ _e }}"
+                              brightness: "{{ _new_b }}"
+                    default: []
+            - delay:
+                milliseconds: "{{ _delay_ms }}"
+
+      # Estado final exacto (también cubre luces sólo ON/OFF)
+      - choose:
+          - conditions: "{{ action == 'turn_off' }}"
+            sequence:
+              - service: light.turn_off
+                target:
+                  entity_id: "{{ _entities }}"
+        default:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ _entities }}"
+            data:
+              brightness: "{{ _tgt_bri }}"

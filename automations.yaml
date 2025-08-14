@@ -1,0 +1,838 @@
+- id: '1629315625548'
+  alias: Notificacion - Restart home assistant
+  description: ''
+  triggers:
+  - event: start
+    trigger: homeassistant
+  conditions: []
+  actions:
+  - data:
+      message: Home Assistant se reinició
+      title: Reinicio completado
+    action: persistent_notification.create
+  mode: single
+- id: '1641223847779'
+  alias: anunciar - anochecer
+  description: ''
+  triggers:
+  - event: sunset
+    offset: -00:10:00
+    trigger: sun
+  conditions:
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: media_player.nest_mini
+      state: playing
+  actions:
+  - target:
+      entity_id: script.despertar_google_nest
+    data: {}
+    action: script.turn_on
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 4
+      milliseconds: 0
+  - target:
+      entity_id: media_player.nest_mini
+    data:
+      media_content_id: /local/Carbonate.ogg
+      media_content_type: music
+    action: media_player.play_media
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 2
+      milliseconds: 0
+  - data:
+      cache: true
+      entity_id: media_player.nest_mini
+      message: En 10 minutos se hace de noche
+    action: tts.cloud_say
+  mode: single
+- id: '1643488822617'
+  alias: anunciar - hora de dormir
+  description: ''
+  triggers:
+  - at: '23:00:00'
+    trigger: time
+  conditions: []
+  actions:
+  - data: {}
+    action: script.despertar_google_nest
+  - target:
+      entity_id: media_player.nest_mini
+    data:
+      media_content_id: http://192.168.0.128:8123/local/Crosswalk.ogg
+      media_content_type: music
+    action: media_player.play_media
+  - data:
+      cache: true
+      entity_id: media_player.nest_mini
+      message: Ya es hora de ir a dormir
+    enabled: false
+    action: tts.cloud_say
+  mode: single
+- id: '1652311429269'
+  alias: Alerta Chip - puerta abierta 10 minutos
+  description: ''
+  triggers:
+  - entity_id:
+    - binary_sensor.puerta_entrada
+    to: 'on'
+    trigger: state
+  conditions: []
+  actions:
+  - data: {}
+    target:
+      entity_id: input_boolean.puerta_abierta_10min
+    action: input_boolean.turn_on
+  - delay:
+      hours: 0
+      minutes: 10
+      seconds: 0
+      milliseconds: 0
+  - data: {}
+    target:
+      entity_id: input_boolean.puerta_abierta_10min
+    action: input_boolean.turn_off
+  mode: restart
+- id: '1652893795221'
+  alias: Notificacion - puerta abierta 4 mins
+  description: ''
+  triggers:
+  - entity_id:
+    - binary_sensor.puerta_entrada
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 4
+      seconds: 0
+    trigger: state
+  conditions:
+  - condition: state
+    entity_id: binary_sensor.motion_sala
+    state: 'off'
+  actions:
+  - metadata: {}
+    data:
+      message: La puerta de entrada está abierta hace 4 minutos
+      title: Puerta Abierta
+    action: notify.mobile_app_samsungs24u
+  mode: single
+- id: '1654094015563'
+  alias: Luces - Apagar pieza 20 mins
+  description: ''
+  triggers:
+  - entity_id: light.pieza
+    from: 'off'
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    trigger: state
+  actions:
+  - action: light.turn_off
+    metadata: {}
+    data: {}
+    target:
+      area_id: dormitorio
+  mode: restart
+- id: '1673725121715'
+  alias: Led rack - cambiar colores
+  description: ''
+  triggers:
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-red
+    to: red
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-green
+    to: green
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-blue
+    to: blue
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-orange
+    to: orange
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-white
+    to: white
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-lightorange
+    to: lightorange
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-yellow
+    to: yellow
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-lima
+    to: lima
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-teal
+    to: teal
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-cyan
+    to: cyan
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-realblue
+    to: realblue
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-lightblue
+    to: lightblue
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-violeta1
+    to: violeta1
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-rosa
+    to: rosa
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-magenta
+    to: magenta
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-flash
+    to: flash
+    trigger: state
+  - entity_id:
+    - input_select.ledrackcolores
+    id: ledrack-smooth
+    to: smooth
+    trigger: state
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: ledrack-red
+      sequence:
+      - data:
+          device: Ledrack
+          command: red
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-green
+      sequence:
+      - data:
+          device: Ledrack
+          command: green
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-blue
+      sequence:
+      - data:
+          device: Ledrack
+          command: blue
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-orange
+      sequence:
+      - data:
+          device: Ledrack
+          command: orange
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-white
+      sequence:
+      - data:
+          device: Ledrack
+          command: white
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-lightorange
+      sequence:
+      - data:
+          device: Ledrack
+          command: lightorange
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-yellow
+      sequence:
+      - data:
+          device: Ledrack
+          command: yellow
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-lima
+      sequence:
+      - data:
+          device: Ledrack
+          command: lima
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-teal
+      sequence:
+      - data:
+          device: Ledrack
+          command: teal
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-cyan
+      sequence:
+      - data:
+          device: Ledrack
+          command: cyan
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-realblue
+      sequence:
+      - data:
+          device: Ledrack
+          command: realblue
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-lightblue
+      sequence:
+      - data:
+          device: Ledrack
+          command: lightblue
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-violeta1
+      sequence:
+      - data:
+          device: Ledrack
+          command: violeta1
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-violeta2
+      sequence:
+      - data:
+          device: Ledrack
+          command: violeta2
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-rosa
+      sequence:
+      - data:
+          device: Ledrack
+          command: rosa
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-magenta
+      sequence:
+      - data:
+          device: Ledrack
+          command: magenta
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-flash
+      sequence:
+      - data:
+          device: Ledrack
+          command: flash
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    - conditions:
+      - condition: trigger
+        id: ledrack-smooth
+      sequence:
+      - data:
+          device: Ledrack
+          command: smooth
+        target:
+          entity_id: remote.broadlink_sala_remote
+        action: remote.send_command
+    default: []
+  mode: single
+- id: '1676741541222'
+  alias: wall pieza - 1a - luz pieza
+  description: ''
+  trigger:
+  - platform: device
+    domain: mqtt
+    device_id: 48bcf23be736b26cdeba2549b5989c31
+    type: action
+    subtype: 1_single
+    discovery_id: 0xb4e3f9fffe14e4be action_1_single
+  condition: []
+  action:
+  - service: light.toggle
+    data:
+      color_temp: 228
+      brightness_pct: 100
+    target:
+      entity_id: light.pieza
+  mode: single
+- id: '1676741650120'
+  alias: wall pieza - 2a - luz cama
+  description: ''
+  trigger:
+  - platform: device
+    domain: mqtt
+    device_id: 48bcf23be736b26cdeba2549b5989c31
+    type: action
+    subtype: 2_single
+    discovery_id: 0xb4e3f9fffe14e4be action_2_single
+  condition: []
+  action:
+  - service: scene.turn_on
+    metadata: {}
+    target:
+      entity_id: scene.pieza_100_warm
+  mode: single
+- id: '1676741706221'
+  alias: wall pieza - 2b - kodi simpons
+  description: ''
+  trigger:
+  - platform: device
+    domain: mqtt
+    device_id: 48bcf23be736b26cdeba2549b5989c31
+    type: action
+    subtype: 2_double
+    discovery_id: 0xb4e3f9fffe14e4be action_2_double
+  condition: []
+  action:
+  - service: scene.turn_on
+    metadata: {}
+    target:
+      entity_id: scene.pieza_party
+  mode: single
+- id: '1676741780745'
+  alias: wall pieza - 3b -modo aire pieza
+  description: ''
+  trigger:
+  - platform: device
+    domain: mqtt
+    device_id: 48bcf23be736b26cdeba2549b5989c31
+    type: action
+    subtype: 3_double
+    discovery_id: 0xb4e3f9fffe14e4be action_3_double
+  condition: []
+  action:
+  - service: scene.turn_on
+    metadata: {}
+    target:
+      entity_id: scene.pieza_red_spot
+  mode: single
+- id: '1676741815612'
+  alias: wall pieza - 3a - prender apagar aire
+  description: ''
+  trigger:
+  - platform: device
+    domain: mqtt
+    device_id: 48bcf23be736b26cdeba2549b5989c31
+    type: action
+    subtype: 3_single
+    discovery_id: 0xb4e3f9fffe14e4be action_3_single
+  condition: []
+  action:
+  - service: scene.turn_on
+    metadata: {}
+    target:
+      entity_id: scene.pieza_red_spot_x2_fuerte
+  mode: single
+- id: '1690882949603'
+  alias: Anunciar - 9 en punto
+  description: ''
+  triggers:
+  - at: 09:00:00
+    trigger: time
+  conditions:
+  - condition: not
+    conditions:
+    - condition: device
+      device_id: c74e203b64f5c2013bc47bf301c66628
+      domain: media_player
+      entity_id: media_player.nest_mini
+      type: is_playing
+  actions:
+  - data: {}
+    action: script.despertar_google_nest
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - target:
+      entity_id: media_player.nest_mini
+    data:
+      media_content_id: http://192.168.0.202:8123/local/Absurd Bird.ogg
+      media_content_type: music
+    action: media_player.play_media
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - data:
+      cache: false
+      message: Ya son las 9 en punto
+      entity_id: media_player.nest_mini
+    action: tts.cloud_say
+  mode: single
+- id: '1731421802082'
+  alias: Modo developer - on/off
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_boolean.modo_developer
+    to: 'on'
+    id: dev-on
+  - trigger: state
+    entity_id:
+    - input_boolean.modo_developer
+    to: 'off'
+    id: dev-off
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - dev-on
+      sequence:
+      - action: input_boolean.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.kiosk_mode
+    - conditions:
+      - condition: trigger
+        id:
+        - dev-off
+      sequence:
+      - action: input_boolean.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.kiosk_mode
+  mode: single
+- id: '1746755161912'
+  alias: Anunciar - 20 minutos para trabajo
+  description: ''
+  triggers:
+  - at: 08:40:00
+    trigger: time
+  conditions:
+  - condition: not
+    conditions:
+    - condition: device
+      device_id: c74e203b64f5c2013bc47bf301c66628
+      domain: media_player
+      entity_id: media_player.nest_mini
+      type: is_playing
+  actions:
+  - data: {}
+    action: script.despertar_google_nest
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - target:
+      entity_id: media_player.nest_mini
+    data:
+      media_content_id: http://192.168.0.202:8123/local/Absurd Bird.ogg
+      media_content_type: music
+    action: media_player.play_media
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - data:
+      cache: false
+      entity_id: media_player.nest_mini
+      message: Faltan 20 minutos
+    action: tts.cloud_say
+  mode: single
+- &id001
+  id: sala_failsafe_madrugada
+  alias: Sala - Failsafe de madrugada (apagado suave si no hay movimiento)
+  description: ''
+  triggers:
+  - at: 03:00:00
+    trigger: time
+  conditions:
+  - condition: template
+    value_template: '{{ (now() - states.binary_sensor.motion_sala.last_changed).total_seconds()
+      > (min_sin_mov * 60) }}
+
+      '
+  actions:
+  - action: light.turn_off
+    metadata: {}
+    data: {}
+    target:
+      area_id: sala_de_estar
+  mode: single
+  variables:
+    min_sin_mov: '{{ states(''input_number.madrugada_failsafe_min'') | int(20) }}'
+- *id001
+- id: ledrack_boton_resync
+  alias: Led rack - Botón Resync
+  description: ''
+  triggers:
+  - entity_id: input_button.ledrack_resync
+    trigger: state
+  actions:
+  - action: script.led_rack_resync
+  mode: single
+- id: ledrack_boton_resync
+  alias: Led rack - Botón Resync
+  triggers:
+  - entity_id: input_button.ledrack_resync
+    trigger: state
+  actions:
+  - action: script.led_rack_resync
+  mode: single
+- id: ledrack_boton_resync
+  alias: Led rack - Botón Resync
+  description: ''
+  triggers:
+  - entity_id: input_button.ledrack_resync
+    trigger: state
+  actions:
+  - action: script.led_rack_resync
+  mode: single
+- id: ledrack_boton_resync
+  alias: Led rack - Botón Resync
+  description: ''
+  triggers:
+  - entity_id: input_button.ledrack_resync
+    trigger: state
+  actions:
+  - action: script.led_rack_resync
+  mode: single
+- id: luz_bano_feedback_en_punto_blink
+  alias: Luz baño - feedback - en punto (blink)
+  description: ''
+  triggers:
+  - at: 09:00:00
+    trigger: time
+  conditions:
+  - condition: state
+    entity_id: light.bano
+    state: 'on'
+  actions:
+  - action: script.lights_fx_feedback_flash
+    data:
+      repeats: 2
+      mode: kelvin
+      kelvin: 4949
+      color_rgb:
+      - 255
+      - 136
+      - 0
+      restore: true
+      entity_id:
+      - light.bano
+  mode: single
+- id: '1754941870591'
+  alias: Luz baño - feedback menos cuarto (blink)
+  description: ''
+  triggers:
+  - at: 06:45:00
+    trigger: time
+  - at: 08:45:00
+    trigger: time
+  conditions:
+  - condition: state
+    entity_id: light.bano
+    state: 'on'
+  actions:
+  - action: script.lights_fx_feedback_flash
+    data:
+      repeats: 2
+      mode: kelvin
+      kelvin: 4949
+      color_rgb:
+      - 255
+      - 136
+      - 0
+      restore: true
+      entity_id:
+      - light.bano
+  mode: single
+- id: '1754949693222'
+  alias: Blinking -from blueprint (dev)
+  description: ''
+  use_blueprint:
+    path: rschutte/custom-blinking-lights-blueprint.yaml
+    input:
+      color:
+      - 255
+      - 123
+      - 0
+      blink_count: 4
+      trigger_entity: binary_sensor.motion_sala
+      lights:
+        entity_id: light.riel
+      blink_duration: 0.5
+      transition_length: 0
+- id: '1755031475712'
+  alias: Modo Cine - control
+  description: ''
+  triggers:
+  - id: cine_on
+    entity_id: input_boolean.modo_cine
+    to: 'on'
+    trigger: state
+  - id: cine_off
+    entity_id: input_boolean.modo_cine
+    to: 'off'
+    trigger: state
+  - id: pause
+    entity_id: media_player.googletv_living
+    to: paused
+    trigger: state
+  - id: unpause
+    entity_id: media_player.googletv_living
+    to: playing
+    trigger: state
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: cine_on
+      sequence:
+      - target:
+          entity_id: input_boolean.mantener_luces
+        action: input_boolean.turn_on
+        data: {}
+      - action: light.turn_off
+        metadata: {}
+        data: {}
+        target:
+          area_id: sala_de_estar
+      - action: light.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: light.luz_rack
+    - conditions:
+      - condition: trigger
+        id: cine_off
+      sequence:
+      - target:
+          entity_id: input_boolean.mantener_luces
+        action: input_boolean.turn_off
+        data: {}
+      - action: light.turn_on
+        metadata: {}
+        data:
+          color_temp_kelvin: 4952
+          brightness_pct: 70
+        target:
+          entity_id: light.riel
+    - conditions:
+      - condition: trigger
+        id: pause
+      - condition: state
+        entity_id: input_boolean.modo_cine
+        state: 'on'
+      sequence:
+      - action: scene.create
+        metadata: {}
+        data:
+          scene_id: cine_custom
+          snapshot_entities:
+          - light.riel
+          - light.luz_rack
+          - light.rgb
+          - light.barra
+          - light.cocina
+      - action: light.turn_on
+        metadata: {}
+        data:
+          color_temp_kelvin: 3416
+          brightness_pct: 38
+        target:
+          entity_id:
+          - light.barra
+          - light.riel
+    - conditions:
+      - condition: trigger
+        id: unpause
+      - condition: state
+        entity_id: input_boolean.modo_cine
+        state: 'on'
+      sequence:
+      - action: scene.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: scene.cine_previo
+  mode: restart

@@ -1,0 +1,168 @@
+# ===========================
+#  Switchs Radiofrecuencia (MQTT)
+#  Tópico: tele/rf_sonoff/RESULT
+#  Incluye captura de códigos RF desconocidos.
+# ===========================
+- alias: Switchs - Radio Frecuencia
+  id: switch_rf_hub
+  mode: queued
+  max: 20
+
+  trigger:
+    - platform: mqtt
+      topic: tele/rf_sonoff/RESULT
+
+  # Protegemos por si llega un mensaje sin RfReceived.Data
+  condition:
+    - condition: template
+      value_template: >
+        {{ trigger.payload_json is defined and
+           trigger.payload_json.RfReceived is defined and
+           trigger.payload_json.RfReceived.Data is defined }}
+
+  variables:
+    code: "{{ trigger.payload_json.RfReceived.Data | default('') }}"
+
+  action:
+    - choose:
+
+        # ====== ENTRADA ======
+        # b6 - Riel (toggle)
+        - conditions: "{{ code == 'A1E9A8' }}"
+          sequence:
+            - service: light.toggle
+              target: { entity_id: light.riel }
+
+        # b4 - Comedor (toggle)
+        - conditions: "{{ code == 'A1E9A2' }}"
+          sequence:
+            - service: light.toggle
+              target: { entity_id: light.comedor }
+
+        # b5 - Mesa (toggle)
+        - conditions: "{{ code == 'A1E9A4' }}"
+          sequence:
+            - service: light.toggle
+              target: { entity_id: light.mesa }
+
+        # b1 - Apagar todo Sala de Estar
+        - conditions: "{{ code == '984A18' }}"
+          sequence:
+            - service: light.turn_off
+              target: { area_id: sala_de_estar }
+
+        # b3 - Preset Sala (riel + rack, fría 80%)
+        - conditions: "{{ code == '984A12' }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id:
+                  - light.riel
+                  - light.luz_rack
+              data:
+                color_temp: 327
+                brightness_pct: 80
+
+        # b2 - Luces deco Sala (grupo on/off)
+        - conditions: "{{ code == '984A14' }}"
+          sequence:
+            - choose:
+                - conditions:
+                    - condition: state
+                      entity_id: light.luces_deco_sala
+                      state: 'off'
+                  sequence:
+                    - service: light.turn_on
+                      target: { entity_id: light.luces_deco_sala }
+              default:
+                - service: light.turn_off
+                  target: { entity_id: light.luces_deco_sala }
+
+        # ====== COCINA / ESTUDIO / PASILLO ======
+        # Cocina (toggle)
+        - conditions: "{{ code == 'A214B2' }}"
+          sequence:
+            - service: light.toggle
+              target: { entity_id: light.cocina }
+
+        # Estudio (toggle)
+        - conditions: "{{ code == '84BCF2' }}"
+          sequence:
+            - service: light.toggle
+              target: { entity_id: light.estudio }
+
+        # Pasillo (toggle)
+        - conditions: "{{ code == '84BCF8' }}"
+          sequence:
+            - service: light.toggle
+              target: { entity_id: light.wiz130 }
+
+        # ====== BAÑO ======
+        # Baño toggle (con preset)
+        - conditions: "{{ code == '9BDB92' }}"
+          sequence:
+            - service: light.toggle
+              target: { entity_id: light.bano }
+              data:
+                color_temp: 200
+                brightness_pct: 100
+
+        # ====== PIEZA ======
+        # Luz cama (toggle con preset)
+        - conditions: "{{ code == 'A1DBC4' }}"
+          sequence:
+            - service: light.toggle
+              target: { entity_id: light.luz_cama }
+              data:
+                color_temp: 251
+                brightness_pct: 100
+
+        # Luz pieza (toggle con preset)
+        - conditions: "{{ code == 'A1DBC8' }}"
+          sequence:
+            - service: light.toggle
+              target: { entity_id: light.pieza }
+              data:
+                color_temp: 316
+                brightness_pct: 100
+
+        # Lucecitas / mapping previo (toggle con preset)
+        - conditions: "{{ code == 'A1DBC2' }}"
+          sequence:
+            - service: light.toggle
+              target: { entity_id: light.pieza }
+              data:
+                color_temp: 265
+                brightness_pct: 100
+
+        # ====== NIGHTSTAND PIEZA (A2ABE*) ======
+        # Botón1 - prender luz pieza
+        - conditions: "{{ code == 'A2ABE2' }}"
+          sequence:
+            - service: light.toggle
+              target: { entity_id: light.pieza }
+              data:
+                color_temp: 182
+                brightness_pct: 100
+
+        # Botón2 - prender luz cama
+        - conditions: "{{ code == 'A2ABE4' }}"
+          sequence:
+            - service: light.toggle
+              target: { entity_id: light.luz_cama }
+
+        # Botón3 - aire pieza (script)
+        - conditions: "{{ code == 'A2ABE8' }}"
+          sequence:
+            - service: script.aire_pieza_toogle
+
+      # Cualquier código no mapeado cae aquí
+      default:
+        - service: persistent_notification.create
+          data:
+            title: "⚠ Código RF desconocido"
+            message: "Se recibió un código RF no registrado: {{ code }}"
+        - service: logbook.log
+          data:
+            name: "RF Hub"
+            message: "Código RF desconocido recibido: {{ code }}"

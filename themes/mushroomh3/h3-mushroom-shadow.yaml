@@ -1,0 +1,248 @@
+H3Mushroom:
+    # Home Assistant override
+    ha-card-box-shadow: 0px 2px 4px 0px rgba(0,0,0,0.16)
+    #  ha-card-border-width: 0
+    # header-height: 36px
+    # app-header-text-color: "gray"
+    # app-header-background-color: "white"
+        
+    accent-color: "#1473e6"
+    rgb-accent-color: "233, 0, 98"    
+    ### metro fluent code ###
+    #########################
+    
+    
+    # Text Colors
+    text-primary-color: var(--primary-text-color)
+    accent-text-color: "rgb(255,255,255)"
+    text-accent-color: var(--accent-text-color)
+    
+    # Main Interface Colors
+    divider-color: transparent
+    disabled-color: "rgba(255,255,255,.55)"
+    rgb-disabled-color: "128,128,128"
+    error-color: "#FF4400"
+    rgb-error-color: "255,64,0"
+    warning-color: "#ffa600"
+    rgb-warning-color: "255,166,0"
+    success-color: "#008a17"
+    rgb-success-color: "0,138,23"
+    info-color: "#039be5"
+    rgb-info-color: "3,155,229"
+      
+    # Main Interface Colors
+    lovelace-background: var(--primary-background-color)
+    ha-card-background: var(--card-background-color)
+    
+    app-header-background-color: "rgba(var(--rgb-primary-background-color),1)"
+    app-header-text-color: var(--primary-text-color)
+    app-header-selection-bar-color: var(--primary-color)
+    app-header-edit-background-color: rgb(var(--rgb-primary-color-darker))
+    app-header-edit-text-color: var(--accent-text-color)
+    app-header-border-bottom: none
+    # Borders
+    ha-card-border-width: 0px
+    ha-card-border-color: transparent
+    
+      # Typography
+    font-stack: &font-stack "Roboto, sans-serif"
+    display-font-stack: &display-font-stack "Roboto, sans-serif"
+    mdc-typography-button-font-family: var(--font-stack)
+    mdc-typography-font-family: var(--font-stack)
+    paper-font-common-base_-_font-family: var(--font-stack)
+    paper-font-title_-_font-family: var(--display-font-stack)
+    paper-font-headline_-_font-family: var(--display-font-stack)
+    paper-font-subhead_-_font-family: var(--display-font-stack)
+    paper-font-display1_-_font-family: var(--display-font-stack)
+    paper-font-display2_-_font-family: var(--display-font-stack)
+    paper-font-display3_-_font-family: var(--display-font-stack)
+    paper-font-display4_-_font-family: var(--display-font-stack)
+    
+    mush-title-font-size: var(--title-font-size)
+    mush-title-font-weight: 400
+    mush-title-padding: 24px 16px 16px
+    mush-subtitle-font-size: var(--subtitle-font-size)
+    mush-subtitle-font-weight: 400
+    mush-card-primary-font-size: var(--body-font-size)
+    mush-card-secondary-font-size: var(--small-font-size)
+    mush-card-primary-font-weight: 400
+    mush-card-secondary-font-weight: normal
+    mush-chip-font-size: var(--body-font-size)
+    mush-chip-font-weight: normal
+    
+    
+    # Color Reset
+    # Map all the colors to the defaults above
+    
+    # Icons
+    state-icon-color: var(--primary-text-color)
+    state-icon-active-color: var(--primary-color)
+    state-icon-unavailable-color: var(--disabled-color)
+    
+      # Sidebar Menu
+    sidebar-text-color: var(--primary-text-color)
+    sidebar-selected-background-color: var(--primary-background-color)
+    sidebar-selected-icon-color: var(--primary-color)
+    sidebar-selected-text-color: var(--sidebar-selected-icon-color))
+    
+      # Sliders
+    paper-slider-knob-color: var(--accent-color)
+    paper-slider-knob-start-color: var(--paper-slider-knob-color)
+    paper-slider-pin-color: var(--paper-slider-knob-color)
+    paper-slider-active-color: var(--paper-slider-knob-color)
+    paper-slider-secondary-color: rgb(var(--rgb-primary-color-darker))
+    
+    # Labels
+    label-badge-background-color: var(--primary-background-color)
+    label-badge-text-color: var(--primary-text-color)
+    label-badge-red: "#BE3A3E"
+    label-badge-green: "#5CB861"
+    label-badge-blue: "#44A4CD"
+    label-badge-yellow: "#D5AE43"
+    label-badge-gray: "#5F6267"
+    
+     # Cards
+    paper-dialog-background-color: var(--card-background-color)
+    paper-listbox-background-color: var(--secondary-background-color)
+    paper-card-background-color: var(--card-background-color)
+    
+    # Switches
+    switch-checked-button-color: var(--primary-color)
+    switch-checked-track-color: var(--primary-text-color)
+    switch-unchecked-button-color: rgb(var(--rgb-primary-color-darker))
+    switch-unchecked-track-color: var(--primary-text-color)
+    mdc-radio-unchecked-color: var(--primary-text-color)
+    
+    # Color Picker
+    ha-color-picker-wheel-borderwidth: 4
+    ha-color-picker-wheel-bordercolor: var(--primary-text-color)
+    ha-color-picker-wheel-shadow: none
+    ha-color-picker-marker-borderwidth: 4
+    ha-color-picker-marker-bordercolor: var(--accent-text-color)
+    
+    # Toggles
+    paper-toggle-button-checked-button-color: var(--switch-checked-button-color)
+    paper-toggle-button-checked-bar-color: var(--switch-checked-track-color)
+    paper-toggle-button-unchecked-button-color: var(--switch-unchecked-button-color)
+    paper-toggle-button-unchecked-bar-color: var(--switch-unchecked-track-color)
+    
+    # Table
+    table-row-background-color: var(--primary-background-color)
+    table-row-alternative-background-color: var(--secondary-background-color)
+    data-table-background-color: var(--primary-background-color)
+    
+    # Dropdowns
+    material-background-color: var(--secondary-background-color)
+    material-secondary-background-color: var(--primary-background-color)
+    mdc-text-field-idle-line-color: var(--secondary-text-color)
+    
+    # HACS
+    hacs-chip-background-color: var(--primary-color)
+    
+    # Code
+    markdown-code-background-color: var(--primary-background-color)
+    
+    # Checkboxes
+    mdc-select-fill-color: var(--primary-background-color)
+    mdc-select-ink-color: var(--primary-text-color)
+    mdc-select-label-ink-color: var(--secondary-text-color)
+    mdc-select-idle-line-color: var(--primary-text-color)
+    mdc-select-dropdown-icon-color: var(--secondary-text-color)
+    mdc-select-hover-line-color: var(--primary-color)
+    
+    # Input
+    input-fill-color: var(--primary-background-color)
+    input-disabled-fill-color: var(--disabled-color)
+    input-dropdown-icon-color: var(--secondary-text-color)
+    
+    input-ink-color: var(--primary-text-color)
+    input-label-ink-color: var(--secondary-text-color)
+    input-disabled-ink-color: var(--disabled-text-color)
+    
+    input-idle-line-color: var(--primary-text-color)
+    input-hover-line-color: var(--primary-color)
+    input-disabled-line-color: var(--disabled-text-color)
+    
+    input-outlined-idle-border-color: none
+    input-outlined-hover-border-color: none
+    input-outlined-disabled-border-color: var(--disabled-text-color)
+    
+    code-editor-background-color: var(--primary-background-color)
+    mdc-text-field-fill-color: var(--primary-background-color)
+    
+    # Buttons
+    btn-bg-color-off: var(--primary-background-color)
+    mdc-button-disabled-fill-color: var(--disabled-color)
+    mdc-button-disabled-ink-color: var(--disabled-text-color)
+    # mdc-button-raised-box-shadow: 
+    
+    # Home Assistant override
+    # FOLME ha-card-box-shadow se controla desde el inicio con el original de mushroom
+    #ha-card-box-shadow: "none"
+    
+    # Mushroom
+    mush-rgb-pink: var(--rgb-primary-color)
+    mush-rgb-state-entity: var(--rgb-pink)
+    
+    # Swiper
+    swiper-theme-color: var(--primary-color)
+    
+    # Video
+    video-max-height: none
+    
+    # States
+    rgb-state-default-color: var(--rgb-accent-color)
+    rgb-state-inactive-color: var(--rgb-secondary-background-color)
+    rgb-state-unavailable-color: var(--rgb-disabled-text-color)
+    rgb-state-alarm-armed-color: var(--rgb-success-color)
+    rgb-state-alarm-arming-color: var(--rgb-warning-color)
+    rgb-state-alarm-disarmed-color: var(--rgb-secondary-background-color)
+    rgb-state-alarm-pending-color: var(--rgb-warning-color)
+    rgb-state-alarm-triggered-color: var(--rgb-error-color)
+    rgb-state-alert-color: var(--rgb-error-color)
+    rgb-state-automation-color: var(--rgb-primary-color)
+    rgb-state-binary-sensor-alerting-color: var(--rgb-error-color)
+    rgb-state-binary-sensor-color: var(--rgb-primary-color)
+    rgb-state-calendar-color: var(--rgb-primary-color)
+    rgb-state-camera-color: var(--rgb-primary-color)
+    rgb-state-climate-auto-color: var(--rgb-success-color)
+    rgb-state-climate-cool-color: var(--rgb-blue-color)
+    rgb-state-climate-dry-color: var(--rgb-warning-color)
+    rgb-state-climate-fan-only-color: var(--rgb-cyan-color)
+    rgb-state-climate-heat-color: var(--rgb-deep-orange-color)
+    rgb-state-climate-heat-cool-color: var(--rgb-primary-color)
+    rgb-state-climate-idle-color: var(--rgb-secondary-background-color)
+    rgb-state-cover-color: var(--rgb-purple-color)
+    rgb-state-fan-color: var(--rgb-cyan-color)
+    rgb-state-group-color: var(--rgb-primary-color)
+    rgb-state-humidifier-color: var(--rgb-blue-color)
+    rgb-state-input-boolean-color: var(--rgb-primary-color)
+    rgb-state-light-color: var(--rgb-primary-color)
+    rgb-state-lock-jammed-color: var(--rgb-error-color)
+    rgb-state-lock-locked-color: var(--rgb-success-color)
+    rgb-state-lock-pending-color: var(--rgb-warning-color)
+    rgb-state-lock-unlocked-color: var(--rgb-error-color)
+    rgb-state-media-player-color: var(--rgb-primary-color)
+    rgb-state-person-home-color: var(--rgb-success-color)
+    rgb-state-person-not-home-color: var(--rgb-secondary-background-color)
+    rgb-state-person-zone-color: var(--rgb-warning-color)
+    rgb-state-remote-color: var(--rgb-primary-color)
+    rgb-state-script-color: var(--rgb-primary-color)
+    rgb-state-sensor-battery-high-color: var(--rgb-success-color)
+    rgb-state-sensor-battery-low-color: var(--rgb-error-color)
+    rgb-state-sensor-battery-medium-color: var(--rgb-warning-color)
+    rgb-state-siren-color: var(--rgb-error-color)
+    rgb-state-sun-day-color: var(--rgb-primary-color)
+    rgb-state-sun-night-color: var(--rgb-secondary-background-color)
+    rgb-state-switch-color: var(--rgb-primary-color)
+    rgb-state-timer-color: var(--rgb-primary-color)
+    rgb-state-update-color: var(--rgb-success-color)
+    rgb-state-update-installing-color: var(--rgb-warning-color)
+    rgb-state-vacuum-color: var(--rgb-primary-color)
+    
+    
+    modes:
+      dark: {}
+      light: {}
+    ############################################
+    ############################################

@@ -1,0 +1,112 @@
+###############################################################################
+# Paquete: Parte del día (helpers ajustables + sensor global)
+###############################################################################
+
+###############################################################################
+# HELPERS: inicios de cada tramo (solo hora)
+# Podés ajustar los initial a tu gusto desde Lovelace luego.
+###############################################################################
+input_datetime:
+  parte_madrugada_inicio:
+    name: Inicio Madrugada
+    icon: mdi:theme-light-dark
+    has_date: false
+    has_time: true
+    initial: "00:00:00"
+
+  parte_manana_inicio:
+    name: Inicio Mañana
+    icon: mdi:weather-sunset-up
+    has_date: false
+    has_time: true
+    initial: "06:00:00"
+
+  parte_mediodia_inicio:
+    name: Inicio Mediodía
+    icon: mdi:weather-sunny
+    has_date: false
+    has_time: true
+    initial: "11:00:00"
+
+  parte_tarde_inicio:
+    name: Inicio Tarde
+    icon: mdi:weather-sunset
+    has_date: false
+    has_time: true
+    initial: "15:00:00"
+
+  parte_noche_inicio:
+    name: Inicio Noche
+    icon: mdi:weather-night
+    has_date: false
+    has_time: true
+    initial: "20:00:00"
+
+###############################################################################
+# SENSOR GLOBAL: Parte del día
+# Calcula en tiempo real usando los helpers y maneja correctamente la medianoche.
+# Parte del día (con icono dinámico)
+###############################################################################
+template:
+  - sensor:
+      - name: Parte del día
+        unique_id: parte_del_dia_sensor
+        state: >
+          {% set t_now = now() %}
+          {% set t_madr = today_at(states('input_datetime.parte_madrugada_inicio')) %}
+          {% set t_man  = today_at(states('input_datetime.parte_manana_inicio')) %}
+          {% set t_med  = today_at(states('input_datetime.parte_mediodia_inicio')) %}
+          {% set t_tar  = today_at(states('input_datetime.parte_tarde_inicio')) %}
+          {% set t_noc  = today_at(states('input_datetime.parte_noche_inicio')) %}
+
+          {% set madr_end = t_man if t_man > t_madr else t_man + timedelta(days=1) %}
+          {% set man_end  = t_med if t_med > t_man else t_med + timedelta(days=1) %}
+          {% set med_end  = t_tar if t_tar > t_med else t_tar + timedelta(days=1) %}
+          {% set tar_end  = t_noc if t_noc > t_tar else t_noc + timedelta(days=1) %}
+
+          {% if t_now >= t_madr and t_now < madr_end %}Madrugada
+          {% elif t_now >= t_man and t_now < man_end %}Mañana
+          {% elif t_now >= t_med and t_now < med_end %}Mediodía
+          {% elif t_now >= t_tar and t_now < tar_end %}Tarde
+          {% else %}Noche
+          {% endif %}
+        icon: >
+          {% set mapa = {
+            'Madrugada': state_attr('input_datetime.parte_madrugada_inicio','icon'),
+            'Mañana'   : state_attr('input_datetime.parte_manana_inicio','icon'),
+            'Mediodía' : state_attr('input_datetime.parte_mediodia_inicio','icon'),
+            'Tarde'    : state_attr('input_datetime.parte_tarde_inicio','icon'),
+            'Noche'    : state_attr('input_datetime.parte_noche_inicio','icon')
+          } %}
+          {{ mapa.get(this.state, 'mdi:clock-outline') }}
+        attributes:
+          range: >
+            {% set t_now = now() %}
+            {% set madr = states('input_datetime.parte_madrugada_inicio')[0:5] %}
+            {% set man  = states('input_datetime.parte_manana_inicio')[0:5] %}
+            {% set med  = states('input_datetime.parte_mediodia_inicio')[0:5] %}
+            {% set tar  = states('input_datetime.parte_tarde_inicio')[0:5] %}
+            {% set noc  = states('input_datetime.parte_noche_inicio')[0:5] %}
+
+            {% set t_madr = today_at(states('input_datetime.parte_madrugada_inicio')) %}
+            {% set t_man  = today_at(states('input_datetime.parte_manana_inicio')) %}
+            {% set t_med  = today_at(states('input_datetime.parte_mediodia_inicio')) %}
+            {% set t_tar  = today_at(states('input_datetime.parte_tarde_inicio')) %}
+            {% set t_noc  = today_at(states('input_datetime.parte_noche_inicio')) %}
+
+            {% set madr_end = t_man if t_man > t_madr else t_man + timedelta(days=1) %}
+            {% set man_end  = t_med if t_med > t_man else t_med + timedelta(days=1) %}
+            {% set med_end  = t_tar if t_tar > t_med else t_tar + timedelta(days=1) %}
+            {% set tar_end  = t_noc if t_noc > t_tar else t_noc + timedelta(days=1) %}
+
+            {% if t_now >= t_madr and t_now < madr_end %}
+              {{ madr }} → {{ man }}
+            {% elif t_now >= t_man and t_now < man_end %}
+              {{ man }} → {{ med }}
+            {% elif t_now >= t_med and t_now < med_end %}
+              {{ med }} → {{ tar }}
+            {% elif t_now >= t_tar and t_now < tar_end %}
+              {{ tar }} → {{ noc }}
+            {% else %}
+              {{ noc }} → {{ madr }}
+            {% endif %}
