@@ -1,0 +1,202 @@
+# ===========================
+#  Switch Zigbee de pieza (unificado)
+#  1/2/3 single + 2/3 double + 1/2/3/4 hold
+#  Dispositivo: 0xb4e3f9fffe14e4be (device_id: 48bcf23be736b26cdeba2549b5989c31)
+# ===========================
+- alias: Switch pieza
+  id: switch_pieza_unificado
+  mode: single
+
+#
+#  Tip: si preferis tu efecto feedback "pro" con 
+#  script.lights_fx_feedback_flash podes reemplazar los light_turn_on ... flash short por:
+#
+#
+#- service: script.lights_fx_feedback_flash
+#  data:
+#    entity_id: [ "{{ feedback_light }}" ]
+#    repeats: 2
+#    mode: kelvin
+#    kelvin: 4949
+#    restore: true
+#
+#
+
+  variables:
+    feedback_light: light.pieza      # Cambiá si querés usar otra luz como “blink”
+    area_pieza: dormitorio           # Área para apagados “globales” de la pieza
+
+  trigger:
+    # --- 1: SINGLE  -> (antes: wall pieza - 1a - luz pieza)
+    - id: b1_single
+      platform: device
+      domain: mqtt
+      device_id: 48bcf23be736b26cdeba2549b5989c31
+      type: action
+      subtype: 1_single
+      discovery_id: 0xb4e3f9fffe14e4be action_1_single
+
+    # --- 2: SINGLE  -> (antes: wall pieza - 2a - luz cama)
+    - id: b2_single
+      platform: device
+      domain: mqtt
+      device_id: 48bcf23be736b26cdeba2549b5989c31
+      type: action
+      subtype: 2_single
+      discovery_id: 0xb4e3f9fffe14e4be action_2_single
+
+    # --- 2: DOUBLE  -> (antes: wall pieza - 2b - pieza_party)
+    - id: b2_double
+      platform: device
+      domain: mqtt
+      device_id: 48bcf23be736b26cdeba2549b5989c31
+      type: action
+      subtype: 2_double
+      discovery_id: 0xb4e3f9fffe14e4be action_2_double
+
+    # --- 3: SINGLE  -> (antes: wall pieza - 3a - prender/apagar aire via escena)
+    - id: b3_single
+      platform: device
+      domain: mqtt
+      device_id: 48bcf23be736b26cdeba2549b5989c31
+      type: action
+      subtype: 3_single
+      discovery_id: 0xb4e3f9fffe14e4be action_3_single
+
+    # --- 3: DOUBLE  -> (antes: wall pieza - 3b - modo aire pieza)
+    - id: b3_double
+      platform: device
+      domain: mqtt
+      device_id: 48bcf23be736b26cdeba2549b5989c31
+      type: action
+      subtype: 3_double
+      discovery_id: 0xb4e3f9fffe14e4be action_3_double
+
+    # --- HOLDS (agregados)
+    - id: b1_hold
+      platform: device
+      domain: mqtt
+      device_id: 48bcf23be736b26cdeba2549b5989c31
+      type: action
+      subtype: 1_hold
+      discovery_id: 0xb4e3f9fffe14e4be action_1_hold
+
+    - id: b2_hold
+      platform: device
+      domain: mqtt
+      device_id: 48bcf23be736b26cdeba2549b5989c31
+      type: action
+      subtype: 2_hold
+      discovery_id: 0xb4e3f9fffe14e4be action_2_hold
+
+    - id: b3_hold
+      platform: device
+      domain: mqtt
+      device_id: 48bcf23be736b26cdeba2549b5989c31
+      type: action
+      subtype: 3_hold
+      discovery_id: 0xb4e3f9fffe14e4be action_3_hold
+
+    - id: b4_hold
+      platform: device
+      domain: mqtt
+      device_id: 48bcf23be736b26cdeba2549b5989c31
+      type: action
+      subtype: 4_hold
+      discovery_id: 0xb4e3f9fffe14e4be action_4_hold
+
+  condition: []
+
+  action:
+    - choose:
+        # ========= 1 SINGLE =========
+        - conditions: { condition: trigger, id: b1_single }
+          sequence:
+            - service: light.turn_on           # forza nivel si estaba off
+              target: { entity_id: light.pieza }
+              data:
+                brightness_pct: 100
+                color_temp: 228
+            - service: light.turn_on           # feedback blink
+              target: { entity_id: "{{ feedback_light }}" }
+              data: { flash: short }
+
+        # ========= 2 SINGLE =========
+        - conditions: { condition: trigger, id: b2_single }
+          sequence:
+            - service: scene.turn_on
+              target: { entity_id: scene.pieza_100_warm }
+            - service: light.turn_on
+              target: { entity_id: "{{ feedback_light }}" }
+              data: { flash: short }
+
+        # ========= 2 DOUBLE =========
+        - conditions: { condition: trigger, id: b2_double }
+          sequence:
+            - service: scene.turn_on
+              target: { entity_id: scene.pieza_party }
+            - service: light.turn_on
+              target: { entity_id: "{{ feedback_light }}" }
+              data: { flash: short }
+
+        # ========= 3 SINGLE =========
+        - conditions: { condition: trigger, id: b3_single }
+          sequence:
+            - service: scene.turn_on
+              target: { entity_id: scene.pieza_red_spot_x2_fuerte }
+            - service: light.turn_on
+              target: { entity_id: "{{ feedback_light }}" }
+              data: { flash: short }
+
+        # ========= 3 DOUBLE =========
+        - conditions: { condition: trigger, id: b3_double }
+          sequence:
+            - service: scene.turn_on
+              target: { entity_id: scene.pieza_red_spot }
+            - service: light.turn_on
+              target: { entity_id: "{{ feedback_light }}" }
+              data: { flash: short }
+
+        # ========= HOLDS =========
+        # 1 HOLD: Toggle de “mantener_luces” (bypass) + feedback
+        - conditions: { condition: trigger, id: b1_hold }
+          sequence:
+            - service: input_boolean.toggle
+              target: { entity_id: input_boolean.mantener_luces }
+            - service: light.turn_on
+              target: { entity_id: "{{ feedback_light }}" }
+              data: { flash: short }
+
+        # 2 HOLD: Apaga solo la luz principal de la pieza + feedback
+        - conditions: { condition: trigger, id: b2_hold }
+          sequence:
+            - service: light.turn_off
+              target: { entity_id: light.pieza }
+              data: { transition: 1 }
+            - service: light.turn_on
+              target: { entity_id: "{{ feedback_light }}" }
+              data: { flash: short }
+
+        # 3 HOLD: Toggle bypass + apaga TODO el área de la pieza
+        - conditions: { condition: trigger, id: b3_hold }
+          sequence:
+            - service: input_boolean.toggle
+              target: { entity_id: input_boolean.mantener_luces }
+            - service: light.turn_off
+              target:
+                area_id: "{{ area_pieza }}"
+              data: { transition: 1 }
+            - service: light.turn_on
+              target: { entity_id: "{{ feedback_light }}" }
+              data: { flash: short }
+
+        # 4 HOLD: Solo “apagado total” del área (atajo rápido) + feedback
+        - conditions: { condition: trigger, id: b4_hold }
+          sequence:
+            - service: light.turn_off
+              target:
+                area_id: "{{ area_pieza }}"
+              data: { transition: 1 }
+            - service: light.turn_on
+              target: { entity_id: "{{ feedback_light }}" }
+              data: { flash: short }
