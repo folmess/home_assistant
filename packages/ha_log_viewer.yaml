@@ -1,0 +1,38 @@
+# packages/ha_log_viewer.yaml
+
+###############################################################################
+# SENSOR command_line (lee home-assistant.log, filtra ERROR/WARNING)
+# - No hace polling: sólo refresca cuando vos llamás a homeassistant.update_entity
+###############################################################################
+sensor:
+  - platform: command_line
+    name: HA Log (ERROR/WARNING)
+    unique_id: ha_log_err_warn
+    command: >-
+      sh -c 'f="/config/home-assistant.log";
+             [ -r "$f" ] || { echo "{\"log\":\"(no se puede leer el log)\"}"; exit 0; }
+             printf "{\"log\":\"";
+             tail -n 500 "$f" | grep -Ei "ERROR|WARNING" \
+               | sed -e "s/\\\\/\\\\\\\\/g" -e "s/\"/\\\"/g" \
+               | awk "{printf \"%s\\\\n\", \\$0}";
+             printf "\"}";'
+    value_template: "ok"
+    json_attributes:
+      - log
+    # Desactiva el “polling” efectivo (sólo al iniciar/recargar o cuando uses update_entity)
+    scan_interval: 31536000   # 365 días
+
+###############################################################################
+# TEMPLATE SENSOR (timestamp de la ÚLTIMA actualización)
+# - Se actualiza cuando cambia el atributo 'log' del sensor anterior
+###############################################################################
+template:
+  - trigger:
+      - platform: state
+        entity_id: sensor.ha_log_error_warning
+        attribute: log
+    sensor:
+      - name: "HA Log - Última actualización (ERROR/WARNING)"
+        unique_id: ha_log_err_warn_last_refresh
+        device_class: timestamp
+        state: "{{ now() }}"
