@@ -1,0 +1,231 @@
+# packages/luz_rack.yaml
+
+###############################################################################
+# HELPERS
+###############################################################################
+input_boolean:
+  luz_rack_power:
+    name: Luz Rack - Estado
+  luz_rack_guard:
+    name: Luz Rack - Guard (silenciar automations al actualizar desde la luz)
+    initial: false
+    icon: mdi:shield-off
+
+input_select:
+  luz_rack_color:
+    name: Luz Rack - Color
+    options:
+      - white
+      - orange
+      - red
+      - green
+      - blue
+      - lightorange
+      - yellow
+      - lima
+      - teal
+      - cyan
+      - realblue
+      - lightblue
+      - violeta1
+      - violeta2
+      - rosa
+      - magenta
+    icon: mdi:palette
+
+  luz_rack_effect:
+    name: Luz Rack - Efecto
+    options:
+      - none
+      - flash_effect
+      - smooth_trans
+    icon: mdi:animation-outline
+
+###############################################################################
+# SCRIPTS (envían los IR al Broadlink)
+###############################################################################
+script:
+  luz_rack_send:
+    alias: Luz Rack - Enviar comando
+    mode: queued
+    fields:
+      command:
+        description: Comando Broadlink para luz_rack
+        example: "on"
+    sequence:
+      - service: remote.send_command
+        target:
+          entity_id: remote.broadlink_sala_remote
+        data:
+          device: luz_rack
+          command: "{{ command }}"
+
+  luz_rack_on:
+    alias: Luz Rack - ON
+    mode: restart
+    sequence:
+      - service: script.luz_rack_send
+        data: { command: "on" }
+      - service: input_boolean.turn_on
+        target: { entity_id: input_boolean.luz_rack_power }
+
+  luz_rack_off:
+    alias: Luz Rack - OFF
+    mode: restart
+    sequence:
+      - service: script.luz_rack_send
+        data: { command: "off" }
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.luz_rack_power }
+
+  luz_rack_set_color:
+    alias: Luz Rack - Set Color
+    mode: queued
+    fields:
+      color:
+        description: Nombre de color (opcional; si no, toma el del helper)
+    sequence:
+      - variables:
+          _color: "{{ (color or states('input_select.luz_rack_color')) | string }}"
+      - service: script.luz_rack_send
+        data:
+          command: "{{ _color }}"
+      - service: input_select.select_option
+        data:
+          option: "{{ _color }}"
+        target:
+          entity_id: input_select.luz_rack_color
+      - choose:
+          - conditions: "{{ is_state('input_boolean.luz_rack_power','off') }}"
+            sequence:
+              - service: input_boolean.turn_on
+                target: { entity_id: input_boolean.luz_rack_power }
+
+  luz_rack_set_effect:
+    alias: Luz Rack - Set Efecto
+    mode: queued
+    fields:
+      effect:
+        description: Nombre del efecto (off = none)
+    sequence:
+      - variables:
+          _effect: "{{ (effect or states('input_select.luz_rack_effect')) | string }}"
+      - choose:
+          - conditions: "{{ _effect != 'none' }}"
+            sequence:
+              - service: script.luz_rack_send
+                data:
+                  command: "{{ _effect }}"
+      - service: input_select.select_option
+        data:
+          option: "{{ _effect }}"
+        target:
+          entity_id: input_select.luz_rack_effect
+
+###############################################################################
+# AUTOMATIONS (cambios en helpers disparan los IR — silenciables con 'guard')
+###############################################################################
+automation:
+  - id: luz_rack_color_changed
+    alias: Luz Rack - Aplicar color al cambiar helper
+    trigger:
+      - platform: state
+        entity_id: input_select.luz_rack_color
+    condition:
+      - condition: state
+        entity_id: input_boolean.luz_rack_guard
+        state: "off"
+    action:
+      - service: script.luz_rack_set_color
+        data:
+          color: "{{ trigger.to_state.state }}"
+
+  - id: luz_rack_effect_changed
+    alias: Luz Rack - Aplicar efecto al cambiar helper
+    trigger:
+      - platform: state
+        entity_id: input_select.luz_rack_effect
+    condition:
+      - condition: state
+        entity_id: input_boolean.luz_rack_guard
+        state: "off"
+    action:
+      - service: script.luz_rack_set_effect
+        data:
+          effect: "{{ trigger.to_state.state }}"
+
+###############################################################################
+# LIGHT (new-style template) - expone light.luz_rack con efecto/colores
+###############################################################################
+template:
+  - light:
+      - name: "Luz Rack"
+        unique_id: luz_rack_ir_light
+        icon: mdi:led-strip-variant
+
+        # Estado on/off desde el helper
+        state: "{{ is_state('input_boolean.luz_rack_power','on') }}"
+
+        # Encender: ON + restaurar último color (silencia automations con 'guard')
+        turn_on:
+          - service: input_boolean.turn_on
+            target: { entity_id: input_boolean.luz_rack_guard }
+          - service: script.luz_rack_on
+          - delay: "00:00:00.3"
+          - service: script.luz_rack_set_color
+          # Al encender por color, el efecto activo pasa a 'none'
+          - service: input_select.select_option
+            target: { entity_id: input_select.luz_rack_effect }
+            data: { option: "none" }
+          - service: input_boolean.turn_off
+            target: { entity_id: input_boolean.luz_rack_guard }
+
+        turn_off:
+          - service: script.luz_rack_off
+
+        # ==== EFFECT (las 3 claves juntas) ====
+        # Efecto actual que mostrará la UI:
+        effect: >-
+          {% set e = states('input_select.luz_rack_effect') %}
+          {% if e != 'none' %}
+            {{ e }}
+          {% else %}
+            {{ 'color:' ~ states('input_select.luz_rack_color') }}
+          {% endif %}
+
+        # OJO: debe ser un *template string* que rinda una lista
+        effect_list: >-
+          {{ [
+              'flash_effect','smooth_trans',
+              'color:white','color:orange','color:red','color:green','color:blue',
+              'color:lightorange','color:yellow','color:lima','color:teal','color:cyan',
+              'color:realblue','color:lightblue','color:violeta1','color:violeta2',
+              'color:rosa','color:magenta'
+          ] }}
+
+        # Qué hacer cuando el usuario elige un efecto en la UI
+        set_effect:
+          - service: input_boolean.turn_on
+            target: { entity_id: input_boolean.luz_rack_guard }
+          - choose:
+              # Si eligió un color
+              - conditions:
+                  - condition: template
+                    value_template: "{{ effect is string and effect.startswith('color:') }}"
+                sequence:
+                  - service: script.luz_rack_set_color
+                    data:
+                      color: "{{ effect.split(':', 1)[1] }}"
+                  - service: input_select.select_option
+                    target: { entity_id: input_select.luz_rack_effect }
+                    data: { option: "none" }
+              # Si eligió un efecto real
+              - conditions:
+                  - condition: template
+                    value_template: "{{ effect in ['flash_effect','smooth_trans'] }}"
+                sequence:
+                  - service: script.luz_rack_set_effect
+                    data:
+                      effect: "{{ effect }}"
+          - service: input_boolean.turn_off
+            target: { entity_id: input_boolean.luz_rack_guard }

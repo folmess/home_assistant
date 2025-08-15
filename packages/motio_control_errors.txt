@@ -1,3 +1,0 @@
-The automation "Luces - Sala de estar - por movimiento" (automation.luces_sala_de_estar_por_movimiento) is not active because the configuration has errors.
-
-Error:invalid template (TemplateSyntaxError: unexpected char '#' at 133) for dictionary value @ data['variables']['apagado_min']. Got "{% set mapa = {\n 'mañana': states('input_number.sala_off_manana')|int,\n 'manana': states('input_number.sala_off_manana')|int, # por si no hay tilde\n 'mediodia': states('input_number.sala_off_mediodia')|int,\n 'tarde': states('input_number.sala_off_tarde')|int,\n 'noche': states('input_number.sala_off_noche')|int,\n 'madrugada': states('input_number.sala_off_madrugada')|int\n} %} {{ mapa.get(parte_del_dia, states('input_number.sala_off_noche')|int) }}"

@@ -76,30 +76,6 @@
       friendly_name: luz rack
       supported_features: 0
       state: 'on'
-    input_select.ledrackcolores:
-      options:
-      - red
-      - green
-      - blue
-      - orange
-      - white
-      - lightorange
-      - yellow
-      - lima
-      - teal
-      - cyan
-      - realblue
-      - lightblue
-      - violeta1
-      - violeta2
-      - rosa
-      - magenta
-      - flash
-      - smooth
-      editable: true
-      icon: mdi:led-strip-variant
-      friendly_name: Ledrack_colores
-      state: orange
     light.rgb:
       min_color_temp_kelvin: 2202
       max_color_temp_kelvin: 6535
@@ -233,8 +209,6 @@
       entity_only: true
     light.luz_rack:
       entity_only: true
-    input_select.ledrackcolores:
-      entity_only: true
     light.rgb:
       entity_only: true
     light.barra:
@@ -317,30 +291,6 @@
       friendly_name: luz rack
       supported_features: 0
       state: 'on'
-    input_select.ledrackcolores:
-      options:
-      - red
-      - green
-      - blue
-      - orange
-      - white
-      - lightorange
-      - yellow
-      - lima
-      - teal
-      - cyan
-      - realblue
-      - lightblue
-      - violeta1
-      - violeta2
-      - rosa
-      - magenta
-      - flash
-      - smooth
-      editable: true
-      icon: mdi:led-strip-variant
-      friendly_name: Ledrack_colores
-      state: orange
     light.rgb:
       min_color_temp_kelvin: 2202
       max_color_temp_kelvin: 6535
@@ -473,8 +423,6 @@
     light.riel:
       entity_only: true
     light.luz_rack:
-      entity_only: true
-    input_select.ledrackcolores:
       entity_only: true
     light.rgb:
       entity_only: true
@@ -1107,30 +1055,6 @@
       friendly_name: luz rack
       supported_features: 0
       state: 'on'
-    input_select.ledrackcolores:
-      options:
-      - red
-      - green
-      - blue
-      - orange
-      - white
-      - lightorange
-      - yellow
-      - lima
-      - teal
-      - cyan
-      - realblue
-      - lightblue
-      - violeta1
-      - violeta2
-      - rosa
-      - magenta
-      - flash
-      - smooth
-      editable: true
-      icon: mdi:led-strip-variant
-      friendly_name: Ledrack_colores
-      state: orange
     light.barra:
       min_color_temp_kelvin: 2202
       max_color_temp_kelvin: 6535
@@ -1217,8 +1141,6 @@
     light.rgb:
       entity_only: true
     light.luz_rack:
-      entity_only: true
-    input_select.ledrackcolores:
       entity_only: true
     light.barra:
       entity_only: true
@@ -1572,30 +1494,6 @@
       friendly_name: luz rack
       supported_features: 0
       state: 'on'
-    input_select.ledrackcolores:
-      options:
-      - red
-      - green
-      - blue
-      - orange
-      - white
-      - lightorange
-      - yellow
-      - lima
-      - teal
-      - cyan
-      - realblue
-      - lightblue
-      - violeta1
-      - violeta2
-      - rosa
-      - magenta
-      - flash
-      - smooth
-      editable: true
-      icon: mdi:led-strip-variant
-      friendly_name: Ledrack_colores
-      state: white
     light.barra:
       min_color_temp_kelvin: 2000
       max_color_temp_kelvin: 6535
@@ -1668,8 +1566,6 @@
     light.riel:
       entity_only: true
     light.luz_rack:
-      entity_only: true
-    input_select.ledrackcolores:
       entity_only: true
     light.barra:
       entity_only: true
@@ -2229,30 +2125,6 @@
       friendly_name: luz rack
       supported_features: 0
       state: 'on'
-    input_select.ledrackcolores:
-      options:
-      - red
-      - green
-      - blue
-      - orange
-      - white
-      - lightorange
-      - yellow
-      - lima
-      - teal
-      - cyan
-      - realblue
-      - lightblue
-      - violeta1
-      - violeta2
-      - rosa
-      - magenta
-      - flash
-      - smooth
-      editable: true
-      icon: mdi:led-strip-variant
-      friendly_name: Ledrack_colores
-      state: orange
     light.riel1:
       min_color_temp_kelvin: 2000
       max_color_temp_kelvin: 6535
@@ -2292,8 +2164,6 @@
   icon: mdi:heat-wave
   metadata:
     light.luz_rack:
-      entity_only: true
-    input_select.ledrackcolores:
       entity_only: true
     light.riel1:
       entity_only: true
@@ -2414,38 +2284,12 @@
       brightness: 56
       effect: Ocean
       state: 'on'
-    input_select.ledrackcolores:
-      options:
-      - red
-      - green
-      - blue
-      - orange
-      - white
-      - lightorange
-      - yellow
-      - lima
-      - teal
-      - cyan
-      - realblue
-      - lightblue
-      - violeta1
-      - violeta2
-      - rosa
-      - magenta
-      - flash
-      - smooth
-      editable: true
-      icon: mdi:led-strip-variant
-      friendly_name: Ledrack_colores
-      state: lightblue
   metadata:
     light.riel:
       entity_only: true
     light.luz_rack:
       entity_only: true
     light.rgb:
-      entity_only: true
-    input_select.ledrackcolores:
       entity_only: true
 - id: '1684624955446'
   name: Modo relax
@@ -2457,30 +2301,6 @@
       friendly_name: luz rack
       supported_features: 0
       state: 'on'
-    input_select.ledrackcolores:
-      options:
-      - red
-      - green
-      - blue
-      - orange
-      - white
-      - lightorange
-      - yellow
-      - lima
-      - teal
-      - cyan
-      - realblue
-      - lightblue
-      - violeta1
-      - violeta2
-      - rosa
-      - magenta
-      - flash
-      - smooth
-      editable: true
-      icon: mdi:led-strip-variant
-      friendly_name: Ledrack_colores
-      state: lightorange
     light.rgb:
       min_color_temp_kelvin: 2200
       max_color_temp_kelvin: 6500
@@ -2775,8 +2595,6 @@
   icon: mdi:flower-poppy
   metadata:
     light.luz_rack:
-      entity_only: true
-    input_select.ledrackcolores:
       entity_only: true
     light.rgb:
       entity_only: true

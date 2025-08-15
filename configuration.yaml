@@ -8,7 +8,7 @@ automation: !include_dir_merge_list automations/
 script: !include_dir_merge_named scripts/
 scene: !include scenes.yaml
 
-# esto es para incluir input_datetime desde yaml
+# incluir la carpeta package para paquetes
 homeassistant:
   packages: !include_dir_named packages
 
@@ -24,8 +24,7 @@ template:
         attributes:
           modules: "{{ trigger.event.data.modules }}"
           last_updated: "{{ trigger.event.data.last_updated }}"
-
-# template de luces unknown
+ # template de luces desconocidas
   - trigger:
       - platform: homeassistant
         event: start
@@ -73,64 +72,6 @@ template:
              | map(attribute='name') | list %}
           {{ names | join(', ') if names else 'Ninguna' }}
 
-
-# luz rack
-light:
-  - platform: template
-    lights:
-      luz_rack:
-        friendly_name: "Luz Rack"
-        unique_id: luzrack372892
-
-        value_template: "{{ is_state('input_boolean.ledrack', 'on') }}"
-        availability_template: "{{ not is_state('remote.broadlink_sala_remote','unavailable') }}"
-
-        # === EFFECT (todas las claves templated) ===
-        effect_list_template: >-
-          ['white','red','green','blue','orange','lightorange','yellow','lima',
-           'teal','cyan','realblue','lightblue','violeta1','rosa','magenta','flash','smooth']
-
-        effect_template: "{{ states('input_select.ledrackcolores') or 'white' }}"
-
-        set_effect:
-          - service: remote.send_command
-            target:
-              entity_id: remote.broadlink_sala_remote
-            data:
-              device: Ledrack
-              command: "{{ effect }}"
-          - service: input_select.select_option
-            target:
-              entity_id: input_select.ledrackcolores
-            data:
-              option: "{{ effect | default('white') }}"
-          - service: input_boolean.turn_on
-            target:
-              entity_id: input_boolean.ledrack
-
-        # Encendido / Apagado
-        turn_on:
-          service: script.led_rack_on
-        turn_off:
-          service: script.led_rack_off
-
-# luz cama usando platform
-  - platform: template
-    lights:
-      luz_cama:
-        friendly_name: "luz cama"
-        unique_id: luzcama453256
-        value_template: "{{ is_state('input_boolean.led_cama_power','on') }}"
-        availability_template: "{{ not is_state('remote.broadlink_rm_mini','unavailable') }}"
-
-        turn_on:
-          - service: script.led_cama_on
-          - service: input_boolean.turn_on
-            target: { entity_id: input_boolean.led_cama_power }
-        turn_off:
-          - service: script.led_cama_off
-          - service: input_boolean.turn_off
-            target: { entity_id: input_boolean.led_cama_power }
 
 media_player:
   - platform: universal
@@ -208,7 +149,6 @@ command_line:
       unit_of_measurement: "°C"
       value_template: "{{ value | multiply(0.001) | round(0) }}"
 
-
 shell_command:
   git_push_config: >
     bash -c "
@@ -222,17 +162,17 @@ shell_command:
           curl -s -X POST -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI4YzY1MjEyYTU2N2Y0NDUzYjczYTVkOTJlYmRiMTQ4NiIsImlhdCI6MTc1NTE0ODQyOSwiZXhwIjoyMDcwNTA4NDI5fQ.F3uDb02YtUclcLvivzeoPGzxyye23-cWsZRssEsvooc' \
                -H 'Content-Type: application/json' \
                -d '{\"title\": \"Git Push\", \"message\": \"Push a GitHub completado con éxito\"}' \
-               http://localhost:8123/api/services/persistent_notification/create
+               http://192.168.0.202:8123/api/services/persistent_notification/create
         else
           curl -s -X POST -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI4YzY1MjEyYTU2N2Y0NDUzYjczYTVkOTJlYmRiMTQ4NiIsImlhdCI6MTc1NTE0ODQyOSwiZXhwIjoyMDcwNTA4NDI5fQ.F3uDb02YtUclcLvivzeoPGzxyye23-cWsZRssEsvooc' \
                -H 'Content-Type: application/json' \
                -d '{\"title\": \"Git Push\", \"message\": \"Error al hacer push a GitHub\"}' \
-               http://localhost:8123/api/services/persistent_notification/create
+               http://192.168.0.202:8123/api/services/persistent_notification/create
         fi
       else
         curl -s -X POST -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI4YzY1MjEyYTU2N2Y0NDUzYjczYTVkOTJlYmRiMTQ4NiIsImlhdCI6MTc1NTE0ODQyOSwiZXhwIjoyMDcwNTA4NDI5fQ.F3uDb02YtUclcLvivzeoPGzxyye23-cWsZRssEsvooc' \
              -H 'Content-Type: application/json' \
              -d '{\"title\": \"Git Push\", \"message\": \"No hay cambios para subir\"}' \
-             http://localhost:8123/api/services/persistent_notification/create
+             http://192.168.0.202:8123/api/services/persistent_notification/create
       fi
     "

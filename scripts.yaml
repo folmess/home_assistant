@@ -172,72 +172,6 @@ tv_living_abrir_flow_app_en_canal_12:
           entity_id: remote.sala_de_estar
   mode: single
   icon: mdi:television-classic
-led_rack_on:
-  alias: Led rack - on
-  sequence:
-  - service: remote.send_command
-    data:
-      device: Ledrack
-      command: 'on'
-    target:
-      entity_id: remote.broadlink_sala_remote
-  - service: input_boolean.turn_on
-    data: {}
-    target:
-      entity_id: input_boolean.ledrack
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 0
-      milliseconds: 800
-  mode: single
-led_rack_off:
-  alias: Led rack - off
-  sequence:
-  - service: remote.send_command
-    data:
-      device: Ledrack
-      command: 'off'
-    target:
-      entity_id: remote.broadlink_sala_remote
-  - service: input_boolean.turn_off
-    data: {}
-    target:
-      entity_id: input_boolean.ledrack
-  mode: single
-led_cama_on:
-  alias: Led cama - on
-  sequence:
-  - service: remote.send_command
-    data:
-      device: Ledpieza
-      command: poweron
-    target:
-      entity_id: remote.broadlink_pieza_remote
-  mode: single
-led_cama_off:
-  alias: Led cama - off
-  sequence:
-  - service: remote.send_command
-    data:
-      device: Ledpieza
-      command: poweroff
-    target:
-      entity_id: remote.broadlink_pieza_remote
-  mode: single
-'1676784977286':
-  alias: Sala de estar - Scene Toggle
-  use_blueprint:
-    path: panhans/scene_toggle.yaml
-    input:
-      included_scenes:
-      - scene.sala_de_estar_100_daylight
-      - scene.modo_relax
-      - scene.sala_de_estar_25_dim_warm
-      - scene.sala_de_estar_tranqui_dim_2spots
-      - scene.sala_de_estar_tv_friendly_cozy_spots
-      - scene.sala_de_estar_warm_night
-      transition: 3
 luz_mesa_feedback_brillo_3x:
   alias: Luz Barra - feedback brillo 3x
   sequence:
@@ -667,10 +601,8 @@ sala_fade_de_luces_encendidas_del_area_a_objetivo:
         - delay:
             milliseconds: '{{ intervalo_ms }}'
   description: ''
-
 git_push:
-  alias: "Push config a GitHub"
+  alias: Push config a GitHub
   sequence:
-    - service: shell_command.git_push_config
+  - service: shell_command.git_push_config
   mode: single
-

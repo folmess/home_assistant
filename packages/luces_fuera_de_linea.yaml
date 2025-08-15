@@ -1,0 +1,90 @@
+###############################################################################
+# GRUPO: luces a ignorar en el chequeo
+###############################################################################
+group:
+  luces_fuera_de_linea_ignoradas:
+    name: Luces fuera de línea a ignorar
+    entities:
+      # Agregá acá las luces que NO querés que disparen alerta
+      - light.sonoffwf1
+      # - light.luz_ejemplo_2
+
+###############################################################################
+# SENSORES (filtrados)
+###############################################################################
+template:
+  - binary_sensor:
+      - name: Luces fuera de línea (filtradas)
+        unique_id: luces_fuera_de_linea_filtradas
+        state: >-
+          {% set ignore = expand('group.luces_fuera_de_linea_ignoradas')
+                            | map(attribute='entity_id') | list %}
+          {% set bad = states.light
+                        | selectattr('state','in',['unavailable','unknown'])
+                        | map(attribute='entity_id') | list %}
+          {% set filt = bad | reject('in', ignore) | list %}
+          {{ (filt | count) > 0 }}
+        attributes:
+          cantidad: >-
+            {% set ignore = expand('group.luces_fuera_de_linea_ignoradas')
+                              | map(attribute='entity_id') | list %}
+            {% set bad = states.light
+                          | selectattr('state','in',['unavailable','unknown'])
+                          | map(attribute='entity_id') | list %}
+            {{ (bad | reject('in', ignore) | list) | count }}
+          lista_ids: >-
+            {% set ignore = expand('group.luces_fuera_de_linea_ignoradas')
+                              | map(attribute='entity_id') | list %}
+            {% set bad = states.light
+                          | selectattr('state','in',['unavailable','unknown'])
+                          | map(attribute='entity_id') | list %}
+            {{ (bad | reject('in', ignore) | list) | join(',') }}
+
+  - sensor:
+      - name: Luces fuera de línea lista (filtradas)
+        unique_id: luces_fuera_de_linea_lista_filtrada
+        icon: mdi:alert
+        state: >-
+          {% set ids = state_attr('binary_sensor.luces_fuera_de_linea_filtradas','lista_ids') %}
+          {% set lista = (ids.split(',') if ids else []) %}
+          {%- if lista | length == 0 -%}
+          Ninguna
+          {%- else -%}
+          {%- for e in lista -%}
+          - {{ state_attr(e, 'friendly_name') or e }} ({{ e }}){% if not loop.last %}\n{% endif %}
+          {%- endfor -%}
+          {%- endif -%}
+
+###############################################################################
+# AUTOMATIONS (usando sensores FILTRADOS)
+###############################################################################
+automation:
+  - alias: Alertar - Luces fuera de línea (filtradas)
+    id: alertar_luces_fuera_de_linea_on_filtradas
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.luces_fuera_de_linea_filtradas
+        to: 'on'
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Luces fuera de línea"
+          message: >-
+            Se detectaron {{ state_attr('binary_sensor.luces_fuera_de_linea_filtradas','cantidad') }}
+            luces en estado 'unknown' o 'unavailable':
+
+            {{ states('sensor.luces_fuera_de_linea_lista_filtradas') }}
+          notification_id: "luces_fuera_de_linea"
+
+  - alias: Alertar - Luces fuera de línea (filtradas) (clear)
+    id: alertar_luces_fuera_de_linea_off_filtradas
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.luces_fuera_de_linea_filtradas
+        to: 'off'
+    action:
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: "luces_fuera_de_linea"
