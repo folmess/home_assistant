@@ -1,751 +1,298 @@
 # ===============================
-# PACK: Sala de estar - Luces por movimiento (v7 - automations separadas)
+# PACK: Sala de estar - Luces por movimiento (v7)
+# - Timer de apagado según parte del día
+# - Preaviso configurable que baja brillo 50%
+# - Snapshot al iniciar preaviso para restaurar estado
+# - Timers independientes: apagado_sala y preaviso_sala
+# - Transiciones configurables
 # ===============================
+
+---
 homeassistant:
   customize: {}
 
-##################################
 # ------- HELPERS -------
-##################################
-
-input_boolean:
-  mantener_luces:
-    name: Mantener luces (bypass)
-    icon: mdi:hand-back-right
-  sala_snapshot_ready:
-    name: Sala - Snapshot listo
-    icon: mdi:camera-burst
-
+# (Comenta si ya existen en otro archivo)
 input_number:
   sala_off_manana:
     name: Sala - Apagado mañana (min)
     min: 1
-    max: 45
+    max: 60
     step: 1
     unit_of_measurement: min
     icon: mdi:white-balance-sunny
   sala_off_mediodia:
     name: Sala - Apagado mediodía (min)
     min: 1
-    max: 45
+    max: 60
     step: 1
     unit_of_measurement: min
     icon: mdi:white-balance-sunny
   sala_off_tarde:
     name: Sala - Apagado tarde (min)
     min: 1
-    max: 45
+    max: 60
     step: 1
     unit_of_measurement: min
     icon: mdi:weather-sunset
   sala_off_noche:
     name: Sala - Apagado noche (min)
     min: 1
-    max: 45
+    max: 60
     step: 1
     unit_of_measurement: min
     icon: mdi:weather-night
   sala_off_madrugada:
     name: Sala - Apagado madrugada (min)
     min: 1
-    max: 45
+    max: 60
     step: 1
     unit_of_measurement: min
     icon: mdi:weather-night
   sala_preaviso:
     name: Sala - Preaviso (min)
     min: 1
-    max: 5
+    max: 15
     step: 1
     unit_of_measurement: min
     icon: mdi:timer-sand
-  sala_snapshot_ttl_min:
-    name: Sala - TTL snapshot (min)
+  sala_fade:
+    name: Sala - Transición (s)
     min: 1
-    max: 240
+    max: 30
     step: 1
-    icon: mdi:timer
+    unit_of_measurement: s
+    icon: mdi:movie-roll
 
+# ------- INPUT TEXT -------
 input_text:
-  sala_scene_madrugada:
-    name: Sala - Escena de madrugada (entity_id)
-    icon: mdi:weather-night
-    max: 255
-    initial: scene.sala_de_estar_warm_night
-  sala_snapshot_targets:
-    name: Sala - Snapshot targets (JSON)
-    icon: mdi:code-json
-    max: 255
-    initial: "{}"
+  snapshot_luces_sala:
+    name: Sala - Luces snapshot
+    icon: mdi:text
 
-##################################
+# ------- SCRIPTS -------
+script:
+  dim_step:
+    mode: parallel
+    fields:
+      entity_id:
+      target_pct:
+      duration:
+    sequence:
+      - variables:
+          steps: 10
+          start: "{{ state_attr(entity_id,'brightness')|int }}"
+          target: "{{ (start * target_pct / 100)|int }}"
+          step: "{{ (start - target) / steps }}"
+          delay_ms: "{{ (duration|int * 1000) / steps }}"
+      - repeat:
+          count: "{{ steps }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ entity_id }}"
+              data:
+                brightness: "{{ (start - step * repeat.index)|int }}"
+            - delay: "{{ delay_ms|int }}ms"
+  brighten_step:
+    mode: parallel
+    fields:
+      entity_id:
+      target:
+      duration:
+    sequence:
+      - variables:
+          steps: 10
+          start: "{{ state_attr(entity_id,'brightness')|int }}"
+          step: "{{ (target|int - start) / steps }}"
+          delay_ms: "{{ (duration|int * 1000) / steps }}"
+      - repeat:
+          count: "{{ steps }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ entity_id }}"
+              data:
+                brightness: "{{ (start + step * repeat.index)|int }}"
+            - delay: "{{ delay_ms|int }}ms"
+
 # ------- TIMERS -------
-##################################
-
 timer:
   apagado_sala:
-    name: Apagado real - Sala de estar
+    name: Apagado - Sala de estar
     restore: true
   preaviso_sala:
     name: Preaviso - Sala de estar
     restore: true
 
-##################################
-# AUTOMATIZACIONES (7)
-##################################
-
+# ===============================
+# AUTOMATIZACIÓN PRINCIPAL
+# ===============================
 automation:
+  - id: sala_luces_movimiento_v7
+    alias: Sala - Luces por movimiento (v7)
+    mode: restart
 
-  # ===========================
-  # ENCENDIDO - MADRUGADA
-  # ===========================
-  - id: sala_motion_encendido_madrugada
-    alias: Sala - motion - encendido - madrugada
-    mode: single
     trigger:
       - platform: state
         entity_id: binary_sensor.motion_sala
-        to: 'on'
-    condition:
-      - condition: state
-        entity_id: input_boolean.mantener_luces
-        state: 'off'
-      - condition: template
-        value_template: >
-          {{ states('sensor.parte_del_dia')|lower|replace('á','a')|replace('é','e')|replace('í','i')|replace('ó','o')|replace('ú','u') == 'madrugada' }}
-    variables:
-      scene_madrugada_entity: >-
-        {% set s = states('input_text.sala_scene_madrugada') %}
-        {{ s if s not in ['unknown','unavailable','',None] else 'scene.sala_de_estar_warm_night' }}
-    action:
-      - service: timer.cancel
-        target:
-          entity_id:
-            - timer.preaviso_sala
-            - timer.apagado_sala
-      - service: scene.turn_on
-        data:
-          entity_id: "{{ scene_madrugada_entity }}"
-      - service: input_boolean.turn_off
-        target:
-          entity_id: input_boolean.sala_snapshot_ready
+        from: 'on'
+        to: 'off'
+        for: "00:00:05"
 
-  # ===========================
-  # ENCENDIDO - GENERAL (no madrugada)
-  # ===========================
-  - id: sala_motion_encendido_general
-    alias: Sala - motion - encendido - general
-    mode: single
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.motion_sala
-        to: 'on'
-    condition:
-      - condition: state
-        entity_id: input_boolean.mantener_luces
-        state: 'off'
-      - condition: template
-        value_template: >
-          {{ states('sensor.parte_del_dia')|lower|replace('á','a')|replace('é','e')|replace('í','i')|replace('ó','o')|replace('ú','u') != 'madrugada' }}
     variables:
       area_name: "sala de estar"
       snapshot_id: "snapshot_sala_de_estar"
-      script_restore_state_fade: "script.lights_state_restore_fade"
-      has_restore: "{{ states(script_restore_state_fade) not in ['unknown','unavailable'] }}"
+
+      parte: "{{ states('sensor.parte_del_dia') | lower }}"
+      parte_norm: >
+        {{ parte | replace('á','a') | replace('é','e')
+                | replace('í','i') | replace('ó','o') | replace('ú','u') }}
+      mapa_apagado: >
+        {{ {
+            'manana': states('input_number.sala_off_manana')|int,
+            'mediodia': states('input_number.sala_off_mediodia')|int,
+            'tarde': states('input_number.sala_off_tarde')|int,
+            'noche': states('input_number.sala_off_noche')|int,
+            'madrugada': states('input_number.sala_off_madrugada')|int
+           } }}
+      apagado_seconds: >-
+        {{ mapa_apagado.get(parte_norm,
+                            states('input_number.sala_off_noche')|int) * 60 }}
+      preaviso_seconds: "{{ states('input_number.sala_preaviso')|int * 60 }}"
+      fade_seconds: "{{ states('input_number.sala_fade')|int }}"
+
+      timeout_preaviso: >-
+        {% set s = apagado_seconds|int - preaviso_seconds|int %}
+        {% if s < 0 %}{% set s = 0 %}{% endif %}
+        {{ '%02d:%02d:%02d' |
+           format((s // 3600), ((s % 3600) // 60), (s % 60)) }}
+      timeout_preaviso_only: >-
+        {% set s = preaviso_seconds|int %}
+        {{ '%02d:%02d:%02d' |
+           format((s // 3600), ((s % 3600) // 60), (s % 60)) }}
+
       luces_area: >-
         {{ expand(area_entities(area_name))
            | selectattr('entity_id','search','^light\\.')
            | map(attribute='entity_id') | list }}
+      luces_brillo: >-
+        {{ luces_area
+           | select('is_state','on')
+           | selectattr('attributes.supported_color_modes',
+                        'search','brightness')
+           | list }}
+
     action:
-      - choose:
-          - conditions:
-              - condition: state
-                entity_id: input_boolean.sala_snapshot_ready
-                state: 'on'
-            sequence:
-              - service: timer.cancel
-                target:
-                  entity_id:
-                    - timer.preaviso_sala
-                    - timer.apagado_sala
-              - choose:
-                  - conditions: "{{ has_restore }}"
-                    sequence:
-                      - service: "{{ script_restore_state_fade }}"
-                        data:
-                          area_id: "{{ area_name }}"
-                          duration: 1.2
-                          steps: 8
-                  - conditions: []
-                    sequence:
-                      - service: scene.turn_on
-                        target:
-                          entity_id: "scene.{{ snapshot_id }}"
-                        data:
-                          transition: 2
-              - service: input_boolean.turn_off
-                target:
-                  entity_id: input_boolean.sala_snapshot_ready
-        default:
-          - service: light.turn_on
-            data:
-              entity_id: "{{ luces_area | join(', ') }}"
-              brightness_pct: 60
-              transition: 1
-
-  # ===========================
-  # APAGADO - FUNCIÓN COMÚN (via anchor)
-  # ===========================
-  # Usamos un anchor &common_off_flow para reutilizar el bloque de acciones
-  # en las 5 automatizaciones de apagado por periodo.
-  - id: sala_motion_off_common_anchor
-    alias: _anchor_sala_off_common (no ejecutar)
-    mode: single
-    trigger: []
-    condition: []
-    variables:
-      area_name: "sala de estar"
-      snapshot_id: "snapshot_sala_de_estar"
-      piso_brillo: 26           # ≈ 10%
-      script_save_state: "script.lights_state_save"
-      script_restore_state_fade: "script.lights_state_restore_fade"
-      has_save: "{{ states(script_save_state) not in ['unknown','unavailable'] }}"
-      has_restore: "{{ states(script_restore_state_fade) not in ['unknown','unavailable'] }}"
-      luces_area: >-
-        {{ expand(area_entities(area_name))
-           | selectattr('entity_id','search','^light\\.')
-           | map(attribute='entity_id') | list }}
-    # Este anchor define una lista de acciones; será referenciado con *off_flow
-    action: &off_flow
-      # Guardar estado (script si existe, si no snapshot)
-      - choose:
-          - conditions: "{{ has_save }}"
-            sequence:
-              - service: "{{ script_save_state }}"
-                data: { area_id: "{{ area_name }}" }
-          - conditions: []
-            sequence:
-              - service: scene.create
-                data:
-                  scene_id: "{{ snapshot_id }}"
-                  snapshot_entities: "{{ luces_area }}"
-      - service: input_boolean.turn_on
-        target: { entity_id: input_boolean.sala_snapshot_ready }
-
-      # Timer TOTAL
+      # 1) Iniciar timer total de apagado
       - service: timer.start
-        target: { entity_id: timer.apagado_sala }
-        data: { duration: "{{ apagado_seconds }}" }
+        target:
+          entity_id: timer.apagado_sala
+        data:
+          duration: "{{ apagado_seconds }}"
 
-      # Espera FASE 1 (movimiento o timeout)
+      # 2) Esperar hasta preaviso o movimiento
       - wait_for_trigger:
           - platform: state
             entity_id: binary_sensor.motion_sala
             to: 'on'
-        timeout: "{{ fase1_timeout }}"
+        timeout: "{{ timeout_preaviso }}"
         continue_on_timeout: true
 
-      # Si vuelve movimiento en fase 1: restaurar y cancelar
+      # 3) Si hubo movimiento antes del preaviso, cancelar
       - choose:
           - conditions: "{{ wait.completed }}"
             sequence:
-              - condition: state
-                entity_id: input_boolean.mantener_luces
-                state: 'off'
-              - choose:
-                  - conditions: "{{ has_restore }}"
-                    sequence:
-                      - service: "{{ script_restore_state_fade }}"
-                        data:
-                          area_id: "{{ area_name }}"
-                          duration: 1.2
-                          steps: 8
-                  - conditions: []
-                    sequence:
-                      - service: scene.turn_on
-                        target:
-                          entity_id: "scene.{{ snapshot_id }}"
-                        data:
-                          transition: 2
               - service: timer.cancel
-                target: { entity_id: timer.apagado_sala }
-              - service: input_boolean.turn_off
-                target: { entity_id: input_boolean.sala_snapshot_ready }
-              - stop: "Movimiento durante FASE 1 -> restaurado y cancelado apagado."
-
-        # Si no hubo movimiento: preaviso (incluido en total)
-        default:
-          - condition: state
-            entity_id: input_boolean.mantener_luces
-            state: 'off'
-
-          # Actualizar guardado antes del dim
-          - choose:
-              - conditions: "{{ has_save }}"
-                sequence:
-                  - service: "{{ script_save_state }}"
-                    data: { area_id: "{{ area_name }}" }
-              - conditions: []
-                sequence:
-                  - service: scene.create
-                    data:
-                      scene_id: "{{ snapshot_id }}"
-                      snapshot_entities: "{{ luces_area }}"
-          - service: input_boolean.turn_on
-            target: { entity_id: input_boolean.sala_snapshot_ready }
-
-          # Dim relativo (-50%) con piso 10%
-          - variables:
-              luces_area_on_now: >-
-                {{ expand(luces_area)
-                   | selectattr('state','eq','on')
-                   | map(attribute='entity_id') | list }}
-          - if:
-              - condition: template
-                value_template: "{{ luces_area_on_now | length > 0 }}"
-            then:
-              - repeat:
-                  for_each: "{{ luces_area_on_now }}"
-                  sequence:
-                    - variables:
-                        bnow: "{{ state_attr(repeat.item,'brightness')|int(255) }}"
-                        new_b: >-
-                          {% set half = (bnow * 0.5) | round(0) %}
-                          {% set floor = piso_brillo | int %}
-                          {{ [half, floor] | max }}
-                    - service: light.turn_on
-                      target: { entity_id: "{{ repeat.item }}" }
-                      data:
-                        brightness: "{{ new_b }}"
-                        transition: 2
-
-          # Iniciar PREAVISO
-          - service: timer.start
-            target: { entity_id: timer.preaviso_sala }
-            data: { duration: "{{ preaviso_seconds }}" }
-
-          # Esperar movimiento o fin de preaviso
-          - wait_for_trigger:
-              - platform: state
-                entity_id: binary_sensor.motion_sala
-                to: 'on'
-              - platform: event
-                event_type: timer.finished
-                event_data: { entity_id: timer.preaviso_sala }
-            timeout: "{{ apagado_timeout }}"
-            continue_on_timeout: true
-
-          - choose:
-              # Movimiento en preaviso -> restaurar y cancelar
-              - conditions: >-
-                  {{ wait.trigger and
-                     (wait.trigger.platform == 'state' and wait.trigger.to_state and
-                      wait.trigger.to_state.state == 'on') }}
-                sequence:
-                  - condition: state
-                    entity_id: input_boolean.mantener_luces
-                    state: 'off'
-                  - service: timer.cancel
-                    target:
-                      entity_id:
-                        - timer.preaviso_sala
-                        - timer.apagado_sala
-                  - choose:
-                      - conditions: "{{ has_restore }}"
-                        sequence:
-                          - service: "{{ script_restore_state_fade }}"
-                            data:
-                              area_id: "{{ area_name }}"
-                              duration: 1.2
-                              steps: 8
-                      - conditions: []
-                        sequence:
-                          - service: scene.turn_on
-                            target:
-                              entity_id: "scene.{{ snapshot_id }}"
-                            data:
-                              transition: 2
-                  - service: input_boolean.turn_off
-                    target: { entity_id: input_boolean.sala_snapshot_ready }
-                  - stop: "Movimiento durante PREAVISO -> restaurado y cancelado todo."
-
-            # Fin de preaviso -> apagar todo
-            default:
-              - condition: state
-                entity_id: input_boolean.mantener_luces
-                state: 'off'
-              - service: light.turn_off
-                data:
-                  entity_id: "{{ luces_area | join(', ') }}"
-                  transition: 2
-              # Dejo snapshot_ready ON para posible restore por movimiento
-
-  # ================
-  # APAGADO - MAÑANA
-  # ================
-  - id: sala_motion_apagado_manana
-    alias: Sala - motion - apagado - manana
-    mode: restart
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.motion_sala
-        from: 'on'
-        to: 'off'
-        for: "00:00:05"
-    condition:
-      - condition: state
-        entity_id: input_boolean.mantener_luces
-        state: 'off'
-      - condition: template
-        value_template: >
-          {{ states('sensor.parte_del_dia')|lower|replace('á','a')|replace('é','e')|replace('í','i')|replace('ó','o')|replace('ú','u') == 'manana' }}
-    variables:
-      apagado_seconds: "{{ (states('input_number.sala_off_manana')|int) * 60 }}"
-      preaviso_seconds: "{{ (states('input_number.sala_preaviso')|int) * 60 }}"
-      fase1_seconds: "{{ [apagado_seconds|int - preaviso_seconds|int, 0] | max }}"
-      fase1_timeout: >-
-        {% set s = fase1_seconds | int %}
-        {{ '%02d:%02d:%02d'|format((s//3600),((s%3600)//60),(s%60)) }}
-      apagado_timeout: >-
-        {% set s = apagado_seconds | int %}
-        {{ '%02d:%02d:%02d'|format((s//3600),((s%3600)//60),(s%60)) }}
-    action: *off_flow
-
-  # =================
-  # APAGADO - MEDIODÍA
-  # =================
-  - id: sala_motion_apagado_mediodia
-    alias: Sala - motion - apagado - mediodia
-    mode: restart
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.motion_sala
-        from: 'on'
-        to: 'off'
-        for: "00:00:05"
-    condition:
-      - condition: state
-        entity_id: input_boolean.mantener_luces
-        state: 'off'
-      - condition: template
-        value_template: >
-          {{ states('sensor.parte_del_dia')|lower|replace('á','a')|replace('é','e')|replace('í','i')|replace('ó','o')|replace('ú','u') == 'mediodia' }}
-    variables:
-      apagado_seconds: "{{ (states('input_number.sala_off_mediodia')|int) * 60 }}"
-      preaviso_seconds: "{{ (states('input_number.sala_preaviso')|int) * 60 }}"
-      fase1_seconds: "{{ [apagado_seconds|int - preaviso_seconds|int, 0] | max }}"
-      fase1_timeout: >-
-        {% set s = fase1_seconds | int %}
-        {{ '%02d:%02d:%02d'|format((s//3600),((s%3600)//60),(s%60)) }}
-      apagado_timeout: >-
-        {% set s = apagado_seconds | int %}
-        {{ '%02d:%02d:%02d'|format((s//3600),((s%3600)//60),(s%60)) }}
-    action: *off_flow
-
-  # =============
-  # APAGADO - TARDE
-  # =============
-  - id: sala_motion_apagado_tarde
-    alias: Sala - motion - apagado - tarde
-    mode: restart
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.motion_sala
-        from: 'on'
-        to: 'off'
-        for: "00:00:05"
-    condition:
-      - condition: state
-        entity_id: input_boolean.mantener_luces
-        state: 'off'
-      - condition: template
-        value_template: >
-          {{ states('sensor.parte_del_dia')|lower|replace('á','a')|replace('é','e')|replace('í','i')|replace('ó','o')|replace('ú','u') == 'tarde' }}
-    variables:
-      apagado_seconds: "{{ (states('input_number.sala_off_tarde')|int) * 60 }}"
-      preaviso_seconds: "{{ (states('input_number.sala_preaviso')|int) * 60 }}"
-      fase1_seconds: "{{ [apagado_seconds|int - preaviso_seconds|int, 0] | max }}"
-      fase1_timeout: >-
-        {% set s = fase1_seconds | int %}
-        {{ '%02d:%02d:%02d'|format((s//3600),((s%3600)//60),(s%60)) }}
-      apagado_timeout: >-
-        {% set s = apagado_seconds | int %}
-        {{ '%02d:%02d:%02d'|format((s//3600),((s%3600)//60),(s%60)) }}
-    action: *off_flow
-
-  # =============
-  # APAGADO - NOCHE
-  # =============
-  - id: sala_motion_apagado_noche
-    alias: Sala - motion - apagado - noche
-    mode: restart
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.motion_sala
-        from: 'on'
-        to: 'off'
-        for: "00:00:05"
-    condition:
-      - condition: state
-        entity_id: input_boolean.mantener_luces
-        state: 'off'
-      - condition: template
-        value_template: >
-          {{ states('sensor.parte_del_dia')|lower|replace('á','a')|replace('é','e')|replace('í','i')|replace('ó','o')|replace('ú','u') == 'noche' }}
-    variables:
-      apagado_seconds: "{{ (states('input_number.sala_off_noche')|int) * 60 }}"
-      preaviso_seconds: "{{ (states('input_number.sala_preaviso')|int) * 60 }}"
-      fase1_seconds: "{{ [apagado_seconds|int - preaviso_seconds|int, 0] | max }}"
-      fase1_timeout: >-
-        {% set s = fase1_seconds | int %}
-        {{ '%02d:%02d:%02d'|format((s//3600),((s%3600)//60),(s%60)) }}
-      apagado_timeout: >-
-        {% set s = apagado_seconds | int %}
-        {{ '%02d:%02d:%02d'|format((s//3600),((s%3600)//60),(s%60)) }}
-    action: *off_flow
-
-  # ==================
-  # APAGADO - MADRUGADA
-  # ==================
-  - id: sala_motion_apagado_madrugada
-    alias: Sala - motion - apagado - madrugada
-    mode: restart
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.motion_sala
-        from: 'on'
-        to: 'off'
-        for: "00:00:05"
-    condition:
-      - condition: state
-        entity_id: input_boolean.mantener_luces
-        state: 'off'
-      - condition: template
-        value_template: >
-          {{ states('sensor.parte_del_dia')|lower|replace('á','a')|replace('é','e')|replace('í','i')|replace('ó','o')|replace('ú','u') == 'madrugada' }}
-    variables:
-      apagado_seconds: "{{ (states('input_number.sala_off_madrugada')|int) * 60 }}"
-      preaviso_seconds: "{{ (states('input_number.sala_preaviso')|int) * 60 }}"
-      fase1_seconds: "{{ [apagado_seconds|int - preaviso_seconds|int, 0] | max }}"
-      fase1_timeout: >-
-        {% set s = fase1_seconds | int %}
-        {{ '%02d:%02d:%02d'|format((s//3600),((s%3600)//60),(s%60)) }}
-      apagado_timeout: >-
-        {% set s = apagado_seconds | int %}
-        {{ '%02d:%02d:%02d'|format((s//3600),((s%3600)//60),(s%60)) }}
-    action: *off_flow
-
-  # ===========================
-  # TTL del snapshot (igual que v6.3)
-  # ===========================
-  - id: sala_snapshot_auto_clear
-    alias: Sala - limpiar flag snapshot tras TTL (v7)
-    mode: restart
-    trigger:
-      - platform: state
-        entity_id: input_boolean.sala_snapshot_ready
-        to: 'on'
-    action:
-      - delay:
-          minutes: "{{ states('input_number.sala_snapshot_ttl_min')|int(30) }}"
-      - condition: state
-        entity_id: input_boolean.mantener_luces
-        state: 'off'
-      - condition: state
-        entity_id: timer.apagado_sala
-        state: 'idle'
-      - condition: state
-        entity_id: timer.preaviso_sala
-        state: 'idle'
-      - service: input_boolean.turn_off
-        target:
-          entity_id: input_boolean.sala_snapshot_ready
-
-############################################
-### SCRIPTS (idénticos a v6.3)
-############################################
-
-script:
-  lights_state_save:
-    alias: lights_state_save
-    description: "(motion package) Guarda el estado de luces del área en JSON (input_text.sala_snapshot_targets)"
-    mode: single
-    fields:
-      area_id:
-        description: Área Home Assistant (nombre) para tomar luces
-        example: "sala de estar"
-    sequence:
-      - variables:
-          save_area: "{{ area_id | default('sala de estar') }}"
-          luces: >-
-            {{ expand(area_entities(save_area))
-               | selectattr('entity_id','search','^light\\.')
-               | list }}
-      - variables:
-          snapshot_json: >-
-            {%- set ns = namespace(obj={}) -%}
-            {%- for e in luces -%}
-              {%- set id = e.entity_id -%}
-              {%- if e.state == 'on' -%}
-                {%- set bri = (state_attr(id,'brightness') | int(255)) -%}
-                {%- set pct = (bri / 2.55) | round(0) | int -%}
-                {%- set ns.obj = ns.obj | combine({ id: pct }) -%}
-              {%- endif -%}
-            {%- endfor -%}
-            {{ ns.obj | tojson }}
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.sala_snapshot_targets
-        data:
-          value: "{{ snapshot_json }}"
-
-  lights_state_restore_fade:
-    alias: lights_state_restore_fade
-    description: "(motion package) Fade hacia brillos guardados en input_text.sala_snapshot_targets"
-    mode: restart
-    fields:
-      area_id:
-        description: Área para usar como ámbito (no imprescindible)
-        example: "sala de estar"
-      duration:
-        description: Duración total (segundos)
-        example: 1.2
-      steps:
-        description: Nº de pasos
-        example: 8
-      min_pct:
-        description: Piso mínimo de brillo (cuando objetivo > 0)
-        example: 10
-    sequence:
-      - variables:
-          targets: >-
-            {{ states('input_text.sala_snapshot_targets') | default('{}', true) | from_json }}
-          luces: "{{ (targets.keys() if targets is mapping else []) | list }}"
-          steps_i: "{{ (steps | default(20)) | int }}"
-          duration_s: "{{ (duration | default(1.2)) | float }}"
-          intervalo_ms: >-
-            {{ (duration_s * 1000 / (steps_i if steps_i > 0 else 1)) | round(0) | int }}
-          min_floor: "{{ (min_pct | default(10)) | int }}"
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ luces | length == 0 or steps_i <= 0 }}"
-            sequence: []
-        default:
-          - repeat:
-              count: "{{ steps_i }}"
-              sequence:
-                - variables:
-                    frac: "{{ (repeat.index | float) / (steps_i | float) }}"
-                - repeat:
-                    for_each: "{{ luces }}"
-                    sequence:
-                      - variables:
-                          e: "{{ repeat.item }}"
-                          objetivo: "{{ targets[e] | int }}"
-                          bri_cur_255: "{{ state_attr(e,'brightness') | default(0, true) | int }}"
-                          pct0: "{{ (bri_cur_255 / 2.55) | round(0) | int }}"
-                          start: >-
-                            {% if objetivo > 0 %}
-                              {{ pct0 if pct0 > 0 else min_floor }}
-                            {% else %}
-                              {{ pct0 }}
-                            {% endif %}
-                          next_raw: "{{ (start + (frac | float) * (objetivo - start)) | round(0) | int }}"
-                          next_pct: >-
-                            {% if objetivo > 0 %}
-                              {{ [ [ next_raw, 0 ] | max, min_floor ] | max | int }}
-                            {% else %}
-                              {{ [ next_raw, 0 ] | max | int }}
-                            {% endif %}
-                      - service: light.turn_on
-                        target:
-                          entity_id: "{{ e }}"
-                        data:
-                          brightness_pct: "{{ next_pct }}"
-                - delay:
-                    milliseconds: "{{ intervalo_ms }}"
-          # Apaga al final las que tenían objetivo 0
-          - variables:
-              off_list: >-
-                {%- set lst = [] -%}
-                {%- for e in luces -%}
-                  {%- if (targets[e] | int) == 0 -%}
-                    {%- set _ = lst.append(e) -%}
-                  {%- endif -%}
-                {%- endfor -%}
-                {{ lst }}
-          - if:
-              - condition: template
-                value_template: "{{ off_list | length > 0 }}"
-            then:
-              - service: light.turn_off
                 target:
-                  entity_id: "{{ off_list | join(', ') }}"
+                  entity_id: timer.apagado_sala
+              - stop: "Movimiento detectado antes del preaviso"
 
-  lights_fade_to_pct:
-    alias: lights_fade_to_pct
-    description: "(motion package) Fade de luces encendidas del área hacia target_pct"
-    mode: restart
-    fields:
-      area_id:
-        description: Área Home Assistant (nombre)
-        example: "sala de estar"
-      target_pct:
-        description: Porcentaje final objetivo (0-100)
-        default: 50
-      duration:
-        description: Duración total en segundos
-        default: 3
-      steps:
-        description: Cantidad de pasos (más pasos = más suave)
-        default: 12
-      min_pct:
-        description: Piso mínimo de brillo cuando target_pct>0
-        default: 0
-    sequence:
-      - variables:
-          fade_area: "{{ area_id | default('sala de estar') }}"
-          luces_on: >-
-            {{ expand(area_entities(fade_area))
-               | selectattr('entity_id','search','^light\\.')
-               | selectattr('state','eq','on')
-               | map(attribute='entity_id') | list }}
-          objetivo: "{{ (target_pct | default(50)) | int }}"
-          steps_i: "{{ (steps | default(12)) | int }}"
-          duration_s: "{{ (duration | default(3)) | float }}"
-          intervalo_ms: >-
-            {{ (duration_s * 1000 / (steps_i if steps_i > 0 else 1)) | round(0) | int }}
-          min_floor: "{{ (min_pct | default(0)) | int }}"
+      # 4) Preaviso: snapshot, dim y timer para tarjeta
+      - service: scene.create
+        data:
+          scene_id: "{{ snapshot_id }}"
+          snapshot_entities: "{{ luces_area }}"
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.snapshot_luces_sala
+          value: >-
+            {% set ns = namespace(d={}) %}
+              {% for l in luces_brillo %}
+                {% set ns.d = ns.d | combine({
+                  l: state_attr(l,'brightness')|int
+                }) %}
+              {% endfor %}
+            {{ ns.d | to_json }}
+      - repeat:
+          for_each: "{{ luces_brillo }}"
+          sequence:
+            - service: script.dim_step
+              data:
+                entity_id: "{{ repeat.item }}"
+                target_pct: 50
+                duration: "{{ fade_seconds }}"
+      - service: timer.start
+        target:
+          entity_id: timer.preaviso_sala
+        data:
+          duration: "{{ preaviso_seconds }}"
+
+      # 5) Esperar movimiento durante preaviso
+      - wait_for_trigger:
+          - platform: state
+            entity_id: binary_sensor.motion_sala
+            to: 'on'
+        timeout: "{{ timeout_preaviso_only }}"
+        continue_on_timeout: true
+
+      # 6) Si hay movimiento durante preaviso, restaurar
       - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ luces_on | length == 0 or steps_i <= 0 }}"
-            sequence: []
-        default:
-          - repeat:
-              count: "{{ steps_i }}"
-              sequence:
-                - variables:
-                    frac: "{{ (repeat.index | float) / (steps_i | float) }}"
-                - repeat:
-                    for_each: "{{ luces_on }}"
-                    sequence:
-                      - variables:
-                          e: "{{ repeat.item }}"
-                          bri0_255: "{{ state_attr(e,'brightness') | default(0, true) | int }}"
-                          pct0: "{{ (bri0_255 / 2.55) | round(0) | int }}"
-                          tgt: >-
-                            {% if objetivo > 0 %}
-                              {{ [objetivo, min_floor] | max }}
-                            {% else %}
-                              {{ objetivo }}
-                            {% endif %}
-                          next_pct: "{{ (pct0 + (frac | float) * (tgt - pct0)) | round(0) | int }}"
-                      - service: light.turn_on
-                        target:
-                          entity_id: "{{ e }}"
-                        data:
-                          brightness_pct: "{{ next_pct }}"
-                - delay:
-                    milliseconds: "{{ intervalo_ms }}"
+          - conditions: "{{ wait.completed }}"
+            sequence:
+              - variables:
+                  snapshot_map: >-
+                    {{ states('input_text.snapshot_luces_sala') | from_json }}
+              - repeat:
+                  for_each: "{{ snapshot_map.keys() | list }}"
+                  sequence:
+                    - service: script.brighten_step
+                      data:
+                        entity_id: "{{ repeat.item }}"
+                        target: "{{ snapshot_map[repeat.item] }}"
+                        duration: "{{ fade_seconds }}"
+              - service: scene.turn_on
+                target:
+                  entity_id: "scene.{{ snapshot_id }}"
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.snapshot_luces_sala
+                  value: ''
+              - service: timer.cancel
+                target:
+                  entity_id:
+                    - timer.apagado_sala
+                    - timer.preaviso_sala
+              - stop: "Movimiento detectado durante preaviso"
+
+      # 7) Apagar luces con transición
+      - repeat:
+          for_each: "{{ luces_brillo }}"
+          sequence:
+            - service: script.dim_step
+              data:
+                entity_id: "{{ repeat.item }}"
+                target_pct: 0
+                duration: "{{ fade_seconds }}"
+            - service: light.turn_off
+              target:
+                entity_id: "{{ repeat.item }}"
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.snapshot_luces_sala
+          value: ''
+      - service: timer.cancel
+        target:
+          entity_id:
+            - timer.apagado_sala
+            - timer.preaviso_sala
