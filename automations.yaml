@@ -256,8 +256,7 @@
       message: Faltan 20 minutos
     action: tts.cloud_say
   mode: single
-- &id001
-  id: sala_failsafe_madrugada
+- id: sala_failsafe_madrugada
   alias: Sala - Failsafe de madrugada (apagado suave si no hay movimiento)
   description: ''
   triggers:
@@ -278,8 +277,6 @@
   mode: single
   variables:
     min_sin_mov: '{{ states(''input_number.madrugada_failsafe_min'') | int(20) }}'
-- *id001
-
 - id: luz_bano_feedback_en_punto_blink
   alias: Luz baño - feedback - en punto (blink)
   description: ''

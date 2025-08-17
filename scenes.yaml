@@ -752,14 +752,6 @@
       friendly_name: Baño
       supported_features: 4
       state: 'off'
-    light.luz_cama:
-      supported_color_modes:
-      - onoff
-      color_mode:
-      icon: mdi:bed-king-outline
-      friendly_name: luz cama
-      supported_features: 0
-      state: 'off'
     light.pieza:
       min_color_temp_kelvin: 2202
       max_color_temp_kelvin: 6535
@@ -895,8 +887,6 @@
     light.cocina:
       entity_only: true
     light.bano:
-      entity_only: true
-    light.luz_cama:
       entity_only: true
     light.pieza:
       entity_only: true
