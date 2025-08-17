@@ -256,27 +256,6 @@
       message: Faltan 20 minutos
     action: tts.cloud_say
   mode: single
-- id: sala_failsafe_madrugada
-  alias: Sala - Failsafe de madrugada (apagado suave si no hay movimiento)
-  description: ''
-  triggers:
-  - at: 03:00:00
-    trigger: time
-  conditions:
-  - condition: template
-    value_template: '{{ (now() - states.binary_sensor.motion_sala.last_changed).total_seconds()
-      > (min_sin_mov * 60) }}
-
-      '
-  actions:
-  - action: light.turn_off
-    metadata: {}
-    data: {}
-    target:
-      area_id: sala_de_estar
-  mode: single
-  variables:
-    min_sin_mov: '{{ states(''input_number.madrugada_failsafe_min'') | int(20) }}'
 - id: luz_bano_feedback_en_punto_blink
   alias: Luz baño - feedback - en punto (blink)
   description: ''
