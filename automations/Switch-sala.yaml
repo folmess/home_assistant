@@ -133,13 +133,8 @@
 
         - conditions: { condition: trigger, id: b4_double }
           sequence:
-            - service: script.lights_fade_to_pct
-              data:
-                area_id: sala_de_estar
-                target_pct: 25
-                duration: 1.2
-                steps: 8
-                min_pct: 10
+            - service: scene.turn_on
+              target: { entity_id: scene.sala_de_estar_cozy_ocean }
 
         # ========= HOLD =========
         - conditions: { condition: trigger, id: b3_hold }

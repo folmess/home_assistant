@@ -601,8 +601,3 @@ sala_fade_de_luces_encendidas_del_area_a_objetivo:
         - delay:
             milliseconds: '{{ intervalo_ms }}'
   description: ''
-git_push:
-  alias: Push config a GitHub
-  sequence:
-  - service: shell_command.git_push_config
-  mode: single
