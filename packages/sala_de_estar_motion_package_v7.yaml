@@ -76,8 +76,17 @@ script:
     mode: parallel
     fields:
       entity_id:
+        name: Light entity
+        description: "Light entity to control"
+        example: light.living_room
       target_pct:
+        name: Target brightness percentage
+        description: "Target brightness percentage"
+        example: 50
       duration:
+        name: Fade duration
+        description: "Fade duration in seconds"
+        example: 5
     sequence:
       - variables:
           steps: 10
@@ -98,8 +107,17 @@ script:
     mode: parallel
     fields:
       entity_id:
+        name: Light entity
+        description: "Light entity to control"
+        example: light.living_room
       target:
+        name: Target brightness value
+        description: "Target brightness value"
+        example: 50
       duration:
+        name: Fade duration
+        description: "Fade duration in seconds"
+        example: 5
     sequence:
       - variables:
           steps: 10
