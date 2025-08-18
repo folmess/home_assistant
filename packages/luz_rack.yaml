@@ -86,7 +86,7 @@ script:
         description: Nombre de color (opcional; si no, toma el del helper)
     sequence:
       - variables:
-          _color: "{{ (color or states('input_select.luz_rack_color')) | string }}"
+          _color: "{{ color | default(states('input_select.luz_rack_color'), true) }}"
       - service: script.luz_rack_send
         data:
           command: "{{ _color }}"
@@ -109,7 +109,7 @@ script:
         description: Nombre del efecto (off = none)
     sequence:
       - variables:
-          _effect: "{{ (effect or states('input_select.luz_rack_effect')) | string }}"
+          _effect: "{{ effect | default(states('input_select.luz_rack_effect'), true) }}"
       - choose:
           - conditions: "{{ _effect != 'none' }}"
             sequence:
