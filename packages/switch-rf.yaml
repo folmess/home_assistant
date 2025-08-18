@@ -3,28 +3,35 @@
 #  Tópico: tele/rf_sonoff/RESULT
 #  Incluye captura de códigos RF desconocidos.
 # ===========================
-- alias: Switchs - Radio Frecuencia
-  id: switch_rf_hub
-  mode: queued
-  max: 20
 
-  trigger:
-    - platform: mqtt
-      topic: tele/rf_sonoff/RESULT
+input_boolean:
+  codigos_desconocidos:
+    name: "Notificar códigos RF desconocidos"
+    initial: false
 
-  # Protegemos por si llega un mensaje sin RfReceived.Data
-  condition:
-    - condition: template
-      value_template: >
-        {{ trigger.payload_json is defined and
-           trigger.payload_json.RfReceived is defined and
-           trigger.payload_json.RfReceived.Data is defined }}
+automation:
+  - alias: Switchs - Radio Frecuencia
+    id: switch_rf_hub
+    mode: queued
+    max: 20
 
-  variables:
-    code: "{{ trigger.payload_json.RfReceived.Data | default('') }}"
+    trigger:
+      - platform: mqtt
+        topic: tele/rf_sonoff/RESULT
 
-  action:
-    - choose:
+    # Protegemos por si llega un mensaje sin RfReceived.Data
+    condition:
+      - condition: template
+        value_template: >
+          {{ trigger.payload_json is defined and
+             trigger.payload_json.RfReceived is defined and
+             trigger.payload_json.RfReceived.Data is defined }}
+
+    variables:
+      code: "{{ trigger.payload_json.RfReceived.Data | default('') }}"
+
+    action:
+      - choose:
 
         # ====== ENTRADA ======
         # b6 - Riel (toggle)
@@ -156,13 +163,18 @@
           sequence:
             - service: script.aire_pieza_toogle
 
-      # Cualquier código no mapeado cae aquí
-      default:
-        - service: persistent_notification.create
-          data:
-            title: "⚠ Código RF desconocido"
-            message: "Se recibió un código RF no registrado: {{ code }}"
-        - service: logbook.log
-          data:
-            name: "RF Hub"
-            message: "Código RF desconocido recibido: {{ code }}"
+        # Cualquier código no mapeado cae aquí
+        default:
+          - if:
+              - condition: state
+                entity_id: input_boolean.codigos_desconocidos
+                state: "on"
+            then:
+              - service: persistent_notification.create
+                data:
+                  title: "⚠ Código RF desconocido"
+                  message: "Se recibió un código RF no registrado: {{ code }}"
+              - service: logbook.log
+                data:
+                  name: "RF Hub"
+                  message: "Código RF desconocido recibido: {{ code }}"
