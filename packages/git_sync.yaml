@@ -1,10 +1,12 @@
 # Paquete: Git Sync para Home Assistant
 # Incluye comandos push/pull del repo de /config
-# con notificaciones en HA
+# con notificaciones en HA y configuración de SSH forzada
 
 shell_command:
   git_push_config: >
     sh -c "
+      export HOME=/config &&
+      GIT_SSH_COMMAND='ssh -i /config/.ssh/id_ed25519 -o StrictHostKeyChecking=no' &&
       cd /config &&
       CHANGES=$(git status --porcelain) &&
       if [ -n \"$CHANGES\" ]; then
@@ -31,6 +33,8 @@ shell_command:
 
   git_pull_config: >
     sh -c "
+      export HOME=/config &&
+      GIT_SSH_COMMAND='ssh -i /config/.ssh/id_ed25519 -o StrictHostKeyChecking=no' &&
       cd /config &&
       if git pull origin main; then
         curl -s -X POST -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI4YzY1MjEyYTU2N2Y0NDUzYjczYTVkOTJlYmRiMTQ4NiIsImlhdCI6MTc1NTE0ODQyOSwiZXhwIjoyMDcwNTA4NDI5fQ.F3uDb02YtUclcLvivzeoPGzxyye23-cWsZRssEsvooc' \
@@ -47,6 +51,8 @@ shell_command:
 
   git_pull_config_force: >
     sh -c "
+      export HOME=/config &&
+      GIT_SSH_COMMAND='ssh -i /config/.ssh/id_ed25519 -o StrictHostKeyChecking=no' &&
       cd /config &&
       git fetch origin main &&
       git reset --hard origin/main &&
