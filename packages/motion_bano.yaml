@@ -1,93 +1,112 @@
+---
 ###################################
 ## MOTION BAÑO
-## no usa sensor parte_del_dia
+## usa sensor parte_del_dia
 ## no activa timers
 ###################################
+
+input_number:
+  brillo_bano_diurno:
+    name: Brillo Baño Diurno
+    min: 1
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+  brillo_bano_madrugada:
+    name: Brillo Baño Madrugada
+    min: 1
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+
+input_boolean:
+  mantener_luces_bano:
+    name: Mantener luces baño
+    icon: mdi:lightbulb-on
+
 automation:
-- alias: Motion - Baño
-  id: motion_bano_unificado
-  mode: restart
+  - alias: Motion - Baño
+    id: motion_bano_unificado
+    mode: restart
 
-  trigger:
-    - id: "motion_on"
-      platform: state
-      entity_id: binary_sensor.motion_bano
-      to: "on"
+    trigger:
+      - id: "motion_on"
+        platform: state
+        entity_id: binary_sensor.motion_bano
+        to: "on"
 
-    - id: "motion_off_120s"
-      platform: state
-      entity_id: binary_sensor.motion_bano
-      to: "off"
-      for: "00:02:00"
+      - id: "motion_off_120s"
+        platform: state
+        entity_id: binary_sensor.motion_bano
+        to: "off"
+        for: "00:02:00"
 
-  condition: []
+    condition:
+      - condition: state
+        entity_id: input_boolean.mantener_luces_bano
+        state: "off"
 
-  action:
-    - choose:
-        # ── Al detectar movimiento ─────────────────────────────
-        - conditions:
-            - condition: trigger
-              id: "motion_on"
-          sequence:
-            # Madrugada: cálido y tenue
-            - choose:
-                - conditions:
-                    - condition: template
-                      value_template: >
-                        {% set ahora = now().strftime('%H:%M:%S') %}
-                        {% set ini = states('input_datetime.hora_inicio_madrugada') %}
-                        {% set fin = states('input_datetime.hora_fin_madrugada') %}
-                        {% if ini <= fin %}{{ ini <= ahora < fin }}{% else %}{{ ahora >= ini or ahora < fin }}{% endif %}
-                  sequence:
-                    - service: light.turn_on
-                      target:
-                        entity_id: light.bano
-                      data:
-                        color_temp: 500
-                        brightness_pct: 15
-              default:
-                # Resto del tiempo
-                - service: light.turn_on
-                  target:
-                    entity_id: light.bano
-                  data:
-                    color_temp: 200
-                    brightness_pct: 100
+    variables:
+      parte: "{{ states('sensor.parte_del_dia') | lower | replace('á','a') | replace('é','e') | replace('í','i') | replace('ó','o') | replace('ú','u') }}"
 
-        # ── Sin movimiento por 120s: dim suave (70%) ───────────
-        - conditions:
-            - condition: trigger
-              id: "motion_off_120s"
-            - condition: state
-              entity_id: light.bano
-              state: "on"
-            # Solo si NO es madrugada (porque en madrugada ya está tenue)
-            - condition: template
-              value_template: >
-                {% set ahora = now().strftime('%H:%M:%S') %}
-                {% set ini = states('input_datetime.hora_inicio_madrugada') %}
-                {% set fin = states('input_datetime.hora_fin_madrugada') %}
-                {% if ini <= fin %}{{ not (ini <= ahora < fin) }}{% else %}{{ not (ahora >= ini or ahora < fin) }}{% endif %}
-          sequence:
-            - service: light.turn_on
-              target:
+    action:
+      - choose:
+          # ── Al detectar movimiento ─────────────────────────────
+          - conditions:
+              - condition: trigger
+                id: "motion_on"
+            sequence:
+              # Madrugada: cálido y tenue
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ parte == 'madrugada' }}"
+                    sequence:
+                      - service: light.turn_on
+                        target:
+                          entity_id: light.bano
+                        data:
+                          color_temp: 500
+                          brightness_pct: "{{ states('input_number.brillo_bano_madrugada') | int }}"
+                default:
+                  # Resto del tiempo
+                  - service: light.turn_on
+                    target:
+                      entity_id: light.bano
+                    data:
+                      color_temp: 200
+                      brightness_pct: "{{ states('input_number.brillo_bano_diurno') | int }}"
+
+          # ── Sin movimiento por 120s: dim suave (70%) ───────────
+          - conditions:
+              - condition: trigger
+                id: "motion_off_120s"
+              - condition: state
                 entity_id: light.bano
-              data:
-                color_temp: 200
-                brightness_pct: 70
+                state: "on"
+              # Solo si NO es madrugada (porque en madrugada ya está tenue)
+              - condition: template
+                value_template: "{{ parte != 'madrugada' }}"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: light.bano
+                data:
+                  color_temp: 200
+                  brightness_pct: 70
 
-            # Espera breve y apaga si sigue sin movimiento
-            - wait_for_trigger:
-                - platform: state
-                  entity_id: binary_sensor.motion_bano
-                  to: "on"
-              timeout: "00:01:00"
-              continue_on_timeout: true
-            - choose:
-                - conditions:
-                    - condition: template
-                      value_template: "{{ wait.trigger is none }}"
-                  sequence:
-                    - service: light.turn_off
-                      target:
-                        entity_id: light.bano
+              # Espera breve y apaga si sigue sin movimiento
+              - wait_for_trigger:
+                  - platform: state
+                    entity_id: binary_sensor.motion_bano
+                    to: "on"
+                timeout: "00:01:00"
+                continue_on_timeout: true
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ wait.trigger is none }}"
+                    sequence:
+                      - service: light.turn_off
+                        target:
+                          entity_id: light.bano
