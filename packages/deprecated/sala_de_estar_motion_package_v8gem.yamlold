@@ -1,0 +1,230 @@
+# ------- HELPERS -------
+input_number:
+  sala_off_manana:
+    name: Sala - Apagado mañana (min)
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: min
+    icon: mdi:white-balance-sunny
+  sala_off_mediodia:
+    name: Sala - Apagado mediodía (min)
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: min
+    icon: mdi:white-balance-sunny
+  sala_off_tarde:
+    name: Sala - Apagado tarde (min)
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: min
+    icon: mdi:weather-sunset
+  sala_off_noche:
+    name: Sala - Apagado noche (min)
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: min
+    icon: mdi:weather-night
+  sala_off_madrugada:
+    name: Sala - Apagado madrugada (min)
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: min
+    icon: mdi:weather-night
+  sala_preaviso:
+    name: Sala - Preaviso (min)
+    min: 1
+    max: 15
+    step: 1
+    unit_of_measurement: min
+    icon: mdi:timer-sand
+  sala_fade:
+    name: Sala - Transición (s)
+    min: 1
+    max: 30
+    step: 1
+    unit_of_measurement: s
+    icon: mdi:movie-roll
+# ------- INPUT TEXT -------
+# (Restaurado para guardar el brillo antes del preaviso)
+input_text:
+  snapshot_luces_sala:
+    name: Sala - Luces snapshot
+    icon: mdi:text
+
+# ------- SCRIPTS -------
+script:
+  dim_step:
+    mode: parallel
+    fields:
+      entity_id:
+        name: Light entity
+        description: "Light entity to control"
+        example: "light.living_room"
+      target_pct:
+        name: Target brightness percentage
+        description: "Target brightness percentage"
+        example: 50
+      duration:
+        name: Fade duration
+        description: "Fade duration in seconds"
+        example: 5
+    sequence:
+      - variables:
+          steps: 10
+          start: "{{ state_attr(entity_id,'brightness')|int(0) }}"
+          target: "{{ (start * target_pct / 100)|int }}"
+          step: "{{ (start - target) / steps }}"
+          delay_ms: "{{ (duration|int * 1000) / steps }}"
+      - repeat:
+          count: "{{ steps }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ entity_id }}"
+              data:
+                brightness: "{{ (start - step * repeat.index)|int }}"
+            - delay:
+                milliseconds: "{{ delay_ms|int }}"
+  brighten_step:
+    mode: parallel
+    fields:
+      entity_id:
+        name: Light entity
+        description: "Light entity to control"
+        example: "light.living_room"
+      target:
+        name: Target brightness value
+        description: "Target brightness value"
+        example: 255
+      duration:
+        name: Fade duration
+        description: "Fade duration in seconds"
+        example: 5
+    sequence:
+      - variables:
+          steps: 10
+          start: "{{ state_attr(entity_id,'brightness')|int(0) }}"
+          step: "{{ (target|int - start) / steps }}"
+          delay_ms: "{{ (duration|int * 1000) / steps }}"
+      - repeat:
+          count: "{{ steps }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ entity_id }}"
+              data:
+                brightness: "{{ (start + step * repeat.index)|int }}"
+            - delay:
+                milliseconds: "{{ delay_ms|int }}"
+# ===============================
+# AUTOMATIZACIÓN PRINCIPAL CORREGIDA (CON SCRIPTS)
+# ===============================
+automation:
+  - id: sala_luces_movimiento_v7_corregido_con_scripts
+    alias: Sala - Luces por movimiento (v7 Corregido con Scripts)
+    mode: restart
+
+    variables:
+      motion_sensor: binary_sensor.motion_sala
+      day_part_sensor: sensor.parte_del_dia
+      area_name: "sala de estar"
+      snapshot_scene_id: "snapshot_sala_de_estar_autogen"
+      parte: "{{ states(day_part_sensor) | lower }}"
+      parte_norm: >
+        {{ parte | replace('á','a') | replace('é','e') | replace('í','i') | replace('ó','o') | replace('ú','u') }}
+      mapa_apagado: >
+        {{ { 'manana': states('input_number.sala_off_manana')|int(10), 'mediodia': states('input_number.sala_off_mediodia')|int(5), 'tarde': states('input_number.sala_off_tarde')|int(15), 'noche': states('input_number.sala_off_noche')|int(20), 'madrugada': states('input_number.sala_off_madrugada')|int(5) } }}
+      apagado_seconds: >-
+        {{ mapa_apagado.get(parte_norm, states('input_number.sala_off_noche')|int(20)) * 60 }}
+      preaviso_seconds: "{{ states('input_number.sala_preaviso')|int(1) * 60 }}"
+      fade_seconds: "{{ states('input_number.sala_fade')|int(2) }}"
+      timeout_preaviso: >-
+        {% set s = apagado_seconds|int - preaviso_seconds|int %}{% if s < 0 %}{% set s = 0 %}{% endif %}{{ s }}
+      luces_area: >-
+        {{ area_entities(area_name) | select('match', 'light') | list }}
+      luces_brillo: >-
+        {{ expand(luces_area) | selectattr('state', 'eq', 'on') | selectattr('attributes.supported_color_modes', 'search', 'brightness') | map(attribute='entity_id') | list }}
+
+    trigger:
+      - platform: state
+        entity_id: "{{ motion_sensor }}"  # <-- CORRECCIÓN #1
+        to: 'on'
+
+    action:
+      # 1) MOVIMIENTO DETECTADO: RESTAURAR O ENCENDER
+      - choose:
+          - conditions:
+              - "{{ states('input_text.snapshot_luces_sala') != '' }}"
+            sequence:
+              - variables:
+                  snapshot_map: "{{ states('input_text.snapshot_luces_sala') | from_json }}"
+              - repeat:
+                  for_each: "{{ snapshot_map.keys() | list }}"
+                  sequence:
+                    - service: script.brighten_step
+                      data:
+                        entity_id: "{{ repeat.item }}"
+                        target: "{{ snapshot_map[repeat.item] }}"
+                        duration: "{{ fade_seconds }}"
+              - service: input_text.set_value
+                target: {entity_id: input_text.snapshot_luces_sala}
+                data: {value: ''}
+        default:
+          - service: light.turn_on
+            target: {entity_id: "{{ luces_area }}"}
+
+      # 2) ESPERAR A QUE EL MOVIMIENTO TERMINE
+      - wait_for_trigger:
+          - platform: state
+            entity_id: "{{ motion_sensor }}"  # <-- CORRECCIÓN #2
+            to: 'off'
+
+      # 3) INICIAR CUENTA REGRESIVA
+      - delay:
+          seconds: "{{ timeout_preaviso }}"
+
+      # 4) PREAVISO DE APAGADO
+      - service: input_text.set_value
+        target: {entity_id: input_text.snapshot_luces_sala}
+        data:
+          value: >-
+            {% set ns = namespace(d={}) %}
+            {% for l in luces_brillo %}
+              {% set ns.d = ns.d | combine({ l: state_attr(l,'brightness')|int(0) }) %}
+            {% endfor %}
+            {{ ns.d | to_json }}
+
+      - repeat:
+          for_each: "{{ luces_brillo }}"
+          sequence:
+            - service: script.dim_step
+              data:
+                entity_id: "{{ repeat.item }}"
+                target_pct: 40
+                duration: "{{ fade_seconds }}"
+
+      # 5) ESPERAR DURANTE EL PREAVISO
+      - delay:
+          seconds: "{{ preaviso_seconds }}"
+
+      # 6) APAGADO FINAL
+      - repeat:
+          for_each: "{{ luces_brillo }}"
+          sequence:
+            - service: script.dim_step
+              data:
+                entity_id: "{{ repeat.item }}"
+                target_pct: 0
+                duration: "{{ fade_seconds }}"
+
+      - service: light.turn_off
+        target: {entity_id: "{{ luces_area }}"}
+
+      - service: input_text.set_value
+        target: {entity_id: input_text.snapshot_luces_sala}
+        data: {value: ''}

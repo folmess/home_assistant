@@ -1,0 +1,91 @@
+###################################
+## MOTION COCINA
+## no usa sensor parte_del_dia
+## no activa timers
+###################################
+automation:
+  - alias: Motion - Cocina
+    id: motion_cocina
+    mode: restart
+
+    trigger:
+      # Movimiento detectado
+      - id: "motion_on"
+        platform: device
+        device_id: d5386dea56a16e7adfcbe4ab17d1536e
+        domain: binary_sensor
+        entity_id: 9068c51290a930c026a4cb055c08a9ea
+        type: motion
+
+      # Sin movimiento 2 minutos
+      - id: "no_motion_120s"
+        platform: device
+        device_id: d5386dea56a16e7adfcbe4ab17d1536e
+        domain: binary_sensor
+        entity_id: 9068c51290a930c026a4cb055c08a9ea
+        type: no_motion
+        for:
+          hours: 0
+          minutes: 2
+          seconds: 0
+
+    condition: []
+
+    action:
+      - choose:
+          # ───────────── ON: emergencia si la luz principal está unavailable ─────────────
+          - conditions:
+              - condition: trigger
+                id: "motion_on"
+              - condition: state
+                entity_id: light.cocina
+                state: unavailable
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: light.sonoffwf1
+
+          # ───────────── ON: según franja horaria ─────────────
+          - conditions:
+              - condition: trigger
+                id: "motion_on"
+              - condition: time
+                after: "21:00:00"
+                before: "00:45:00"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id:
+                    - light.cocina
+                    - light.sonoffwf1
+
+          - conditions:
+              - condition: trigger
+                id: "motion_on"
+              - condition: time
+                after: "00:45:00"
+                before: "06:00:00"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: light.sonoffwf1
+
+          - conditions:
+              - condition: trigger
+                id: "motion_on"
+              - condition: time
+                after: "06:00:00"
+                before: "21:00:00"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: light.cocina
+
+          # ───────────── OFF tras 2 minutos sin movimiento ─────────────
+          - conditions:
+              - condition: trigger
+                id: "no_motion_120s"
+            sequence:
+              - service: light.turn_off
+                target:
+                  entity_id: light.cocina
