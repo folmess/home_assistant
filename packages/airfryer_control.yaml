@@ -1,0 +1,154 @@
+# ===============================
+#  XIAOMI AIRFRYER - PACKAGE
+# ===============================
+# Entidades del dispositivo (ya existentes por tu integración):
+#   switch.xiaomi_airfryer_freidora   -> switch general
+#   sensor.xiaomi_airfryer_status     -> cooking / standby / etc.
+#   sensor.xiaomi_airfryer_remaining  -> segundos restantes
+
+input_number:
+  airfryer_target_temp:
+    name: AirFryer - Temperatura objetivo
+    unit_of_measurement: "°C"
+    min: 80         # ajusta al rango real de tu freidora
+    max: 200
+    step: 5
+    mode: slider
+  airfryer_target_time_min:
+    name: AirFryer - Tiempo objetivo
+    unit_of_measurement: "min"
+    min: 1
+    max: 60
+    step: 1
+    mode: slider
+
+# (Opcional) presets rápidos
+input_select:
+  airfryer_preset:
+    name: AirFryer - Preset
+    options:
+      - "— sin preset —"
+      - Papas Fritas (200°C, 15 min)
+      - Nuggets (190°C, 10 min)
+      - Vegetales (180°C, 12 min)
+    initial: "— sin preset —"
+
+# Sensores de presentación
+template:
+  - sensor:
+      - name: "AirFryer - Restante (mm:ss)"
+        state: >
+          {% set s = states('sensor.xiaomi_airfryer_remaining')|int(0) %}
+          {{ '%02d:%02d'|format((s//60), (s%60)) }}
+        icon: mdi:timer-outline
+
+script:
+  # ---------------------------
+  # CONTROLES BÁSICOS
+  # ---------------------------
+  airfryer_start:
+    alias: AirFryer - Start
+    mode: single
+    sequence:
+      - service: xiaomi_airfryer.start
+        data:
+          entity_id: switch.xiaomi_airfryer_freidora
+
+  airfryer_stop:
+    alias: AirFryer - Stop
+    mode: single
+    sequence:
+      - service: xiaomi_airfryer.stop
+        data:
+          entity_id: switch.xiaomi_airfryer_freidora
+
+  airfryer_pause:
+    alias: AirFryer - Pause
+    mode: single
+    sequence:
+      - service: xiaomi_airfryer.pause
+        data:
+          entity_id: switch.xiaomi_airfryer_freidora
+
+  airfryer_resume:
+    alias: AirFryer - Resume
+    mode: single
+    sequence:
+      - service: xiaomi_airfryer.resume
+        data:
+          entity_id: switch.xiaomi_airfryer_freidora
+
+  # ---------------------------
+  # SETEAR TEMPERATURA / TIEMPO
+  # ---------------------------
+  airfryer_set_temperature:
+    alias: AirFryer - Set Temperature (°C)
+    mode: single
+    fields:
+      temperature:
+        description: Temperatura en °C
+        example: 180
+    sequence:
+      - service: xiaomi_airfryer.target_temperature
+        data:
+          entity_id: switch.xiaomi_airfryer_freidora
+          target_temperature: "{{ (temperature | int) if temperature is not none else (states('input_number.airfryer_target_temp')|int) }}"
+
+  airfryer_set_time_seconds:
+    alias: AirFryer - Set Time (seg)
+    mode: single
+    fields:
+      seconds:
+        description: Tiempo en segundos
+        example: 480
+    sequence:
+      - service: xiaomi_airfryer.target_time
+        data:
+          entity_id: switch.xiaomi_airfryer_freidora
+          target_time: "{{ (seconds | int) if seconds is not none else (states('input_number.airfryer_target_time_min')|int * 60) }}"
+
+  # ---------------------------
+  # "APLICAR" LOS HELPERS
+  # ---------------------------
+  airfryer_apply_helpers:
+    alias: AirFryer - Aplicar helpers (temp + tiempo)
+    mode: single
+    sequence:
+      - service: script.airfryer_set_temperature
+      - service: script.airfryer_set_time_seconds
+
+  # ---------------------------
+  # APLICAR PRESET
+  # ---------------------------
+  airfryer_apply_preset:
+    alias: AirFryer - Aplicar preset
+    mode: single
+    sequence:
+      - variables:
+          preset: "{{ states('input_select.airfryer_preset') }}"
+      - choose:
+          - conditions: "{{ preset.startswith('Papas Fritas') }}"
+            sequence:
+              - service: script.airfryer_set_temperature
+                data:
+                  temperature: 200
+              - service: script.airfryer_set_time_seconds
+                data:
+                  seconds: "{{ 15*60 }}"
+          - conditions: "{{ preset.startswith('Nuggets') }}"
+            sequence:
+              - service: script.airfryer_set_temperature
+                data:
+                  temperature: 190
+              - service: script.airfryer_set_time_seconds
+                data:
+                  seconds: "{{ 10*60 }}"
+          - conditions: "{{ preset.startswith('Vegetales') }}"
+            sequence:
+              - service: script.airfryer_set_temperature
+                data:
+                  temperature: 180
+              - service: script.airfryer_set_time_seconds
+                data:
+                  seconds: "{{ 12*60 }}"
+        default: []

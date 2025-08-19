@@ -13,6 +13,13 @@ scene: !include scenes.yaml
 homeassistant:
   packages: !include_dir_named packages
 
+notify:
+  - platform: group
+    name: hernan
+    services:
+      - service: mobile_app_samsungs24u   # <-- tu servicio actual
+
+
 # Storage for Bubble Card Modules
 template:
   - trigger:
