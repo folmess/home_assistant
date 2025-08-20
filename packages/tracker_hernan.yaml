@@ -1,0 +1,48 @@
+# ======================================
+# UBICACIÓN HERNÁN (Wi‑Fi + GPS) — robusto
+# Resultados: home / office / away
+# ======================================
+
+template:
+  - trigger:
+      - platform: state
+        entity_id:
+          - sensor.samsungs24u_wi_fi_connection
+          - device_tracker.samsungs24u
+      - platform: homeassistant
+        event: start
+    sensor:
+      - name: "ubicacion_hernan"
+        icon: mdi:map-marker-account
+        availability: >-
+          {{ has_value('sensor.samsungs24u_wi_fi_connection')
+             or has_value('device_tracker.samsungs24u') }}
+        state: >-
+          {% set wifi = states('sensor.samsungs24u_wi_fi_connection') | default('', true) | lower | trim %}
+          {% if wifi == 'casa' %}
+            office
+          {% elif wifi in ['miracle', 'miracle 5'] %}
+            home
+          {% else %}
+            {% set gps = states('device_tracker.samsungs24u') | default('', true) %}
+            {% if gps in ['home','office'] %}
+              {{ gps }}
+            {% else %}
+              away
+            {% endif %}
+          {% endif %}
+        attributes:
+          wifi_ssid: "{{ states('sensor.samsungs24u_wi_fi_connection') | default('unknown', true) }}"
+          gps_state: "{{ states('device_tracker.samsungs24u') | default('unknown', true) }}"
+
+  - binary_sensor:
+      # Sensores auxiliares (útiles para conditions en automations)
+      - name: "hernan_en_casa"
+        icon: mdi:home-account
+        state: "{{ is_state('sensor.ubicacion_hernan','home') }}"
+      - name: "hernan_en_oficina"
+        icon: mdi:office-building-marker
+        state: "{{ is_state('sensor.ubicacion_hernan','office') }}"
+      - name: "hernan_away"
+        icon: mdi:walk
+        state: "{{ is_state('sensor.ubicacion_hernan','away') }}"

@@ -1,0 +1,35 @@
+# ===========================================
+# PERSON.HERNAN desde sensor.ubicacion_hernan
+# Mapea office -> oficina (tu zona)
+# ===========================================
+
+automation:
+  - alias: Person - Ubicación virtual (crear/actualizar)
+    id: person_hernan_virtual_update
+    mode: queued
+    max: 3
+    trigger:
+      - platform: state
+        entity_id: sensor.ubicacion_hernan
+      - platform: homeassistant
+        event: start
+    condition:
+      - condition: template
+        value_template: "{{ states('sensor.ubicacion_hernan') in ['home','office','away'] }}"
+    action:
+      - variables:
+          estado: "{{ states('sensor.ubicacion_hernan') }}"
+          destino: >-
+            {% if estado == 'away' %}
+              not_home
+            {% elif estado == 'office' %}
+              oficina         {# <- nombre EXACTO de tu zona #}
+            {% else %}
+              home
+            {% endif %}
+      - service: device_tracker.see
+        data:
+          dev_id: hernan_virtual         # => device_tracker.hernan_virtual
+          host_name: "Hernán (virtual)"
+          location_name: "{{ destino }}"
+          source_type: gps

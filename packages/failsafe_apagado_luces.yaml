@@ -1,0 +1,86 @@
+# ===========================================================
+#  FAILSAFES — Apagado por inactividad cada 30 minutos
+#  - Corre a los minutos :00 y :30 de cada hora
+#  - Si el motion lleva > 20 min sin movimiento y hay luces encendidas:
+#      → Apaga
+#  - Sala: apaga TODO el área "sala_de_estar"
+#  - Baño: apaga light.bano (ajustar si sumás más luces o grupo)
+# ===========================================================
+
+homeassistant:
+  customize: {}
+
+automation:
+
+  # -------------------------------
+  # SALA DE ESTAR — Failsafe
+  # -------------------------------
+  - id: sala_failsafe_apagado_30m
+    alias: Sala - Failsafe de apagado (cada 30 min)
+    mode: single
+
+    trigger:
+      # Corre dos veces por hora: mm = 00 y 30
+      - platform: time_pattern
+        minutes: "/30"
+
+    variables:
+      area_sala: "sala_de_estar"
+      # Luces ON en el área (lista)
+      luces_on_sala: >-
+        {{ expand(area_entities(area_sala))
+           | selectattr('domain','eq','light')
+           | selectattr('state','eq','on')
+           | map(attribute='entity_id') | list }}
+
+    condition:
+      # 1) El motion de sala está en OFF
+      - condition: state
+        entity_id: binary_sensor.motion_sala
+        state: "off"
+
+      # 2) Lleva > 20 minutos sin cambiar (sin movimiento sostenido)
+      - condition: template
+        value_template: >
+          {{ (now() - states.binary_sensor.motion_sala.last_changed).total_seconds() > 20 * 60 }}
+
+      # 3) Hay al menos una luz encendida en el área
+      - condition: template
+        value_template: "{{ luces_on_sala | length > 0 }}"
+
+    action:
+      - service: light.turn_off
+        target:
+          area_id: "{{ area_sala }}"
+
+  # -------------------------------
+  # BAÑO — Failsafe
+  # -------------------------------
+  - id: bano_failsafe_apagado_30m
+    alias: Baño - Failsafe de apagado (cada 30 min)
+    mode: single
+
+    trigger:
+      - platform: time_pattern
+        minutes: "/30"
+
+    condition:
+      # 1) Motion de baño en OFF
+      - condition: state
+        entity_id: binary_sensor.motion_bano
+        state: "off"
+
+      # 2) Sin movimiento hace > 20 minutos
+      - condition: template
+        value_template: >
+          {{ (now() - states.binary_sensor.motion_bano.last_changed).total_seconds() > 20 * 60 }}
+
+      # 3) Luz del baño encendida
+      - condition: state
+        entity_id: light.bano
+        state: "on"
+
+    action:
+      - service: light.turn_off
+        target:
+          entity_id: light.bano
