@@ -1,11 +1,12 @@
 # ===========================================================
-#  SALA DE ESTAR — CONTROL POR MOVIMIENTO (v9 con helpers de estrategia)
+#  SALA DE ESTAR — CONTROL POR MOVIMIENTO (v9.1 con opción 'script')
 #  - 2 automatizaciones: motion detected / motion clear
 #  - Sin scripts ni transiciones. Sólo turn_on / turn_off / brightness_pct
 #  - Estrategia por franja elegible desde UI:
 #       * scene      → usa la escena definida para esa franja
 #       * brightness → enciende al % definido para esa franja
 #       * fallback   → intenta RESTAURAR SNAPSHOT; si no hay, usa % fallback de esa franja
+#       * script     → ejecuta el script (entity_id) configurado para esa franja
 #  - Temporizadores visibles: timer.apagado_sala (total) / timer.preaviso_sala (preaviso)
 #  - Área usada: "sala_de_estar" (area_id). Ajustá si tu área difiere.
 # ===========================================================
@@ -169,27 +170,54 @@ input_text:
     max: 255
     initial: ""
 
-# Estrategia por franja (elige UNA): scene / brightness / fallback
+  # Scripts por franja (entity_id de script.*). Se usan si la estrategia es "script".
+  sala_script_manana:
+    name: Sala - Script (mañana)
+    icon: mdi:script-text
+    max: 255
+    initial: ""
+  sala_script_mediodia:
+    name: Sala - Script (mediodía)
+    icon: mdi:script-text
+    max: 255
+    initial: ""
+  sala_script_tarde:
+    name: Sala - Script (tarde)
+    icon: mdi:script-text
+    max: 255
+    initial: ""
+  sala_script_noche:
+    name: Sala - Script (noche)
+    icon: mdi:script-text
+    max: 255
+    initial: ""
+  sala_script_madrugada:
+    name: Sala - Script (madrugada)
+    icon: mdi:script-text
+    max: 255
+    initial: ""
+
+# Estrategia por franja (elige UNA): scene / brightness / fallback / script
 input_select:
   sala_strategy_manana:
     name: Sala - Estrategia (mañana)
-    options: [scene, brightness, fallback]
+    options: [scene, brightness, fallback, script]
     initial: fallback
   sala_strategy_mediodia:
     name: Sala - Estrategia (mediodía)
-    options: [scene, brightness, fallback]
+    options: [scene, brightness, fallback, script]
     initial: fallback
   sala_strategy_tarde:
     name: Sala - Estrategia (tarde)
-    options: [scene, brightness, fallback]
+    options: [scene, brightness, fallback, script]
     initial: fallback
   sala_strategy_noche:
     name: Sala - Estrategia (noche)
-    options: [scene, brightness, fallback]
+    options: [scene, brightness, fallback, script]
     initial: fallback
   sala_strategy_madrugada:
     name: Sala - Estrategia (madrugada)
-    options: [scene, brightness, fallback]
+    options: [scene, brightness, fallback, script]
     initial: fallback
 
 # Temporizadores (visibles en UI)
@@ -205,8 +233,8 @@ timer:
 # AUTOMATIZACIÓN 1: DETECTED
 # ------------------------
 automation:
-  - id: sala_motion_detected_v9
-    alias: Sala - motion - detected (v9)
+  - id: sala_motion_detected_v9_1
+    alias: Sala - motion - detected (v9.1)
     mode: single
     trigger:
       - platform: state
@@ -228,7 +256,7 @@ automation:
         {{ expand(area_entities(area_id_sala))
            | selectattr('entity_id','search','^light\\.')
            | map(attribute='entity_id') | list }}
-      # Estrategia por franja (scene / brightness / fallback)
+      # Estrategia por franja (scene / brightness / fallback / script)
       strategy_map: >
         {{
           {
@@ -279,6 +307,21 @@ automation:
       scene_entity: >
         {% set s = scene_entity_raw %}
         {{ s if s not in ['unknown','unavailable','',None] else '' }}
+      # Scripts por franja
+      script_map: >
+        {{
+          {
+            'manana': states('input_text.sala_script_manana'),
+            'mediodia': states('input_text.sala_script_mediodia'),
+            'tarde': states('input_text.sala_script_tarde'),
+            'noche': states('input_text.sala_script_noche'),
+            'madrugada': states('input_text.sala_script_madrugada')
+          }
+        }}
+      script_entity_raw: "{{ script_map.get(parte, '') }}"
+      script_entity: >
+        {% set s = script_entity_raw %}
+        {{ s if s not in ['unknown','unavailable','',None] else '' }}
     action:
       # Siempre cancelamos timers al detectar movimiento
       - service: timer.cancel
@@ -288,6 +331,35 @@ automation:
             - timer.preaviso_sala
 
       - choose:
+          # ---- Estrategia: SCRIPT ----
+          - conditions: "{{ strategy == 'script' }}"
+            sequence:
+              - choose:
+                  - conditions: "{{ script_entity != '' }}"
+                    sequence:
+                      - service: script.turn_on
+                        target:
+                          entity_id: "{{ script_entity }}"
+                      - service: input_boolean.turn_off
+                        target: { entity_id: input_boolean.sala_snapshot_ready }
+                default:
+                  # Si no se configuró script, degradar a FALLBACK
+                  - choose:
+                      - conditions:
+                          - condition: state
+                            entity_id: input_boolean.sala_snapshot_ready
+                            state: "on"
+                        sequence:
+                          - service: scene.turn_on
+                            data: { entity_id: scene.sala_snapshot }
+                          - service: input_boolean.turn_off
+                            target: { entity_id: input_boolean.sala_snapshot_ready }
+                    default:
+                      - service: light.turn_on
+                        data:
+                          entity_id: "{{ luces_area | join(', ') }}"
+                          brightness_pct: "{{ fb_pct }}"
+
           # ---- Estrategia: SCENE ----
           - conditions: "{{ strategy == 'scene' }}"
             sequence:
@@ -299,7 +371,7 @@ automation:
                       - service: input_boolean.turn_off
                         target: { entity_id: input_boolean.sala_snapshot_ready }
                 default:
-                  # Si no hay escena definida, degradamos a FALLBACK
+                  # Si no hay escena definida, degradar a FALLBACK
                   - choose:
                       - conditions:
                           - condition: state
@@ -346,10 +418,10 @@ automation:
                       brightness_pct: "{{ fb_pct }}"
 
 # ------------------------
-# AUTOMATIZACIÓN 2: CLEAR
+# AUTOMATIZACIÓN 2: CLEAR  (SIN CAMBIOS FUNCIONALES vs v9)
 # ------------------------
-  - id: sala_motion_clear_v9
-    alias: Sala - motion - clear (v9)
+  - id: sala_motion_clear_v9_1
+    alias: Sala - motion - clear (v9.1)
     mode: restart
     trigger:
       - platform: state
@@ -490,10 +562,4 @@ automation:
                     target: { entity_id: input_boolean.sala_snapshot_ready }
                   - stop: "Movimiento volvió durante el preaviso."
 
-            # 6.b) No volvió → Apagado total y limpiar flag
-            default:
-              - service: light.turn_off
-                data:
-                  entity_id: "{{ luces_area | join(', ') }}"
-              - service: input_boolean.turn_off
-                target: { entity_id: input_boolean.sala_snapshot_ready }
+            # 6.b) No volvió → Apagado total y limpiar
