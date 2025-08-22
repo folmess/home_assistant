@@ -1,0 +1,113 @@
+# ==============================================
+# Package: nest_preplay_tts.yaml
+# Script TTS para Nest Mini sin chime (pre-play)
+# Requiere: /config/www/silencio_1s.mp3  -> /local/silencio_1s.mp3
+# ==============================================
+
+script:
+  nest_preplay_tts:
+    alias: Nest Mini - TTS sin chime
+    mode: restart
+    fields:
+      media_player:
+        name: Altavoz (Nest Mini)
+        description: "Entidad del media_player Google/Nest"
+        required: true
+        selector:
+          entity:
+            domain: media_player
+      message:
+        name: Mensaje TTS
+        description: "Texto a decir"
+        required: true
+        selector:
+          text:
+      silence_url:
+        name: URL silencio
+        description: "URL del MP3 de silencio (ej: /local/silencio_1s.mp3)"
+        required: false
+        default: "/local/silencio_1s.mp3"
+        selector:
+          text:
+      pre_volume:
+        name: Volumen previo
+        description: "Volumen para el “silencio” (0.0 a 1.0)"
+        required: false
+        default: 0.04
+        selector:
+          number:
+            min: 0
+            max: 1
+            step: 0.01
+            mode: slider
+      play_volume:
+        name: Volumen reproducción
+        description: "Volumen para el TTS (0.0 a 1.0)"
+        required: false
+        default: 0.5
+        selector:
+          number:
+            min: 0
+            max: 1
+            step: 0.01
+            mode: slider
+      tts_service:
+        name: Servicio TTS
+        description: "Servicio TTS a usar (ej: tts.google_translate_say, tts.cloud_say, tts.piper)"
+        required: false
+        default: "tts.google_translate_say"
+        selector:
+          text:
+      language:
+        name: Idioma TTS
+        description: "Código de idioma (depende del TTS). Ej. es-AR, es-ES"
+        required: false
+        default: "es-AR"
+        selector:
+          text:
+      pre_delay_ms:
+        name: Retardo previo (ms)
+        description: "Tiempo para que el Nest “despierte” (500–2000 ms)"
+        required: false
+        default: 1200
+        selector:
+          number:
+            min: 200
+            max: 4000
+            step: 100
+    sequence:
+      - variables:
+          _silence: "{{ silence_url | default('/local/silencio_1s.mp3') }}"
+          _tts: "{{ tts_service | default('tts.google_translate_say') }}"
+          _lang: "{{ language | default('es-AR') }}"
+          _pre_vol: "{{ pre_volume | default(0.04) }}"
+          _play_vol: "{{ play_volume | default(0.5) }}"
+          _wait: "{{ (pre_delay_ms | default(1200)) | int }}"
+      # 1) Bajar volumen: que el chime caiga “suave”
+      - service: media_player.volume_set
+        target:
+          entity_id: "{{ media_player }}"
+        data:
+          volume_level: "{{ _pre_vol }}"
+      # 2) Pre-play con silencio (dispara el chime ahora)
+      - service: media_player.play_media
+        target:
+          entity_id: "{{ media_player }}"
+        data:
+          media_content_id: "{{ _silence }}"
+          media_content_type: "music"
+      # 3) Espera para que “despierte”
+      - delay:
+          milliseconds: "{{ _wait }}"
+      # 4) Subir al volumen de reproducción
+      - service: media_player.volume_set
+        target:
+          entity_id: "{{ media_player }}"
+        data:
+          volume_level: "{{ _play_vol }}"
+      # 5) Ejecutar TTS
+      - service: "{{ _tts }}"
+        data:
+          entity_id: "{{ media_player }}"
+          message: "{{ message }}"
+          language: "{{ _lang }}"
