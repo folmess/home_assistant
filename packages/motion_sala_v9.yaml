@@ -562,4 +562,10 @@ automation:
                     target: { entity_id: input_boolean.sala_snapshot_ready }
                   - stop: "Movimiento volvió durante el preaviso."
 
-            # 6.b) No volvió → Apagado total y limpiar
+            # 6.b) No volvió → Apagado total y limpiar flag
+            default:
+              - service: light.turn_off
+                data:
+                  entity_id: "{{ luces_area | join(', ') }}"
+              - service: input_boolean.turn_off
+                target: { entity_id: input_boolean.sala_snapshot_ready }
