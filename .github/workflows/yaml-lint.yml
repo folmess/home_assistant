@@ -1,1 +1,4 @@
-- run: yamllint .
+- name: 🚀 Run yamllint
+  uses: frenck/action-yamllint@v1
+  with:
+    warnings: false

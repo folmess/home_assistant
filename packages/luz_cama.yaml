@@ -1,0 +1,371 @@
+###############################################################################
+# Paquete: Luz Cama + Luz Noche (IR Broadlink) - Área: dormitorio
+# Controla una lámpara doble con:
+#  - Luz Cama: 3 temperaturas (cold/neutral/warm)
+#  - Luz Noche: colores + efectos
+#  - Brillo compartido (6 pasos) y timers (30/60/120 min), compartidos
+#
+# NOTAS:
+# - IR stateless: usamos helpers para “estado asumido”.
+# - La lámpara SOLO enciende con `power`. Ningún otro comando enciende.
+# - Los comandos compartidos (brillo/timers) se envían con device "luz_cama".
+###############################################################################
+
+homeassistant:
+  customize:
+    light.luz_cama:
+      area: dormitorio
+    light.luz_noche:
+      area: dormitorio
+
+###############################################################################
+# HELPERS
+###############################################################################
+input_boolean:
+  luz_cama_power:
+    name: Luz Cama (power asumido)
+    icon: mdi:lightbulb
+  luz_noche_power:
+    name: Luz Noche (power asumido)
+    icon: mdi:lightbulb-night
+
+input_select:
+  luz_cama_temp:
+    name: Luz Cama - Temperatura
+    options:
+      - cold
+      - neutral
+      - warm
+    icon: mdi:thermometer
+
+  luz_noche_mode:
+    name: Luz Noche - Modo (color/efecto)
+    options:
+      - red
+      - green
+      - blue
+      - darkred
+      - limegreen
+      - violeta
+      - orange
+      - turquesa
+      - magenta
+      - flash
+      - fade
+    icon: mdi:palette
+
+input_number:
+  luz_cama_noche_level:
+    name: Brillo compartido (1..6)
+    min: 1
+    max: 6
+    step: 1
+    mode: slider
+    icon: mdi:brightness-6
+
+###############################################################################
+# SCRIPTS BASE
+###############################################################################
+script:
+  # Wrapper de envío IR
+  ir_send:
+    alias: IR - Enviar comando (device, command, repeats)
+    mode: parallel
+    fields:
+      device: { description: "Device id del comando aprendido", example: "luz_cama" }
+      command: { description: "Nombre del comando", example: "power" }
+      repeats: { description: "Veces a repetir", example: 1 }
+    sequence:
+      - variables:
+          _repeats: "{{ (repeats|int(1)) if repeats is defined else 1 }}"
+      - repeat:
+          count: "{{ _repeats }}"
+          sequence:
+            - service: remote.send_command
+              target:
+                entity_id: remote.broadlink_pieza_remote
+              data:
+                device: "{{ device }}"
+                command: "{{ command }}"
+            - delay: "00:00:0.35"   # pequeño respiro entre repeticiones
+
+  #############################################################################
+  # POWER / TEMPERATURAS / COLORES
+  #############################################################################
+  luz_cama_power_on:
+    alias: Luz Cama - Power ON (solo con power)
+    mode: restart
+    sequence:
+      - choose:
+          - conditions: "{{ is_state('input_boolean.luz_cama_power','off') }}"
+            sequence:
+              - service: script.ir_send
+                data:
+                  device: "luz_cama"
+                  command: "power"
+              - service: input_boolean.turn_on
+                target: { entity_id: input_boolean.luz_cama_power }
+
+  luz_cama_power_off:
+    alias: Luz Cama - Power OFF (toggle si estaba on)
+    mode: restart
+    sequence:
+      - choose:
+          - conditions: "{{ is_state('input_boolean.luz_cama_power','on') }}"
+            sequence:
+              - service: script.ir_send
+                data:
+                  device: "luz_cama"
+                  command: "power"
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.luz_cama_power }
+
+  luz_cama_set_temp:
+    alias: Luz Cama - Setear temperatura (cold/neutral/warm)
+    mode: restart
+    fields:
+      mode_value: { description: "cold | neutral | warm" }
+    sequence:
+      # encender si está apagada (recuerda: SOLO power enciende)
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: input_boolean.luz_cama_power
+            state: "on"
+          - condition: template
+            value_template: >
+              {{ (states('mode_value')|lower) in ['cold','neutral','warm'] }}
+      - choose:
+          - conditions: "{{ is_state('input_boolean.luz_cama_power','off') }}"
+            sequence:
+              - service: script.luz_cama_power_on
+      - variables:
+          _mode: "{{ mode_value | lower }}"
+      - choose:
+          - conditions: "{{ _mode == 'cold' }}"
+            sequence:
+              - service: script.ir_send
+                data: { device: "luz_cama", command: "temp_cold" }
+          - conditions: "{{ _mode == 'neutral' }}"
+            sequence:
+              - service: script.ir_send
+                data: { device: "luz_cama", command: "temp_neutral" }
+          - conditions: "{{ _mode == 'warm' }}"
+            sequence:
+              - service: script.ir_send
+                data: { device: "luz_cama", command: "temp_warm" }
+      - service: input_select.select_option
+        target: { entity_id: input_select.luz_cama_temp }
+        data: { option: "{{ _mode }}" }
+
+  luz_noche_power_on:
+    alias: Luz Noche - Power ON
+    mode: restart
+    sequence:
+      - choose:
+          - conditions: "{{ is_state('input_boolean.luz_noche_power','off') }}"
+            sequence:
+              - service: script.ir_send
+                data:
+                  device: "luz_noche"
+                  command: "power"
+              - service: input_boolean.turn_on
+                target: { entity_id: input_boolean.luz_noche_power }
+
+  luz_noche_power_off:
+    alias: Luz Noche - Power OFF
+    mode: restart
+    sequence:
+      - choose:
+          - conditions: "{{ is_state('input_boolean.luz_noche_power','on') }}"
+            sequence:
+              - service: script.ir_send
+                data:
+                  device: "luz_noche"
+                  command: "power"
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.luz_noche_power }
+
+  luz_noche_set_mode:
+    alias: Luz Noche - Setear color/efecto
+    mode: restart
+    fields:
+      mode_value: { description: "red|green|...|flash|fade" }
+    sequence:
+      - choose:
+          - conditions: "{{ is_state('input_boolean.luz_noche_power','off') }}"
+            sequence:
+              - service: script.luz_noche_power_on
+      - variables:
+          _mode: "{{ mode_value | lower }}"
+      - service: script.ir_send
+        data:
+          device: "luz_noche"
+          command: "{{ _mode }}"
+      - service: input_select.select_option
+        target: { entity_id: input_select.luz_noche_mode }
+        data: { option: "{{ _mode }}" }
+
+  #############################################################################
+  # BRILLO COMPARTIDO 1..6  (usa bright+ / bright- en device: luz_cama)
+  #############################################################################
+  luz_shared_set_level:
+    alias: Luz (Cama/Noche) - Setear nivel de brillo 1..6
+    mode: restart
+    fields:
+      target_level: { description: "Nivel 1..6" }
+    sequence:
+      - variables:
+          current: "{{ states('input_number.luz_cama_noche_level')|int(3) }}"
+          target: "{{ (target_level|int) | max(1) | min(6) }}"
+          delta: "{{ target - current }}"
+      - choose:
+          - conditions: "{{ delta > 0 }}"
+            sequence:
+              - repeat:
+                  count: "{{ delta }}"
+                  sequence:
+                    - service: script.ir_send
+                      data: { device: "luz_cama", command: "bright+" }
+          - conditions: "{{ delta < 0 }}"
+            sequence:
+              - repeat:
+                  count: "{{ (0 - delta) }}"
+                  sequence:
+                    - service: script.ir_send
+                      data: { device: "luz_cama", command: "bright-" }
+      - service: input_number.set_value
+        target: { entity_id: input_number.luz_cama_noche_level }
+        data: { value: "{{ target }}" }
+
+  #############################################################################
+  # TIMERS COMPARTIDOS
+  #############################################################################
+  luz_shared_timer_30:
+    alias: Luz - Timer 30 min
+    mode: single
+    sequence:
+      - service: script.ir_send
+        data: { device: "luz_cama", command: "timer30min" }
+
+  luz_shared_timer_60:
+    alias: Luz - Timer 60 min
+    mode: single
+    sequence:
+      - service: script.ir_send
+        data: { device: "luz_cama", command: "timer60min" }
+
+  luz_shared_timer_120:
+    alias: Luz - Timer 120 min
+    mode: single
+    sequence:
+      - service: script.ir_send
+        data: { device: "luz_cama", command: "timer120min" }
+
+  #############################################################################
+  # RESINCRONIZAR (llevar a un baseline conocido)
+  #############################################################################
+  luz_resync_baseline:
+    alias: Luz Doble - Resincronizar baseline
+    mode: single
+    sequence:
+      # 1) Encender Luz Cama si está apagada (SIEMPRE con power)
+      - service: script.luz_cama_power_on
+      # 2) Poner temperatura neutral
+      - service: script.luz_cama_set_temp
+        data: { mode_value: "neutral" }
+      # 3) Llevar brillo a nivel 3 de forma determinista:
+      #    primero barrer a mínimo (5 veces bright-), luego subir a 3
+      - repeat:
+          count: 5
+          sequence:
+            - service: script.ir_send
+              data: { device: "luz_cama", command: "bright-" }
+      - service: input_number.set_value
+        target: { entity_id: input_number.luz_cama_noche_level }
+        data: { value: 1 }
+      - service: script.luz_shared_set_level
+        data: { target_level: 3 }
+      # 4) Apagar Luz Noche si asumimos que estaba on
+      - choose:
+          - conditions: "{{ is_state('input_boolean.luz_noche_power','on') }}"
+            sequence:
+              - service: script.luz_noche_power_off
+      # Helpers finales
+      - service: input_select.select_option
+        target: { entity_id: input_select.luz_cama_temp }
+        data: { option: "neutral" }
+
+###############################################################################
+# LUCES TEMPLATE
+###############################################################################
+light:
+  - platform: template
+    lights:
+
+      luz_cama:
+        friendly_name: "Luz Cama"
+        unique_id: luz_cama_template
+        icon_template: mdi:ceiling-light
+
+        # Estado asumido (IR sin feedback)
+        value_template: "{{ is_state('input_boolean.luz_cama_power','on') }}"
+
+        # BRILLO: 1..6 -> 0..255
+        level_template: >
+          {{ ((states('input_number.luz_cama_noche_level')|int(3) - 1) * (255/5)) | round(0) }}
+
+        # TEMPERATURA (mireds) segun input_select (3 pasos)
+        temperature_template: >
+          {% set t = states('input_select.luz_cama_temp') %}
+          {% if t == 'cold' %} 250
+          {% elif t == 'neutral' %} 350
+          {% else %} 450
+          {% endif %}
+
+        turn_on:
+          service: script.luz_cama_power_on
+
+        turn_off:
+          service: script.luz_cama_power_off
+
+        set_level:
+          service: script.luz_shared_set_level
+          data:
+            target_level: >
+              {{ ( ( (brightness|int) / 255.0 ) * 5 ) | round(0) | int + 1 }}
+
+        set_temperature:
+          service: script.luz_cama_set_temp
+          data:
+            mode_value: >
+              {% set m = color_temp|int %}
+              {% if m <= 300 %} cold
+              {% elif m >= 420 %} warm
+              {% else %} neutral
+              {% endif %}
+
+      luz_noche:
+        friendly_name: "Luz Noche"
+        unique_id: luz_noche_template
+        icon_template: mdi:led-strip-variant
+
+        value_template: "{{ is_state('input_boolean.luz_noche_power','on') }}"
+
+        # EFFECTS (lista y efecto actual, con defaults para evitar None)
+        effect_list_template: >
+          {{ state_attr('input_select.luz_noche_mode','options')
+             | default(['red','green','blue','darkred','limegreen','violeta',
+                        'orange','turquesa','magenta','flash','fade'], true) }}
+        effect_template: "{{ states('input_select.luz_noche_mode') | default('red') }}"
+
+        turn_on:
+          service: script.luz_noche_power_on
+
+        turn_off:
+          service: script.luz_noche_power_off
+
+        set_effect:
+          service: script.luz_noche_set_mode
+          data:
+            mode_value: "{{ effect }}"
