@@ -78,6 +78,25 @@ script:
       - service: input_boolean.turn_off
         target: { entity_id: input_boolean.luz_rack_power }
 
+  luz_rack_turn_on_color:
+    alias: Luz Rack - Encender con color
+    mode: restart
+    sequence:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.luz_rack_guard
+      - service: script.luz_rack_on
+      - delay: "00:00:00.3"
+      - service: script.luz_rack_set_color
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.luz_rack_effect
+        data:
+          option: "none"
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.luz_rack_guard
+
   luz_rack_set_color:
     alias: Luz Rack - Set Color
     mode: queued
@@ -168,19 +187,14 @@ template:
 
         # Encender: ON + restaurar último color (silencia automations con 'guard')
         turn_on:
-          - service: input_boolean.turn_on
-            target: { entity_id: input_boolean.luz_rack_guard }
-          - service: script.luz_rack_on
-          - delay: "00:00:00.3"
-          - service: script.luz_rack_set_color
-          # Al encender por color, el efecto activo pasa a 'none'
-          - service: input_select.select_option
-            target: { entity_id: input_select.luz_rack_effect }
-            data: { option: "none" }
-          - service: input_boolean.turn_off
-            target: { entity_id: input_boolean.luz_rack_guard }
+          - service: script.luz_rack_turn_on_color
 
         turn_off:
+          - service: script.turn_off
+            target:
+              entity_id:
+                - script.luz_rack_set_color
+                - script.luz_rack_turn_on_color
           - service: script.luz_rack_off
 
         # ==== EFFECT (las 3 claves juntas) ====
