@@ -187,8 +187,38 @@ template:
 
         # Encender: ON + restaurar último color (silencia automations con 'guard')
         turn_on:
+          - service: input_boolean.turn_on
+            target: { entity_id: input_boolean.luz_rack_guard }
+          - service: script.luz_rack_on
+          - delay: "00:00:00.3"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ effect is defined }}"
+                sequence:
+                  - service: script.luz_rack_set_effect
+                    data:
+                      effect: "{{ effect }}"
+              - conditions:
+                  - condition: template
+                    value_template: "{{ color is defined }}"
+                sequence:
+                  - service: script.luz_rack_set_color
+                    data:
+                      color: "{{ color }}"
+                  # Al encender por color, el efecto activo pasa a 'none'
+                  - service: input_select.select_option
+                    target: { entity_id: input_select.luz_rack_effect }
+                    data: { option: "none" }
+            default:
+              - service: script.luz_rack_set_color
+              # Al encender por color, el efecto activo pasa a 'none'
+              - service: input_select.select_option
+                target: { entity_id: input_select.luz_rack_effect }
+                data: { option: "none" }
+          - service: input_boolean.turn_off
+            target: { entity_id: input_boolean.luz_rack_guard }
           - service: script.luz_rack_turn_on_color
-
         turn_off:
           - service: script.turn_off
             target:
