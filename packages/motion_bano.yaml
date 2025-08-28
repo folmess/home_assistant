@@ -1,3 +1,4 @@
+# yamllint disable rule:line-length
 ---
 ###################################
 ## MOTION BAÑO
@@ -40,6 +41,12 @@ automation:
         entity_id: binary_sensor.motion_bano
         to: "off"
         for: "00:02:00"
+
+      - id: "motion_off_180s"
+        platform: state
+        entity_id: binary_sensor.motion_bano
+        to: "off"
+        for: "00:03:00"
 
     condition:
       - condition: state
@@ -95,18 +102,14 @@ automation:
                   color_temp: 200
                   brightness_pct: 70
 
-              # Espera breve y apaga si sigue sin movimiento
-              - wait_for_trigger:
-                  - platform: state
-                    entity_id: binary_sensor.motion_bano
-                    to: "on"
-                timeout: "00:01:00"
-                continue_on_timeout: true
-              - choose:
-                  - conditions:
-                      - condition: template
-                        value_template: "{{ wait.trigger is none }}"
-                    sequence:
-                      - service: light.turn_off
-                        target:
-                          entity_id: light.bano
+          # ── Sin movimiento por 180s: apagar ────────────────────
+          - conditions:
+              - condition: trigger
+                id: "motion_off_180s"
+              - condition: state
+                entity_id: light.bano
+                state: "on"
+            sequence:
+              - service: light.turn_off
+                target:
+                  entity_id: light.bano
