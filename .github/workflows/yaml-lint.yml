@@ -1,4 +1,10 @@
-- name: 🚀 Run yamllint
-  uses: frenck/action-yamllint@v1
-  with:
-    warnings: false
+name: YAML Lint
+on: [push, pull_request]
+jobs:
+  yamllint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: frenck/action-yamllint@v1
+        with:
+          warnings: false

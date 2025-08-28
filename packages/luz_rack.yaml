@@ -1,8 +1,8 @@
-# packages/luz_rack.yaml
-
-###############################################################################
+## package luz Rack
+##
+##################################################
 # HELPERS
-###############################################################################
+#################################################
 input_boolean:
   luz_rack_power:
     name: Luz Rack - Estado
@@ -105,7 +105,13 @@ script:
         description: Nombre de color (opcional; si no, toma el del helper)
     sequence:
       - variables:
-          _color: "{{ color | default(states('input_select.luz_rack_color'), true) }}"
+          _color: "{{ (color or states('input_select.luz_rack_color')) | string }}"
+      # Encender si está apagada
+      - choose:
+          - conditions: "{{ is_state('input_boolean.luz_rack_power','off') }}"
+            sequence:
+              - service: script.luz_rack_on
+              - delay: '00:00:00.3'
       - service: script.luz_rack_send
         data:
           command: "{{ _color }}"
@@ -174,7 +180,7 @@ automation:
           effect: "{{ trigger.to_state.state }}"
 
 ###############################################################################
-# LIGHT (new-style template) - expone light.luz_rack con efecto/colores
+# LIGHT - expone light.luz_rack con efecto/colores
 ###############################################################################
 template:
   - light:
@@ -251,8 +257,19 @@ template:
         set_effect:
           - service: input_boolean.turn_on
             target: { entity_id: input_boolean.luz_rack_guard }
+
+          # 1) Si está apagada, encender primero y esperar un toque
           - choose:
-              # Si eligió un color
+              - conditions:
+                  - condition: state
+                    entity_id: input_boolean.luz_rack_power
+                    state: 'off'
+                sequence:
+                  - service: script.luz_rack_on
+                  - delay: '00:00:00.4'
+
+          # 2) Aplicar lo elegido en el selector: color:* o efecto real
+          - choose:
               - conditions:
                   - condition: template
                     value_template: "{{ effect is string and effect.startswith('color:') }}"
@@ -260,10 +277,11 @@ template:
                   - service: script.luz_rack_set_color
                     data:
                       color: "{{ effect.split(':', 1)[1] }}"
+                  # al usar color, dejamos el helper de efecto en 'none'
                   - service: input_select.select_option
                     target: { entity_id: input_select.luz_rack_effect }
                     data: { option: "none" }
-              # Si eligió un efecto real
+
               - conditions:
                   - condition: template
                     value_template: "{{ effect in ['flash_effect','smooth_trans'] }}"
@@ -271,5 +289,6 @@ template:
                   - service: script.luz_rack_set_effect
                     data:
                       effect: "{{ effect }}"
+
           - service: input_boolean.turn_off
             target: { entity_id: input_boolean.luz_rack_guard }
