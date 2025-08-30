@@ -27,35 +27,35 @@ input_number:
   cocina_off_manana:
     name: Cocina - Apagado mañana (min)
     min: 1
-    max: 180
+    max: 30
     step: 1
     unit_of_measurement: min
     initial: 10
   cocina_off_mediodia:
     name: Cocina - Apagado mediodía (min)
     min: 1
-    max: 180
+    max: 30
     step: 1
     unit_of_measurement: min
     initial: 10
   cocina_off_tarde:
     name: Cocina - Apagado tarde (min)
     min: 1
-    max: 180
+    max: 30
     step: 1
     unit_of_measurement: min
     initial: 10
   cocina_off_noche:
     name: Cocina - Apagado noche (min)
     min: 1
-    max: 180
+    max: 45
     step: 1
     unit_of_measurement: min
     initial: 8
   cocina_off_madrugada:
     name: Cocina - Apagado madrugada (min)
     min: 1
-    max: 180
+    max: 30
     step: 1
     unit_of_measurement: min
     initial: 5
@@ -64,7 +64,7 @@ input_number:
   cocina_preaviso:
     name: Cocina - Preaviso (min)
     min: 1
-    max: 30
+    max: 10
     step: 1
     unit_of_measurement: min
     initial: 2
