@@ -1,419 +1,419 @@
-- id: '1629315625548'
+- id: "1629315625548"
   alias: Notificacion - Restart home assistant
-  description: ''
+  description: ""
   triggers:
-  - event: start
-    trigger: homeassistant
+    - event: start
+      trigger: homeassistant
   conditions: []
   actions:
-  - data:
-      message: Home Assistant se reinició
-      title: Reinicio completado
-    action: persistent_notification.create
+    - data:
+        message: Home Assistant se reinició
+        title: Reinicio completado
+      action: persistent_notification.create
   mode: single
-- id: '1641223847779'
+- id: "1641223847779"
   alias: anunciar - anochecer
-  description: ''
+  description: ""
   triggers:
-  - event: sunset
-    offset: -00:10:00
-    trigger: sun
+    - event: sunset
+      offset: -00:10:00
+      trigger: sun
   conditions:
-  - condition: not
-    conditions:
-    - condition: state
-      entity_id: media_player.nest_mini
-      state: playing
+    - condition: not
+      conditions:
+        - condition: state
+          entity_id: media_player.nest_mini
+          state: playing
   actions:
-  - target:
-      entity_id: script.despertar_google_nest
-    data: {}
-    action: script.turn_on
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 4
-      milliseconds: 0
-  - target:
-      entity_id: media_player.nest_mini
-    data:
-      media_content_id: /local/Carbonate.ogg
-      media_content_type: music
-    action: media_player.play_media
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 2
-      milliseconds: 0
-  - data:
-      cache: true
-      entity_id: media_player.nest_mini
-      message: En 10 minutos se hace de noche
-    action: tts.cloud_say
+    - target:
+        entity_id: script.despertar_google_nest
+      data: {}
+      action: script.turn_on
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 4
+        milliseconds: 0
+    - target:
+        entity_id: media_player.nest_mini
+      data:
+        media_content_id: /local/Carbonate.ogg
+        media_content_type: music
+      action: media_player.play_media
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 2
+        milliseconds: 0
+    - data:
+        cache: true
+        entity_id: media_player.nest_mini
+        message: En 10 minutos se hace de noche
+      action: tts.cloud_say
   mode: single
-- id: '1643488822617'
+- id: "1643488822617"
   alias: anunciar - hora de dormir
-  description: ''
+  description: ""
   triggers:
-  - at: '23:00:00'
-    trigger: time
+    - at: "23:00:00"
+      trigger: time
   conditions: []
   actions:
-  - data: {}
-    action: script.despertar_google_nest
-  - target:
-      entity_id: media_player.nest_mini
-    data:
-      media_content_id: http://192.168.0.128:8123/local/Crosswalk.ogg
-      media_content_type: music
-    action: media_player.play_media
-  - data:
-      cache: true
-      entity_id: media_player.nest_mini
-      message: Ya es hora de ir a dormir
-    enabled: false
-    action: tts.cloud_say
+    - data: {}
+      action: script.despertar_google_nest
+    - target:
+        entity_id: media_player.nest_mini
+      data:
+        media_content_id: http://192.168.0.128:8123/local/Crosswalk.ogg
+        media_content_type: music
+      action: media_player.play_media
+    - data:
+        cache: true
+        entity_id: media_player.nest_mini
+        message: Ya es hora de ir a dormir
+      enabled: false
+      action: tts.cloud_say
   mode: single
-- id: '1652311429269'
+- id: "1652311429269"
   alias: Alerta Chip - puerta abierta 10 minutos
-  description: ''
+  description: ""
   triggers:
-  - entity_id:
-    - binary_sensor.puerta_entrada
-    to: 'on'
-    trigger: state
+    - entity_id:
+        - binary_sensor.puerta_entrada
+      to: "on"
+      trigger: state
   conditions: []
   actions:
-  - data: {}
-    target:
-      entity_id: input_boolean.puerta_abierta_10min
-    action: input_boolean.turn_on
-  - delay:
-      hours: 0
-      minutes: 10
-      seconds: 0
-      milliseconds: 0
-  - data: {}
-    target:
-      entity_id: input_boolean.puerta_abierta_10min
-    action: input_boolean.turn_off
+    - data: {}
+      target:
+        entity_id: input_boolean.puerta_abierta_10min
+      action: input_boolean.turn_on
+    - delay:
+        hours: 0
+        minutes: 10
+        seconds: 0
+        milliseconds: 0
+    - data: {}
+      target:
+        entity_id: input_boolean.puerta_abierta_10min
+      action: input_boolean.turn_off
   mode: restart
-- id: '1652893795221'
+- id: "1652893795221"
   alias: Notificacion - puerta abierta 4 mins
-  description: ''
+  description: ""
   triggers:
-  - entity_id:
-    - binary_sensor.puerta_entrada
-    to: 'on'
-    for:
-      hours: 0
-      minutes: 4
-      seconds: 0
-    trigger: state
+    - entity_id:
+        - binary_sensor.puerta_entrada
+      to: "on"
+      for:
+        hours: 0
+        minutes: 4
+        seconds: 0
+      trigger: state
   conditions:
-  - condition: state
-    entity_id: binary_sensor.motion_sala
-    state: 'off'
+    - condition: state
+      entity_id: binary_sensor.motion_sala
+      state: "off"
   actions:
-  - metadata: {}
-    data:
-      message: La puerta de entrada está abierta hace 4 minutos
-      title: Puerta Abierta
-    action: notify.mobile_app_samsungs24u
+    - metadata: {}
+      data:
+        message: La puerta de entrada está abierta hace 4 minutos
+        title: Puerta Abierta
+      action: notify.mobile_app_samsungs24u
   mode: single
-- id: '1654094015563'
+- id: "1654094015563"
   alias: Luces - Apagar pieza 20 mins
-  description: ''
+  description: ""
   triggers:
-  - entity_id: light.pieza
-    from: 'off'
-    to: 'on'
-    for:
-      hours: 0
-      minutes: 15
-      seconds: 0
-    trigger: state
+    - entity_id: light.pieza
+      from: "off"
+      to: "on"
+      for:
+        hours: 0
+        minutes: 15
+        seconds: 0
+      trigger: state
   actions:
-  - action: light.turn_off
-    metadata: {}
-    data: {}
-    target:
-      area_id: dormitorio
+    - action: light.turn_off
+      metadata: {}
+      data: {}
+      target:
+        area_id: dormitorio
   mode: restart
-- id: '1690882949603'
+- id: "1690882949603"
   alias: Anunciar - 9 en punto
-  description: ''
+  description: ""
   triggers:
-  - at: 09:00:00
-    trigger: time
+    - at: 09:00:00
+      trigger: time
   conditions:
-  - condition: not
-    conditions:
-    - condition: device
-      device_id: c74e203b64f5c2013bc47bf301c66628
-      domain: media_player
-      entity_id: media_player.nest_mini
-      type: is_playing
+    - condition: not
+      conditions:
+        - condition: device
+          device_id: c74e203b64f5c2013bc47bf301c66628
+          domain: media_player
+          entity_id: media_player.nest_mini
+          type: is_playing
   actions:
-  - data: {}
-    action: script.despertar_google_nest
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 1
-      milliseconds: 0
-  - target:
-      entity_id: media_player.nest_mini
-    data:
-      media_content_id: http://192.168.0.202:8123/local/Absurd Bird.ogg
-      media_content_type: music
-    action: media_player.play_media
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 1
-      milliseconds: 0
-  - data:
-      cache: false
-      message: Ya son las 9 en punto
-      entity_id: media_player.nest_mini
-    action: tts.cloud_say
+    - data: {}
+      action: script.despertar_google_nest
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 1
+        milliseconds: 0
+    - target:
+        entity_id: media_player.nest_mini
+      data:
+        media_content_id: http://192.168.0.202:8123/local/Absurd Bird.ogg
+        media_content_type: music
+      action: media_player.play_media
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 1
+        milliseconds: 0
+    - data:
+        cache: false
+        message: Ya son las 9 en punto
+        entity_id: media_player.nest_mini
+      action: tts.cloud_say
   mode: single
-- id: '1731421802082'
+- id: "1731421802082"
   alias: Modo developer - on/off
-  description: ''
+  description: ""
   triggers:
-  - trigger: state
-    entity_id:
-    - input_boolean.modo_developer
-    to: 'on'
-    id: dev-on
-  - trigger: state
-    entity_id:
-    - input_boolean.modo_developer
-    to: 'off'
-    id: dev-off
+    - trigger: state
+      entity_id:
+        - input_boolean.modo_developer
+      to: "on"
+      id: dev-on
+    - trigger: state
+      entity_id:
+        - input_boolean.modo_developer
+      to: "off"
+      id: dev-off
   conditions: []
   actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - dev-on
-      sequence:
-      - action: input_boolean.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id: input_boolean.kiosk_mode
-    - conditions:
-      - condition: trigger
-        id:
-        - dev-off
-      sequence:
-      - action: input_boolean.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id: input_boolean.kiosk_mode
+    - choose:
+        - conditions:
+            - condition: trigger
+              id:
+                - dev-on
+          sequence:
+            - action: input_boolean.turn_off
+              metadata: {}
+              data: {}
+              target:
+                entity_id: input_boolean.kiosk_mode
+        - conditions:
+            - condition: trigger
+              id:
+                - dev-off
+          sequence:
+            - action: input_boolean.turn_on
+              metadata: {}
+              data: {}
+              target:
+                entity_id: input_boolean.kiosk_mode
   mode: single
-- id: '1746755161912'
+- id: "1746755161912"
   alias: Anunciar - 20 minutos para trabajo
-  description: ''
+  description: ""
   triggers:
-  - at: 08:40:00
-    trigger: time
+    - at: 08:40:00
+      trigger: time
   conditions:
-  - condition: not
-    conditions:
-    - condition: device
-      device_id: c74e203b64f5c2013bc47bf301c66628
-      domain: media_player
-      entity_id: media_player.nest_mini
-      type: is_playing
+    - condition: not
+      conditions:
+        - condition: device
+          device_id: c74e203b64f5c2013bc47bf301c66628
+          domain: media_player
+          entity_id: media_player.nest_mini
+          type: is_playing
   actions:
-  - data: {}
-    action: script.despertar_google_nest
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 1
-      milliseconds: 0
-  - target:
-      entity_id: media_player.nest_mini
-    data:
-      media_content_id: http://192.168.0.202:8123/local/Absurd Bird.ogg
-      media_content_type: music
-    action: media_player.play_media
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 1
-      milliseconds: 0
-  - data:
-      cache: false
-      entity_id: media_player.nest_mini
-      message: Faltan 20 minutos
-    action: tts.cloud_say
+    - data: {}
+      action: script.despertar_google_nest
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 1
+        milliseconds: 0
+    - target:
+        entity_id: media_player.nest_mini
+      data:
+        media_content_id: http://192.168.0.202:8123/local/Absurd Bird.ogg
+        media_content_type: music
+      action: media_player.play_media
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 1
+        milliseconds: 0
+    - data:
+        cache: false
+        entity_id: media_player.nest_mini
+        message: Faltan 20 minutos
+      action: tts.cloud_say
   mode: single
 - id: luz_bano_feedback_en_punto_blink
   alias: Luz baño - feedback - en punto (blink)
-  description: ''
+  description: ""
   triggers:
-  - at: 09:00:00
-    trigger: time
+    - at: 09:00:00
+      trigger: time
   conditions:
-  - condition: state
-    entity_id: light.bano
-    state: 'on'
+    - condition: state
+      entity_id: light.bano
+      state: "on"
   actions:
-  - action: script.lights_fx_feedback_flash
-    data:
-      repeats: 2
-      mode: kelvin
-      kelvin: 4949
-      color_rgb:
-      - 255
-      - 136
-      - 0
-      restore: true
-      entity_id:
-      - light.bano
+    - action: script.lights_fx_feedback_flash
+      data:
+        repeats: 2
+        mode: kelvin
+        kelvin: 4949
+        color_rgb:
+          - 255
+          - 136
+          - 0
+        restore: true
+        entity_id:
+          - light.bano
   mode: single
-- id: '1754941870591'
+- id: "1754941870591"
   alias: Luz baño - feedback menos cuarto (blink)
-  description: ''
+  description: ""
   triggers:
-  - at: 06:45:00
-    trigger: time
-  - at: 08:45:00
-    trigger: time
+    - at: 06:45:00
+      trigger: time
+    - at: 08:45:00
+      trigger: time
   conditions:
-  - condition: state
-    entity_id: light.bano
-    state: 'on'
+    - condition: state
+      entity_id: light.bano
+      state: "on"
   actions:
-  - action: script.lights_fx_feedback_flash
-    data:
-      repeats: 2
-      mode: kelvin
-      kelvin: 4949
-      color_rgb:
-      - 255
-      - 136
-      - 0
-      restore: true
-      entity_id:
-      - light.bano
+    - action: script.lights_fx_feedback_flash
+      data:
+        repeats: 2
+        mode: kelvin
+        kelvin: 4949
+        color_rgb:
+          - 255
+          - 136
+          - 0
+        restore: true
+        entity_id:
+          - light.bano
   mode: single
-- id: '1754949693222'
+- id: "1754949693222"
   alias: Blinking -from blueprint (dev)
-  description: ''
+  description: ""
   use_blueprint:
     path: rschutte/custom-blinking-lights-blueprint.yaml
     input:
       color:
-      - 255
-      - 123
-      - 0
+        - 255
+        - 123
+        - 0
       blink_count: 4
       trigger_entity: binary_sensor.motion_sala
       lights:
         entity_id: light.riel
       blink_duration: 0.5
       transition_length: 0
-- id: '1755031475712'
+- id: "1755031475712"
   alias: Modo Cine - control
-  description: ''
+  description: ""
   triggers:
-  - id: cine_on
-    entity_id: input_boolean.modo_cine
-    to: 'on'
-    trigger: state
-  - id: cine_off
-    entity_id: input_boolean.modo_cine
-    to: 'off'
-    trigger: state
-  - id: pause
-    entity_id: media_player.googletv_living
-    to: paused
-    trigger: state
-  - id: unpause
-    entity_id: media_player.googletv_living
-    to: playing
-    trigger: state
+    - id: cine_on
+      entity_id: input_boolean.modo_cine
+      to: "on"
+      trigger: state
+    - id: cine_off
+      entity_id: input_boolean.modo_cine
+      to: "off"
+      trigger: state
+    - id: pause
+      entity_id: media_player.googletv_living
+      to: paused
+      trigger: state
+    - id: unpause
+      entity_id: media_player.googletv_living
+      to: playing
+      trigger: state
   conditions: []
   actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id: cine_on
-      sequence:
-      - target:
-          entity_id: input_boolean.mantener_luces
-        action: input_boolean.turn_on
-        data: {}
-      - action: light.turn_off
-        metadata: {}
-        data: {}
-        target:
-          area_id: sala_de_estar
-      - action: light.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id: light.luz_rack
-    - conditions:
-      - condition: trigger
-        id: cine_off
-      sequence:
-      - target:
-          entity_id: input_boolean.mantener_luces
-        action: input_boolean.turn_off
-        data: {}
-      - action: light.turn_on
-        metadata: {}
-        data:
-          color_temp_kelvin: 4952
-          brightness_pct: 70
-        target:
-          entity_id: light.riel
-    - conditions:
-      - condition: trigger
-        id: pause
-      - condition: state
-        entity_id: input_boolean.modo_cine
-        state: 'on'
-      sequence:
-      - action: scene.create
-        metadata: {}
-        data:
-          scene_id: cine_custom
-          snapshot_entities:
-          - light.riel
-          - light.luz_rack
-          - light.rgb
-          - light.barra
-          - light.cocina
-      - action: light.turn_on
-        metadata: {}
-        data:
-          color_temp_kelvin: 3416
-          brightness_pct: 38
-        target:
-          entity_id:
-          - light.barra
-          - light.riel
-    - conditions:
-      - condition: trigger
-        id: unpause
-      - condition: state
-        entity_id: input_boolean.modo_cine
-        state: 'on'
-      sequence:
-      - action: scene.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id: scene.cine_previo
+    - choose:
+        - conditions:
+            - condition: trigger
+              id: cine_on
+          sequence:
+            - target:
+                entity_id: input_boolean.mantener_luces
+              action: input_boolean.turn_on
+              data: {}
+            - action: light.turn_off
+              metadata: {}
+              data: {}
+              target:
+                area_id: sala_de_estar
+            - action: light.turn_on
+              metadata: {}
+              data: {}
+              target:
+                entity_id: light.luz_rack
+        - conditions:
+            - condition: trigger
+              id: cine_off
+          sequence:
+            - target:
+                entity_id: input_boolean.mantener_luces
+              action: input_boolean.turn_off
+              data: {}
+            - action: light.turn_on
+              metadata: {}
+              data:
+                color_temp_kelvin: 4952
+                brightness_pct: 70
+              target:
+                entity_id: light.riel
+        - conditions:
+            - condition: trigger
+              id: pause
+            - condition: state
+              entity_id: input_boolean.modo_cine
+              state: "on"
+          sequence:
+            - action: scene.create
+              metadata: {}
+              data:
+                scene_id: cine_custom
+                snapshot_entities:
+                  - light.riel
+                  - light.luz_rack
+                  - light.rgb
+                  - light.barra
+                  - light.cocina
+            - action: light.turn_on
+              metadata: {}
+              data:
+                color_temp_kelvin: 3416
+                brightness_pct: 38
+              target:
+                entity_id:
+                  - light.barra
+                  - light.riel
+        - conditions:
+            - condition: trigger
+              id: unpause
+            - condition: state
+              entity_id: input_boolean.modo_cine
+              state: "on"
+          sequence:
+            - action: scene.turn_on
+              metadata: {}
+              data: {}
+              target:
+                entity_id: scene.cine_previo
   mode: restart
