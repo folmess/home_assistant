@@ -4623,3 +4623,278 @@
       entity_only: true
     light.barra2:
       entity_only: true
+- id: '1756585722826'
+  name: home_luces_on_dim_white
+  entities:
+    light.riel1:
+      min_color_temp_kelvin: 2700
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 370
+      effect_list:
+      - Music
+      - Scene
+      - 'off'
+      supported_color_modes:
+      - color_temp
+      - hs
+      effect: 'off'
+      color_mode: color_temp
+      brightness: 66
+      color_temp_kelvin: 4265.6
+      color_temp: 234
+      hs_color:
+      - 26.731
+      - 30.262
+      rgb_color:
+      - 255
+      - 212
+      - 178
+      xy_color:
+      - 0.405
+      - 0.36
+      entity_id:
+      - light.tuyaspot2
+      icon: mdi:lightbulb-group
+      friendly_name: Riel1
+      supported_features: 4
+      state: 'on'
+    light.barra:
+      min_color_temp_kelvin: 2700
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 370
+      effect_list:
+      - Music
+      - Scene
+      - 'off'
+      supported_color_modes:
+      - color_temp
+      - hs
+      effect: 'off'
+      color_mode: color_temp
+      brightness: 8
+      color_temp_kelvin: 3551
+      color_temp: 281
+      hs_color:
+      - 27.124
+      - 43.677
+      rgb_color:
+      - 255
+      - 194
+      - 144
+      xy_color:
+      - 0.449
+      - 0.373
+      entity_id:
+      - light.barra1
+      - light.barra2
+      icon: mdi:track-light
+      friendly_name: Barra
+      supported_features: 4
+      state: 'on'
+    light.cocina:
+      min_color_temp_kelvin: 2700
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 370
+      effect_list:
+      - Music
+      - Scene
+      - 'off'
+      supported_color_modes:
+      - color_temp
+      - hs
+      effect: 'off'
+      color_mode: color_temp
+      brightness: 23
+      color_temp_kelvin: 4790
+      color_temp: 208
+      hs_color:
+      - 26.832
+      - 22.172
+      rgb_color:
+      - 255
+      - 224
+      - 198
+      xy_color:
+      - 0.38
+      - 0.353
+      entity_id:
+      - light.tuyaspot5
+      icon: mdi:lightbulb-group
+      friendly_name: Cocina
+      supported_features: 4
+      state: 'on'
+    light.pieza:
+      min_color_temp_kelvin: 2200
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 454
+      effect_list:
+      - Alarm
+      - Bedtime
+      - Candlelight
+      - Christmas
+      - Cool white
+      - Cozy
+      - Daylight
+      - Deep dive
+      - Diwali
+      - Fall
+      - Fireplace
+      - Focus
+      - Forest
+      - Golden white
+      - Halloween
+      - Jungle
+      - Mojito
+      - Night light
+      - Ocean
+      - Party
+      - Pastel colors
+      - Plantgrowth
+      - Pulse
+      - Relax
+      - Rhythm
+      - Romance
+      - Spring
+      - Steampunk
+      - Summer
+      - Sunset
+      - TV time
+      - True colors
+      - Wake-up
+      - Warm white
+      - White
+      supported_color_modes:
+      - color_temp
+      - rgbw
+      effect:
+      color_mode: color_temp
+      brightness: 92
+      color_temp_kelvin: 4550
+      color_temp: 219
+      hs_color:
+      - 26.737
+      - 25.726
+      rgb_color:
+      - 255
+      - 219
+      - 189
+      xy_color:
+      - 0.391
+      - 0.357
+      rgbw_color:
+      entity_id:
+      - light.pieza1
+      - light.pieza2
+      icon: mdi:lightbulb-group
+      friendly_name: Pieza
+      supported_features: 4
+      state: 'on'
+    light.rgb:
+      min_color_temp_kelvin: 2200
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 454
+      effect_list:
+      - Alarm
+      - Bedtime
+      - Candlelight
+      - Christmas
+      - Cozy
+      - Cool white
+      - Daylight
+      - Diwali
+      - Deep dive
+      - Fall
+      - Fireplace
+      - Forest
+      - Focus
+      - Golden white
+      - Halloween
+      - Jungle
+      - Mojito
+      - Night light
+      - Ocean
+      - Party
+      - Pulse
+      - Pastel colors
+      - Plantgrowth
+      - Romance
+      - Relax
+      - Sunset
+      - Spring
+      - Summer
+      - Steampunk
+      - True colors
+      - TV time
+      - White
+      - Wake-up
+      - Warm white
+      - Rhythm
+      supported_color_modes:
+      - color_temp
+      - rgbw
+      effect:
+      color_mode: color_temp
+      brightness: 26
+      color_temp_kelvin: 2202
+      color_temp: 454
+      hs_color:
+      - 29.79
+      - 84.553
+      rgb_color:
+      - 255
+      - 146
+      - 39
+      xy_color:
+      - 0.579
+      - 0.388
+      rgbw_color:
+      icon: mdi:floor-lamp-torchiere
+      friendly_name: rgb
+      supported_features: 4
+      state: 'on'
+    light.luz_rack:
+      effect_list:
+      - flash_effect
+      - smooth_trans
+      - color:white
+      - color:orange
+      - color:red
+      - color:green
+      - color:blue
+      - color:lightorange
+      - color:yellow
+      - color:lima
+      - color:teal
+      - color:cyan
+      - color:realblue
+      - color:lightblue
+      - color:violeta1
+      - color:violeta2
+      - color:rosa
+      - color:magenta
+      supported_color_modes:
+      - onoff
+      effect: color:white
+      color_mode: onoff
+      icon: mdi:led-strip-variant
+      friendly_name: Luz Rack
+      supported_features: 4
+      state: 'on'
+  metadata:
+    light.riel1:
+      entity_only: true
+    light.barra:
+      entity_only: true
+    light.cocina:
+      entity_only: true
+    light.pieza:
+      entity_only: true
+    light.rgb:
+      entity_only: true
+    light.luz_rack:
+      entity_only: true
