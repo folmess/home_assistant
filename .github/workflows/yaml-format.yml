@@ -1,5 +1,4 @@
 name: Lint and auto-fix YAML
-
 on:
   push:
     branches: [main]
@@ -38,9 +37,9 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install Prettier + YAML plugin
+      - name: Install Prettier
         if: steps.lint.outputs.found_errors == 'true'
-        run: npm install --global prettier @prettier/plugin-yaml
+        run: npm install --global prettier
 
       - name: Auto-format YAML files with Prettier
         if: steps.lint.outputs.found_errors == 'true'
