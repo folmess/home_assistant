@@ -72,7 +72,8 @@ script:
     alias: IR - Enviar comando (device, command, repeats)
     mode: parallel
     fields:
-      device: { description: "Device id del comando aprendido", example: "luz_cama" }
+      device:
+        { description: "Device id del comando aprendido", example: "luz_cama" }
       command: { description: "Nombre del comando", example: "power" }
       repeats: { description: "Veces a repetir", example: 1 }
     sequence:
@@ -87,7 +88,7 @@ script:
               data:
                 device: "{{ device }}"
                 command: "{{ command }}"
-            - delay: "00:00:0.35"   # pequeño respiro entre repeticiones
+            - delay: "00:00:0.35" # pequeño respiro entre repeticiones
 
   #############################################################################
   # POWER / TEMPERATURAS / COLORES
@@ -302,7 +303,6 @@ script:
 light:
   - platform: template
     lights:
-
       luz_cama:
         friendly_name: "Luz Cama"
         unique_id: luz_cama_template
@@ -358,7 +358,6 @@ light:
              | default(['red','green','blue','darkred','limegreen','violeta',
                         'orange','turquesa','magenta','flash','fade'], true) }}
         effect_template: "{{ states('input_select.luz_noche_mode') | default('red') }}"
-
         turn_on:
           service: script.luz_noche_power_on
 

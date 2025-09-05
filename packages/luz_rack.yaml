@@ -112,7 +112,7 @@ script:
           - conditions: "{{ is_state('input_boolean.luz_rack_power','off') }}"
             sequence:
               - service: script.luz_rack_on
-              - delay: '00:00:00.3'
+              - delay: "00:00:00.3"
       - service: script.luz_rack_send
         data:
           command: "{{ _color }}"
@@ -264,10 +264,10 @@ template:
               - conditions:
                   - condition: state
                     entity_id: input_boolean.luz_rack_power
-                    state: 'off'
+                    state: "off"
                 sequence:
                   - service: script.luz_rack_on
-                  - delay: '00:00:00.4'
+                  - delay: "00:00:00.4"
 
           # 2) Aplicar lo elegido en el selector: color:* o efecto real
           - choose:

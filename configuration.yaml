@@ -15,7 +15,7 @@ notify:
   - platform: group
     name: hernan
     services:
-      - service: mobile_app_samsungs24u   # <-- tu servicio actual
+      - service: mobile_app_samsungs24u # <-- tu servicio actual
 
 # Storage for Bubble Card Modules
 template:
@@ -95,8 +95,8 @@ media_player:
 sensor:
   - platform: time_date
     display_options:
-      - 'time'
-      - 'date'
+      - "time"
+      - "date"
 
 # medir temperatura
 command_line:

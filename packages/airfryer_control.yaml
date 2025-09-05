@@ -10,7 +10,7 @@ input_number:
   airfryer_target_temp:
     name: AirFryer - Temperatura objetivo
     unit_of_measurement: "°C"
-    min: 80         # ajusta al rango real de tu freidora
+    min: 80 # ajusta al rango real de tu freidora
     max: 200
     step: 5
     mode: slider

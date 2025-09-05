@@ -74,35 +74,35 @@ input_number:
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 70
   sala_brightness_mediodia:
     name: Sala - Brillo (mediodía) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 70
   sala_brightness_tarde:
     name: Sala - Brillo (tarde) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 60
   sala_brightness_noche:
     name: Sala - Brillo (noche) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 60
   sala_brightness_madrugada:
     name: Sala - Brillo (madrugada) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 15
 
   # % Fallback por franja (si estrategia=fallback y no hay snapshot disponible)
@@ -111,35 +111,35 @@ input_number:
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 60
   sala_fallback_mediodia:
     name: Sala - Fallback (mediodía) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 60
   sala_fallback_tarde:
     name: Sala - Fallback (tarde) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 60
   sala_fallback_noche:
     name: Sala - Fallback (noche) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 60
   sala_fallback_madrugada:
     name: Sala - Fallback (madrugada) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 15
 
 # Escenas por franja (opcional). Si la estrategia es "scene", se usa el entity_id aquí definido.
@@ -353,7 +353,8 @@ automation:
                           - service: scene.turn_on
                             data: { entity_id: scene.sala_snapshot }
                           - service: input_boolean.turn_off
-                            target: { entity_id: input_boolean.sala_snapshot_ready }
+                            target:
+                              { entity_id: input_boolean.sala_snapshot_ready }
                     default:
                       - service: light.turn_on
                         data:
@@ -381,7 +382,8 @@ automation:
                           - service: scene.turn_on
                             data: { entity_id: scene.sala_snapshot }
                           - service: input_boolean.turn_off
-                            target: { entity_id: input_boolean.sala_snapshot_ready }
+                            target:
+                              { entity_id: input_boolean.sala_snapshot_ready }
                     default:
                       - service: light.turn_on
                         data:
@@ -417,9 +419,9 @@ automation:
                       entity_id: "{{ luces_area | join(', ') }}"
                       brightness_pct: "{{ fb_pct }}"
 
-# ------------------------
-# AUTOMATIZACIÓN 2: CLEAR  (SIN CAMBIOS FUNCIONALES vs v9)
-# ------------------------
+  # ------------------------
+  # AUTOMATIZACIÓN 2: CLEAR  (SIN CAMBIOS FUNCIONALES vs v9)
+  # ------------------------
   - id: sala_motion_clear_v9_1
     alias: Sala - motion - clear (v9.1)
     mode: restart
@@ -427,7 +429,7 @@ automation:
       - platform: state
         entity_id: binary_sensor.motion_sala
         to: "off"
-        for: "00:00:05"   # debounce OFF 5s
+        for: "00:00:05" # debounce OFF 5s
     condition:
       - condition: state
         entity_id: input_boolean.mantener_luces

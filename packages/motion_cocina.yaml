@@ -75,35 +75,35 @@ input_number:
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 70
   cocina_fallback_mediodia:
     name: Cocina - Fallback (mediodía) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 70
   cocina_fallback_tarde:
     name: Cocina - Fallback (tarde) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 60
   cocina_fallback_noche:
     name: Cocina - Fallback (noche) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 60
   cocina_fallback_madrugada:
     name: Cocina - Fallback (madrugada) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 30
 
 # Escenas por franja (opcional). Se usan si la estrategia es "scene".
@@ -134,7 +134,7 @@ input_text:
     max: 255
     initial: ""
 
-# Scripts por franja (entity_id de script.*). Se usan si la estrategia es "script".
+  # Scripts por franja (entity_id de script.*). Se usan si la estrategia es "script".
   cocina_script_manana:
     name: Cocina - Script (mañana)
     icon: mdi:script-text
@@ -202,11 +202,11 @@ automation:
     mode: single
     trigger:
       - platform: state
-        entity_id: binary_sensor.motion_cocina   # <--- ajustá si tu sensor tiene otro entity_id
+        entity_id: binary_sensor.motion_cocina # <--- ajustá si tu sensor tiene otro entity_id
         to: "on"
     condition:
       - condition: state
-        entity_id: input_boolean.mantener_luces  # bypass global
+        entity_id: input_boolean.mantener_luces # bypass global
         state: "off"
     variables:
       # Parte del día normalizada (sensor.parte_del_dia)
@@ -233,7 +233,6 @@ automation:
           }
         }}
       strategy: "{{ strategy_map.get(parte, 'fallback') }}"
-
       # Fallback % por franja (si no hay snapshot)
       fb_map: >
         {{
@@ -246,7 +245,6 @@ automation:
           }
         }}
       fb_pct: "{{ fb_map.get(parte, 60) }}"
-
       # Escenas por franja
       scene_map: >
         {{
@@ -297,7 +295,8 @@ automation:
                       - service: script.turn_on
                         target: { entity_id: "{{ script_entity }}" }
                       - service: input_boolean.turn_off
-                        target: { entity_id: input_boolean.cocina_snapshot_ready }
+                        target:
+                          { entity_id: input_boolean.cocina_snapshot_ready }
                 default:
                   # Si no hay script, degradar a FALLBACK
                   - choose:
@@ -309,7 +308,8 @@ automation:
                           - service: scene.turn_on
                             data: { entity_id: scene.cocina_snapshot }
                           - service: input_boolean.turn_off
-                            target: { entity_id: input_boolean.cocina_snapshot_ready }
+                            target:
+                              { entity_id: input_boolean.cocina_snapshot_ready }
                     default:
                       - service: light.turn_on
                         data:
@@ -325,7 +325,8 @@ automation:
                       - service: scene.turn_on
                         data: { entity_id: "{{ scene_entity }}" }
                       - service: input_boolean.turn_off
-                        target: { entity_id: input_boolean.cocina_snapshot_ready }
+                        target:
+                          { entity_id: input_boolean.cocina_snapshot_ready }
                 default:
                   # Si no hay escena, degradar a FALLBACK
                   - choose:
@@ -337,7 +338,8 @@ automation:
                           - service: scene.turn_on
                             data: { entity_id: scene.cocina_snapshot }
                           - service: input_boolean.turn_off
-                            target: { entity_id: input_boolean.cocina_snapshot_ready }
+                            target:
+                              { entity_id: input_boolean.cocina_snapshot_ready }
                     default:
                       - service: light.turn_on
                         data:
@@ -356,24 +358,25 @@ automation:
                       - service: scene.turn_on
                         data: { entity_id: scene.cocina_snapshot }
                       - service: input_boolean.turn_off
-                        target: { entity_id: input_boolean.cocina_snapshot_ready }
+                        target:
+                          { entity_id: input_boolean.cocina_snapshot_ready }
                 default:
                   - service: light.turn_on
                     data:
                       entity_id: "{{ luces_area | join(', ') }}"
                       brightness_pct: "{{ fb_pct }}"
 
-# ------------------------
-# AUTOMATIZACIÓN 2: CLEAR
-# ------------------------
+  # ------------------------
+  # AUTOMATIZACIÓN 2: CLEAR
+  # ------------------------
   - id: cocina_motion_clear_v1
     alias: Cocina - motion - clear (v1)
     mode: restart
     trigger:
       - platform: state
-        entity_id: binary_sensor.motion_cocina   # <--- ajustá si corresponde
+        entity_id: binary_sensor.motion_cocina # <--- ajustá si corresponde
         to: "off"
-        for: "00:00:05"   # debounce OFF 5s
+        for: "00:00:05" # debounce OFF 5s
     condition:
       - condition: state
         entity_id: input_boolean.mantener_luces
