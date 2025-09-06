@@ -55,7 +55,7 @@ Este paquete implementa un sistema de automatización para controlar las luces d
      3. **Snapshot y Preaviso**:
         - Si no vuelve el movimiento:
           - Se crea un snapshot del estado actual de las luces.
-          - Se reducen todas las luces encendidas según el porcentaje configurado para el preaviso.
+          - Se reducen todas las luces encendidas de forma gradual (pasos del 5%) según el porcentaje configurado para el preaviso, deteniéndose si vuelve el movimiento.
           - Se inicia el temporizador de preaviso (`timer.preaviso_sala`).
      4. **Espera durante el Preaviso**:
         - Si vuelve el movimiento durante el preaviso:
