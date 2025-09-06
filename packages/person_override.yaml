@@ -29,7 +29,7 @@ automation:
             {% endif %}
       - service: device_tracker.see
         data:
-          dev_id: hernan_virtual         # => device_tracker.hernan_virtual
+          dev_id: hernan_virtual # => device_tracker.hernan_virtual
           host_name: "Hernán (virtual)"
           location_name: "{{ destino }}"
           source_type: gps

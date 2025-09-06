@@ -7,24 +7,24 @@
   id: switch_pieza_unificado
   mode: single
 
-#
-#  Tip: si preferis tu efecto feedback "pro" con 
-#  script.lights_fx_feedback_flash podes reemplazar los light_turn_on ... flash short por:
-#
-#
-#- service: script.lights_fx_feedback_flash
-#  data:
-#    entity_id: [ "{{ feedback_light }}" ]
-#    repeats: 2
-#    mode: kelvin
-#    kelvin: 4949
-#    restore: true
-#
-#
+  #
+  #  Tip: si preferis tu efecto feedback "pro" con
+  #  script.lights_fx_feedback_flash podes reemplazar los light_turn_on ... flash short por:
+  #
+  #
+  #- service: script.lights_fx_feedback_flash
+  #  data:
+  #    entity_id: [ "{{ feedback_light }}" ]
+  #    repeats: 2
+  #    mode: kelvin
+  #    kelvin: 4949
+  #    restore: true
+  #
+  #
 
   variables:
-    feedback_light: light.pieza      # Cambiá si querés usar otra luz como “blink”
-    area_pieza: dormitorio           # Área para apagados “globales” de la pieza
+    feedback_light: light.pieza # Cambiá si querés usar otra luz como “blink”
+    area_pieza: dormitorio # Área para apagados “globales” de la pieza
 
   trigger:
     # --- 1: SINGLE  -> (antes: wall pieza - 1a - luz pieza)
@@ -112,12 +112,12 @@
         # ========= 1 SINGLE =========
         - conditions: { condition: trigger, id: b1_single }
           sequence:
-            - service: light.turn_on           # forza nivel si estaba off
+            - service: light.turn_on # forza nivel si estaba off
               target: { entity_id: light.pieza }
               data:
                 brightness_pct: 100
                 color_temp: 228
-            - service: light.turn_on           # feedback blink
+            - service: light.turn_on # feedback blink
               target: { entity_id: "{{ feedback_light }}" }
               data: { flash: short }
 

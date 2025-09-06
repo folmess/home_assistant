@@ -71,35 +71,35 @@ input_number:
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 70
   cocina_fallback_mediodia:
     name: Cocina - Fallback (mediodía) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 70
   cocina_fallback_tarde:
     name: Cocina - Fallback (tarde) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 60
   cocina_fallback_noche:
     name: Cocina - Fallback (noche) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 60
   cocina_fallback_madrugada:
     name: Cocina - Fallback (madrugada) %
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 30
 
   # Brillo objetivo ABSOLUTO para el PREAVISO
@@ -139,6 +139,7 @@ input_text:
     max: 255
     initial: ""
 
+  # Scripts por franja (entity_id de script.*). Se usan si la estrategia es "script".
   # Scripts por franja (opcionales). Se usan si strategy = script
   cocina_script_manana:
     name: Cocina - Script (mañana)
