@@ -139,10 +139,10 @@
         # ========= HOLD =========
         - conditions: { condition: trigger, id: b3_hold }
           sequence:
-            # Toggle de mantener_luces
+            # Toggle de mantener_luces_sala
             - service: input_boolean.toggle
               target:
-                entity_id: input_boolean.mantener_luces
+                entity_id: input_boolean.mantener_luces_sala
             - service: light.turn_off
               data:
                 target:

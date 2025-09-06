@@ -1,6 +1,6 @@
 # ===========================================================
 #  SALA DE ESTAR — CONTROL POR MOVIMIENTO (v9.1)
-#  - Helpers: tiempos por parte del día + preaviso + bypass (externo)
+#  - Helpers: tiempos por parte del día + preaviso + bypass mantener_luces_sala
 #  - 2 automatizaciones: motion detected / motion clear
 #  - Sin scripts ni transiciones. Sólo turn_on/turn_off/brightness_pct.
 #  - Usa scene.create/scene.turn_on SÓLO para restaurar snapshot.
@@ -21,6 +21,9 @@ input_boolean:
   sala_snapshot_ready:
     name: Sala - Snapshot listo
     icon: mdi:camera-burst
+  mantener_luces_sala:
+    name: Sala - Mantener luces
+    icon: mdi:lightbulb-on
 
 input_number:
   sala_off_manana:
@@ -103,7 +106,7 @@ automation:
         to: "on"
     condition:
       - condition: state
-        entity_id: input_boolean.mantener_luces
+        entity_id: input_boolean.mantener_luces_sala
         state: "off"
     variables:
       # Normalizamos el sensor de parte del día sin tildes
@@ -198,7 +201,7 @@ automation:
         for: "00:00:05"   # debounce 5s (evita falsos OFF)
     condition:
       - condition: state
-        entity_id: input_boolean.mantener_luces
+        entity_id: input_boolean.mantener_luces_sala
         state: "off"
     variables:
       # Parte del día normalizada
