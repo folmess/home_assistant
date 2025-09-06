@@ -1,14 +1,14 @@
 # ===========================================================
-#  SALA DE ESTAR — CONTROL POR MOVIMIENTO (v9.1 con opción 'script')
+#  SALA DE ESTAR — CONTROL POR MOVIMIENTO (v9.1)
+#  - Helpers: tiempos por parte del día + preaviso + bypass (externo)
 #  - 2 automatizaciones: motion detected / motion clear
-#  - Sin scripts ni transiciones. Sólo turn_on / turn_off / brightness_pct
-#  - Estrategia por franja elegible desde UI:
-#       * scene      → usa la escena definida para esa franja
-#       * brightness → enciende al % definido para esa franja
-#       * fallback   → intenta RESTAURAR SNAPSHOT; si no hay, usa % fallback de esa franja
-#       * script     → ejecuta el script (entity_id) configurado para esa franja
-#  - Temporizadores visibles: timer.apagado_sala (total) / timer.preaviso_sala (preaviso)
-#  - Área usada: "sala_de_estar" (area_id). Ajustá si tu área difiere.
+#  - Sin scripts ni transiciones. Sólo turn_on/turn_off/brightness_pct.
+#  - Usa scene.create/scene.turn_on SÓLO para restaurar snapshot.
+#  - Temporizadores:
+#       timer.apagado_sala  -> total (visible en UI)
+#       timer.preaviso_sala -> preaviso (visible en UI)
+#  - Área usada: "sala_de_estar" (area_id). Ajustar si tu area difiere.
+#  - NUEVO: input_number.sala_preaviso_target_pct para fijar brillo objetivo del preaviso (ABSOLUTO, con piso 10%).
 # ===========================================================
 
 homeassistant:
@@ -18,17 +18,11 @@ homeassistant:
 # HELPERS
 # ------------------------
 input_boolean:
-  # Bypass total: si está ON, la lógica no actúa (no programa apagados ni enciende).
-  mantener_luces:
-    name: Mantener luces (bypass)
-    icon: mdi:hand-back-right
-  # Flag interno: indica que hay un snapshot listo para restaurar.
   sala_snapshot_ready:
     name: Sala - Snapshot listo
     icon: mdi:camera-burst
 
 input_number:
-  # Minutos de apagado total por franja (el preaviso está incluido dentro del total)
   sala_off_manana:
     name: Sala - Apagado mañana (min)
     min: 1
@@ -60,7 +54,6 @@ input_number:
     step: 1
     unit_of_measurement: min
 
-  # Minutos de preaviso (independiente, pero incluido en el total)
   sala_preaviso:
     name: Sala - Preaviso (min)
     min: 1
@@ -68,159 +61,23 @@ input_number:
     step: 1
     unit_of_measurement: min
 
-  # Brillo ABSOLUTO si la estrategia es "brightness" (uno por franja)
-  sala_brightness_manana:
-    name: Sala - Brillo (mañana) %
+  # NUEVO: Target absoluto de brillo para el preaviso
+  sala_preaviso_target_pct:
+    name: Sala - Preaviso: brillo objetivo (%)
     min: 1
     max: 100
     step: 1
     unit_of_measurement: '%'
-    initial: 70
-  sala_brightness_mediodia:
-    name: Sala - Brillo (mediodía) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: '%'
-    initial: 70
-  sala_brightness_tarde:
-    name: Sala - Brillo (tarde) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: '%'
-    initial: 60
-  sala_brightness_noche:
-    name: Sala - Brillo (noche) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: '%'
-    initial: 60
-  sala_brightness_madrugada:
-    name: Sala - Brillo (madrugada) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: '%'
-    initial: 15
+    initial: 50
 
-  # % Fallback por franja (si estrategia=fallback y no hay snapshot disponible)
-  sala_fallback_manana:
-    name: Sala - Fallback (mañana) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: '%'
-    initial: 60
-  sala_fallback_mediodia:
-    name: Sala - Fallback (mediodía) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: '%'
-    initial: 60
-  sala_fallback_tarde:
-    name: Sala - Fallback (tarde) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: '%'
-    initial: 60
-  sala_fallback_noche:
-    name: Sala - Fallback (noche) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: '%'
-    initial: 60
-  sala_fallback_madrugada:
-    name: Sala - Fallback (madrugada) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: '%'
-    initial: 15
-
-# Escenas por franja (opcional). Si la estrategia es "scene", se usa el entity_id aquí definido.
+# (Opcional) Escena para madrugada. Si está vacía/unknown, se usa fallback a 15% brillo.
 input_text:
-  sala_scene_manana:
-    name: Sala - Escena (mañana)
-    icon: mdi:white-balance-sunny
-    max: 255
-    initial: ""
-  sala_scene_mediodia:
-    name: Sala - Escena (mediodía)
-    icon: mdi:weather-sunny
-    max: 255
-    initial: ""
-  sala_scene_tarde:
-    name: Sala - Escena (tarde)
-    icon: mdi:weather-sunset
-    max: 255
-    initial: ""
-  sala_scene_noche:
-    name: Sala - Escena (noche)
-    icon: mdi:weather-night
-    max: 255
-    initial: ""
   sala_scene_madrugada:
-    name: Sala - Escena (madrugada)
+    name: Sala - Escena de madrugada (entity_id)
     icon: mdi:weather-night
     max: 255
     initial: ""
 
-  # Scripts por franja (entity_id de script.*). Se usan si la estrategia es "script".
-  sala_script_manana:
-    name: Sala - Script (mañana)
-    icon: mdi:script-text
-    max: 255
-    initial: ""
-  sala_script_mediodia:
-    name: Sala - Script (mediodía)
-    icon: mdi:script-text
-    max: 255
-    initial: ""
-  sala_script_tarde:
-    name: Sala - Script (tarde)
-    icon: mdi:script-text
-    max: 255
-    initial: ""
-  sala_script_noche:
-    name: Sala - Script (noche)
-    icon: mdi:script-text
-    max: 255
-    initial: ""
-  sala_script_madrugada:
-    name: Sala - Script (madrugada)
-    icon: mdi:script-text
-    max: 255
-    initial: ""
-
-# Estrategia por franja (elige UNA): scene / brightness / fallback / script
-input_select:
-  sala_strategy_manana:
-    name: Sala - Estrategia (mañana)
-    options: [scene, brightness, fallback, script]
-    initial: fallback
-  sala_strategy_mediodia:
-    name: Sala - Estrategia (mediodía)
-    options: [scene, brightness, fallback, script]
-    initial: fallback
-  sala_strategy_tarde:
-    name: Sala - Estrategia (tarde)
-    options: [scene, brightness, fallback, script]
-    initial: fallback
-  sala_strategy_noche:
-    name: Sala - Estrategia (noche)
-    options: [scene, brightness, fallback, script]
-    initial: fallback
-  sala_strategy_madrugada:
-    name: Sala - Estrategia (madrugada)
-    options: [scene, brightness, fallback, script]
-    initial: fallback
-
-# Temporizadores (visibles en UI)
 timer:
   apagado_sala:
     name: Apagado total - Sala
@@ -231,6 +88,10 @@ timer:
 
 # ------------------------
 # AUTOMATIZACIÓN 1: DETECTED
+#  - Se ejecuta cuando hay movimiento.
+#  - Cancela timers y enciende:
+#       * Madrugada: escena (si está configurada) o fallback 15% a todo el área
+#       * Resto: si hay snapshot, lo restaura; si no, enciende 60% área
 # ------------------------
 automation:
   - id: sala_motion_detected_v9_1
@@ -245,83 +106,21 @@ automation:
         entity_id: input_boolean.mantener_luces
         state: "off"
     variables:
-      # Normalizamos la parte del día (sensor.parte_del_dia)
+      # Normalizamos el sensor de parte del día sin tildes
       parte: >
         {{ states('sensor.parte_del_dia') | lower
            | replace('á','a') | replace('é','e') | replace('í','i')
            | replace('ó','o') | replace('ú','u') }}
-      # Área y luces (ajustar area_id si tu área se llama diferente)
+      es_madrugada: "{{ parte == 'madrugada' }}"
+      escena_madrugada: >-
+        {% set s = states('input_text.sala_scene_madrugada') %}
+        {{ s if s not in ['unknown','unavailable', '', None] else '' }}
+      # Luces del área (usar area_id: "sala_de_estar"; ajusta si tu área difiere)
       area_id_sala: "sala_de_estar"
-      luces_area: >
+      luces_area: >-
         {{ expand(area_entities(area_id_sala))
            | selectattr('entity_id','search','^light\\.')
            | map(attribute='entity_id') | list }}
-      # Estrategia por franja (scene / brightness / fallback / script)
-      strategy_map: >
-        {{
-          {
-            'manana': states('input_select.sala_strategy_manana')|lower,
-            'mediodia': states('input_select.sala_strategy_mediodia')|lower,
-            'tarde': states('input_select.sala_strategy_tarde')|lower,
-            'noche': states('input_select.sala_strategy_noche')|lower,
-            'madrugada': states('input_select.sala_strategy_madrugada')|lower
-          }
-        }}
-      strategy: "{{ strategy_map.get(parte, 'fallback') }}"
-      # Brillos configurados (para 'brightness') por franja
-      bright_map: >
-        {{
-          {
-            'manana': states('input_number.sala_brightness_manana')|int,
-            'mediodia': states('input_number.sala_brightness_mediodia')|int,
-            'tarde': states('input_number.sala_brightness_tarde')|int,
-            'noche': states('input_number.sala_brightness_noche')|int,
-            'madrugada': states('input_number.sala_brightness_madrugada')|int
-          }
-        }}
-      bright_pct: "{{ bright_map.get(parte, 60) }}"
-      # Fallback % por franja (si no hay snapshot)
-      fb_map: >
-        {{
-          {
-            'manana': states('input_number.sala_fallback_manana')|int,
-            'mediodia': states('input_number.sala_fallback_mediodia')|int,
-            'tarde': states('input_number.sala_fallback_tarde')|int,
-            'noche': states('input_number.sala_fallback_noche')|int,
-            'madrugada': states('input_number.sala_fallback_madrugada')|int
-          }
-        }}
-      fb_pct: "{{ fb_map.get(parte, 60) }}"
-      # Escenas por franja
-      scene_map: >
-        {{
-          {
-            'manana': states('input_text.sala_scene_manana'),
-            'mediodia': states('input_text.sala_scene_mediodia'),
-            'tarde': states('input_text.sala_scene_tarde'),
-            'noche': states('input_text.sala_scene_noche'),
-            'madrugada': states('input_text.sala_scene_madrugada')
-          }
-        }}
-      scene_entity_raw: "{{ scene_map.get(parte, '') }}"
-      scene_entity: >
-        {% set s = scene_entity_raw %}
-        {{ s if s not in ['unknown','unavailable','',None] else '' }}
-      # Scripts por franja
-      script_map: >
-        {{
-          {
-            'manana': states('input_text.sala_script_manana'),
-            'mediodia': states('input_text.sala_script_mediodia'),
-            'tarde': states('input_text.sala_script_tarde'),
-            'noche': states('input_text.sala_script_noche'),
-            'madrugada': states('input_text.sala_script_madrugada')
-          }
-        }}
-      script_entity_raw: "{{ script_map.get(parte, '') }}"
-      script_entity: >
-        {% set s = script_entity_raw %}
-        {{ s if s not in ['unknown','unavailable','',None] else '' }}
     action:
       # Siempre cancelamos timers al detectar movimiento
       - service: timer.cancel
@@ -331,95 +130,64 @@ automation:
             - timer.preaviso_sala
 
       - choose:
-          # ---- Estrategia: SCRIPT ----
-          - conditions: "{{ strategy == 'script' }}"
+          # A) MADRUGADA
+          - conditions: "{{ es_madrugada }}"
             sequence:
               - choose:
-                  - conditions: "{{ script_entity != '' }}"
-                    sequence:
-                      - service: script.turn_on
-                        target:
-                          entity_id: "{{ script_entity }}"
-                      - service: input_boolean.turn_off
-                        target: { entity_id: input_boolean.sala_snapshot_ready }
-                default:
-                  # Si no se configuró script, degradar a FALLBACK
-                  - choose:
-                      - conditions:
-                          - condition: state
-                            entity_id: input_boolean.sala_snapshot_ready
-                            state: "on"
-                        sequence:
-                          - service: scene.turn_on
-                            data: { entity_id: scene.sala_snapshot }
-                          - service: input_boolean.turn_off
-                            target: { entity_id: input_boolean.sala_snapshot_ready }
-                    default:
-                      - service: light.turn_on
-                        data:
-                          entity_id: "{{ luces_area | join(', ') }}"
-                          brightness_pct: "{{ fb_pct }}"
-
-          # ---- Estrategia: SCENE ----
-          - conditions: "{{ strategy == 'scene' }}"
-            sequence:
-              - choose:
-                  - conditions: "{{ scene_entity != '' }}"
+                  # Si hay escena configurada, usarla (única llamada que no es light.*)
+                  - conditions: "{{ escena_madrugada != '' }}"
                     sequence:
                       - service: scene.turn_on
-                        data: { entity_id: "{{ scene_entity }}" }
-                      - service: input_boolean.turn_off
-                        target: { entity_id: input_boolean.sala_snapshot_ready }
-                default:
-                  # Si no hay escena definida, degradar a FALLBACK
-                  - choose:
-                      - conditions:
-                          - condition: state
-                            entity_id: input_boolean.sala_snapshot_ready
-                            state: "on"
-                        sequence:
-                          - service: scene.turn_on
-                            data: { entity_id: scene.sala_snapshot }
-                          - service: input_boolean.turn_off
-                            target: { entity_id: input_boolean.sala_snapshot_ready }
-                    default:
-                      - service: light.turn_on
                         data:
-                          entity_id: "{{ luces_area | join(', ') }}"
-                          brightness_pct: "{{ fb_pct }}"
-
-          # ---- Estrategia: BRIGHTNESS ----
-          - conditions: "{{ strategy == 'brightness' }}"
-            sequence:
-              - service: light.turn_on
-                data:
-                  entity_id: "{{ luces_area | join(', ') }}"
-                  brightness_pct: "{{ bright_pct }}"
-              - service: input_boolean.turn_off
-                target: { entity_id: input_boolean.sala_snapshot_ready }
-
-          # ---- Estrategia: FALLBACK ----
-          - conditions: []
-            sequence:
-              - choose:
-                  - conditions:
-                      - condition: state
-                        entity_id: input_boolean.sala_snapshot_ready
-                        state: "on"
-                    sequence:
-                      - service: scene.turn_on
-                        data: { entity_id: scene.sala_snapshot }
-                      - service: input_boolean.turn_off
-                        target: { entity_id: input_boolean.sala_snapshot_ready }
+                          entity_id: "{{ escena_madrugada }}"
+                # Si no hay escena, fallback: encender todo el área al 15%
                 default:
                   - service: light.turn_on
                     data:
                       entity_id: "{{ luces_area | join(', ') }}"
-                      brightness_pct: "{{ fb_pct }}"
+                      brightness_pct: 15
+              # Si se usó snapshot antes, lo damos por consumido
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.sala_snapshot_ready
 
-# ------------------------
-# AUTOMATIZACIÓN 2: CLEAR  (SIN CAMBIOS FUNCIONALES vs v9)
-# ------------------------
+          # B) RESTO DEL DÍA
+          - conditions: []
+            sequence:
+              - choose:
+                  # Si hay snapshot listo, restaurarlo
+                  - conditions:
+                      - condition: state
+                        entity_id: input_boolean.sala_snapshot_ready
+                        state: "on"
+                      - condition: template
+                        value_template: "{{ states('scene.sala_snapshot') not in ['unknown','unavailable'] }}"
+                    sequence:
+                      - service: scene.turn_on
+                        data:
+                          entity_id: scene.sala_snapshot
+                      - service: input_boolean.turn_off
+                        target:
+                          entity_id: input_boolean.sala_snapshot_ready
+                # Si no hay snapshot, fallback: encender área al 60%
+                default:
+                  - service: light.turn_on
+                    data:
+                      entity_id: "{{ luces_area | join(', ') }}"
+                      brightness_pct: 60
+
+  # ------------------------
+  # AUTOMATIZACIÓN 2: CLEAR
+  #  - Se ejecuta cuando se pierde el movimiento.
+  #  - Flujo:
+  #      1) Arranca timer TOTAL (apagado_sala) por el tiempo según parte del día.
+  #      2) Espera hasta (TOTAL - PREAVISO). Si vuelve movimiento, cancela y sale.
+  #      3) Si no volvió, crea snapshot (para poder restaurar) y marca flag.
+  #      4) PREAVISO: fija TODAS las luces encendidas al % objetivo (piso 10%).
+  #      5) Arranca timer PREAVISO.
+  #      6) Si vuelve movimiento durante el preaviso: cancela y RESTAURA snapshot.
+  #      7) Si no vuelve: apaga todas las luces del área y limpia flag snapshot.
+  # ------------------------
   - id: sala_motion_clear_v9_1
     alias: Sala - motion - clear (v9.1)
     mode: restart
@@ -427,17 +195,18 @@ automation:
       - platform: state
         entity_id: binary_sensor.motion_sala
         to: "off"
-        for: "00:00:05"   # debounce OFF 5s
+        for: "00:00:05"   # debounce 5s (evita falsos OFF)
     condition:
       - condition: state
         entity_id: input_boolean.mantener_luces
         state: "off"
     variables:
+      # Parte del día normalizada
       parte: >
         {{ states('sensor.parte_del_dia') | lower
            | replace('á','a') | replace('é','e') | replace('í','i')
            | replace('ó','o') | replace('ú','u') }}
-      # Minutos por franja (desde helpers)
+      # Map de minutos por parte del día (desde helpers)
       total_min: >-
         {% set mapa = {
           'manana': states('input_number.sala_off_manana')|int,
@@ -450,22 +219,27 @@ automation:
       preaviso_min: "{{ states('input_number.sala_preaviso') | int }}"
       total_seg: "{{ (total_min | int) * 60 }}"
       preaviso_seg: "{{ (preaviso_min | int) * 60 }}"
-      # Espera hasta el inicio del preaviso (total - preaviso), con piso 0
+      # Espera hasta el inicio del preaviso (total - preaviso), acotada a >= 0
       espera_preaviso_s: "{{ [ (total_seg | int) - (preaviso_seg | int), 0 ] | max }}"
-      # Duraciones para los timers
+      # Formatos para timers
       dur_total: "00:{{ '%02d'|format(total_min | int) }}:00"
       dur_preaviso: "00:{{ '%02d'|format(preaviso_min | int) }}:00"
+      # NUEVO: target absoluto para preaviso
+      preaviso_target_pct: "{{ states('input_number.sala_preaviso_target_pct') | int(50) }}"
+
       # Área y luces
       area_id_sala: "sala_de_estar"
-      luces_area: >
+      luces_area: >-
         {{ expand(area_entities(area_id_sala))
            | selectattr('entity_id','search','^light\\.')
            | map(attribute='entity_id') | list }}
     action:
-      # 1) Iniciar timer TOTAL (visual en UI)
+      # 1) Arrancar timer TOTAL (para visual en UI)
       - service: timer.start
-        target: { entity_id: timer.apagado_sala }
-        data: { duration: "{{ dur_total }}" }
+        target:
+          entity_id: timer.apagado_sala
+        data:
+          duration: "{{ dur_total }}"
 
       # 2) Esperar hasta el preaviso (o hasta que vuelva movimiento)
       - wait_for_trigger:
@@ -477,7 +251,7 @@ automation:
         continue_on_timeout: true
 
       - choose:
-          # Volvió movimiento antes del preaviso → cancelar y salir
+          # 2.c) Volvió el movimiento antes del preaviso -> cancelar timers y salir
           - conditions: "{{ wait.trigger is not none }}"
             sequence:
               - service: timer.cancel
@@ -487,8 +261,9 @@ automation:
                     - timer.preaviso_sala
               - stop: "Movimiento volvió antes del preaviso."
 
-        # 3) No volvió → crear snapshot (si hay luces ON) y marcar flag
+        # 3) No volvió el movimiento: crear snapshot y marcar flag
         default:
+          # Si hay luces encendidas, creamos snapshot para poder restaurar luego
           - choose:
               - conditions: >-
                   {{ expand(luces_area) | selectattr('state','eq','on') | list | length > 0 }}
@@ -498,14 +273,16 @@ automation:
                       scene_id: sala_snapshot
                       snapshot_entities: "{{ luces_area }}"
                   - service: input_boolean.turn_on
-                    target: { entity_id: input_boolean.sala_snapshot_ready }
+                    target:
+                      entity_id: input_boolean.sala_snapshot_ready
 
-          # 4) Dim relativo: bajar cada luz ON al 50% (piso 10%)
+          # 4) PREAVISO: fijar TODAS las luces ON al % objetivo (piso 10%)
           - variables:
-              encendidas: >
+              encendidas: >-
                 {{ expand(luces_area)
                    | selectattr('state','eq','on')
                    | map(attribute='entity_id') | list }}
+              target_preaviso: "{{ [ preaviso_target_pct | int, 10 ] | max }}"
           - if:
               - condition: template
                 value_template: "{{ encendidas | length > 0 }}"
@@ -516,30 +293,29 @@ automation:
                     - service: light.turn_on
                       data:
                         entity_id: "{{ repeat.item }}"
-                        brightness_pct: >-
-                          {% set b255 = state_attr(repeat.item,'brightness')|int(255) %}
-                          {% set pct0 = (b255 / 2.55) | round(0) | int %}
-                          {% set newp = (pct0 / 2) | int %}
-                          {{ [newp, 10] | max }}
+                        brightness_pct: "{{ target_preaviso }}"
 
-          # 5) Iniciar timer PREAVISO (independiente para UI)
+          # 5) Arrancar timer de PREAVISO (independiente para UI)
           - service: timer.start
-            target: { entity_id: timer.preaviso_sala }
-            data: { duration: "{{ dur_preaviso }}" }
+            target:
+              entity_id: timer.preaviso_sala
+            data:
+              duration: "{{ dur_preaviso }}"
 
-          # 6) Esperar: o vuelve movimiento, o termina preaviso
+          # 6) Esperar a que vuelva el movimiento o a que termine el preaviso
           - wait_for_trigger:
               - platform: state
                 entity_id: binary_sensor.motion_sala
                 to: "on"
               - platform: event
                 event_type: timer.finished
-                event_data: { entity_id: timer.preaviso_sala }
-            timeout: "{{ dur_total }}"
+                event_data:
+                  entity_id: timer.preaviso_sala
+            timeout: "{{ dur_total }}"   # salvaguarda
             continue_on_timeout: true
 
           - choose:
-              # 6.a) Volvió movimiento durante preaviso → restaurar snapshot (si hay) y cancelar timers
+              # 6.a) Volvió movimiento durante el preaviso -> restaurar snapshot y cancelar timers
               - conditions: >-
                   {{ wait.trigger is not none and
                      (wait.trigger.platform == 'state' or
@@ -555,17 +331,22 @@ automation:
                           - condition: state
                             entity_id: input_boolean.sala_snapshot_ready
                             state: "on"
+                          - condition: template
+                            value_template: "{{ states('scene.sala_snapshot') not in ['unknown','unavailable'] }}"
                         sequence:
                           - service: scene.turn_on
-                            data: { entity_id: scene.sala_snapshot }
+                            data:
+                              entity_id: scene.sala_snapshot
                   - service: input_boolean.turn_off
-                    target: { entity_id: input_boolean.sala_snapshot_ready }
+                    target:
+                      entity_id: input_boolean.sala_snapshot_ready
                   - stop: "Movimiento volvió durante el preaviso."
 
-            # 6.b) No volvió → Apagado total y limpiar flag
+            # 7) No volvió movimiento -> Apagado total y limpiar flag
             default:
               - service: light.turn_off
                 data:
                   entity_id: "{{ luces_area | join(', ') }}"
               - service: input_boolean.turn_off
-                target: { entity_id: input_boolean.sala_snapshot_ready }
+                target:
+                  entity_id: input_boolean.sala_snapshot_ready
