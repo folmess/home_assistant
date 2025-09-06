@@ -14,7 +14,7 @@ Este paquete implementa un sistema de automatización para controlar las luces d
    - Se utiliza el sensor `sensor.parte_del_dia` para determinar la franja horaria.
 
 3. **Preaviso**:
-   - Antes del apagado total, las luces se ajustan a un nivel de brillo objetivo configurable (`input_number.sala_preaviso_target_pct`).
+   - Antes del apagado total, las luces reducen su brillo en un porcentaje configurable (`input_number.sala_preaviso_target_pct`).
    - Esto permite advertir a los usuarios que las luces están por apagarse.
 
 4. **Restauración de Estado**:
@@ -25,7 +25,7 @@ Este paquete implementa un sistema de automatización para controlar las luces d
    - `timer.preaviso_sala`: Controla la duración del preaviso.
 
 6. **Configuración Flexible**:
-   - Los tiempos de apagado y el brillo del preaviso son configurables a través de `input_number`.
+   - Los tiempos de apagado y la reducción de brillo del preaviso son configurables a través de `input_number`.
    - Se puede definir una escena específica para la madrugada (`input_text.sala_scene_madrugada`).
 
 ---
@@ -55,7 +55,7 @@ Este paquete implementa un sistema de automatización para controlar las luces d
      3. **Snapshot y Preaviso**:
         - Si no vuelve el movimiento:
           - Se crea un snapshot del estado actual de las luces.
-          - Se ajustan todas las luces encendidas al nivel de brillo configurado para el preaviso.
+          - Se reducen todas las luces encendidas según el porcentaje configurado para el preaviso.
           - Se inicia el temporizador de preaviso (`timer.preaviso_sala`).
      4. **Espera durante el Preaviso**:
         - Si vuelve el movimiento durante el preaviso:
@@ -73,7 +73,7 @@ Este paquete implementa un sistema de automatización para controlar las luces d
 ### **Input Numbers**
 - `input_number.sala_off_*`: Configuran los tiempos de apagado (en minutos) para cada parte del día.
 - `input_number.sala_preaviso`: Configura la duración del preaviso (en minutos).
-- `input_number.sala_preaviso_target_pct`: Configura el nivel de brillo objetivo para el preaviso (en porcentaje).
+- `input_number.sala_preaviso_target_pct`: Configura el porcentaje de reducción de brillo para el preaviso.
 
 ### **Input Text**
 - `input_text.sala_scene_madrugada`: Permite definir una escena específica para la madrugada.
