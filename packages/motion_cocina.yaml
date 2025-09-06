@@ -1,8 +1,11 @@
+# yamllint disable rule:line-length
+---
 # ===========================================================
 #  COCINA — CONTROL POR MOVIMIENTO (v1.1.2, robusta YAML)
 #  - Estrategias por franja: scene / script / fallback
 #  - Timers: apagado_cocina / preaviso_cocina
 #  - Snapshot flag: input_boolean.cocina_snapshot_ready
+#  - Bypass: input_boolean.mantener_luces_cocina
 #  - Preaviso: brillo ABSOLUTO configurable (piso 10%)
 #  - 2 automatizaciones: detected / clear
 #  - Ajustá:
@@ -20,6 +23,9 @@ input_boolean:
   cocina_snapshot_ready:
     name: Cocina - Snapshot listo
     icon: mdi:camera-burst
+  mantener_luces_cocina:
+    name: Mantener luces cocina
+    icon: mdi:lightbulb-on
 
 input_number:
   cocina_off_manana:
@@ -104,7 +110,7 @@ input_number:
 
   # Brillo objetivo ABSOLUTO para el PREAVISO
   cocina_preaviso_target_pct:
-    name: Cocina - Preaviso: brillo objetivo (%)
+    name: "Cocina - Preaviso: brillo objetivo (%)"
     min: 1
     max: 100
     step: 1
@@ -229,6 +235,9 @@ automation:
     condition:
       - condition: state
         entity_id: input_boolean.mantener_luces
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.mantener_luces_cocina
         state: "off"
     variables:
       parte: >-
@@ -385,6 +394,9 @@ automation:
       - condition: state
         entity_id: input_boolean.mantener_luces
         state: "off"
+      - condition: state
+        entity_id: input_boolean.mantener_luces_cocina
+        state: "off"
     variables:
       parte: >-
         {{ states('sensor.parte_del_dia') | lower
@@ -398,7 +410,8 @@ automation:
         {% elif p == 'noche' %}{{ states('input_number.cocina_off_noche')|int }}
         {% elif p == 'madrugada' %}{{ states('input_number.cocina_off_madrugada')|int }}
         {% else %}{{ states('input_number.cocina_off_noche')|int }}{% endif %}
-      preaviso_min: "{{ states('input_number.cocina_preaviso') | int }}"
+      preaviso_min_helper: "{{ states('input_number.cocina_preaviso') | int }}"
+      preaviso_min: "{{ [preaviso_min_helper | int, total_min | int] | min }}"
       total_seg: "{{ (total_min | int) * 60 }}"
       preaviso_seg: "{{ (preaviso_min | int) * 60 }}"
       espera_preaviso_s: "{{ [ (total_seg | int) - (preaviso_seg | int), 0 ] | max }}"
@@ -413,6 +426,15 @@ automation:
            | selectattr('entity_id','search','^light\\.')
            | map(attribute='entity_id') | list }}
     action:
+      - choose:
+          - conditions: "{{ preaviso_min_helper | int > total_min | int }}"
+            sequence:
+              - service: logbook.log
+                data:
+                  name: Cocina - preaviso ajustado
+                  message: >-
+                    Preaviso ({{ preaviso_min_helper }} min) mayor que total
+                    ({{ total_min }} min); ajustado a {{ preaviso_min }} min
       - service: timer.start
         target:
           entity_id: timer.apagado_cocina
@@ -499,8 +521,8 @@ automation:
                   - choose:
                       - conditions:
                           - condition: state
-                          entity_id: input_boolean.cocina_snapshot_ready
-                          state: "on"
+                            entity_id: input_boolean.cocina_snapshot_ready
+                            state: "on"
                         sequence:
                           - service: scene.turn_on
                             data:
@@ -517,4 +539,3 @@ automation:
               - service: input_boolean.turn_off
                 target:
                   entity_id: input_boolean.cocina_snapshot_ready
-#x
