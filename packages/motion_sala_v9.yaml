@@ -271,7 +271,7 @@ automation:
                   - service: scene.create
                     data:
                       scene_id: sala_snapshot
-                      snapshot_entities: "{{ luces_area }}"
+                        snapshot_entities: "{{ luces_area | join(', ') }}"
                   - service: input_boolean.turn_on
                     target:
                       entity_id: input_boolean.sala_snapshot_ready
