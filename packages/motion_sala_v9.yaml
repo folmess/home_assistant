@@ -1,3 +1,5 @@
+# yamllint disable rule:line-length
+---
 # ===========================================================
 #  SALA DE ESTAR — CONTROL POR MOVIMIENTO (v9.1)
 #  - Helpers: tiempos por parte del día + preaviso + bypass mantener_luces_sala
@@ -66,7 +68,7 @@ input_number:
 
   # NUEVO: Porcentaje de reducción de brillo para el preaviso
   sala_preaviso_target_pct:
-    name: "Sala - Preaviso: reducción de brillo (%)"
+    name: "Sala - Preaviso: brillo objetivo (%)"
     min: 1
     max: 100
     step: 1
@@ -269,7 +271,8 @@ automation:
           'madrugada': states('input_number.sala_off_madrugada')|int
         } %}
         {{ mapa.get(parte, states('input_number.sala_off_noche')|int) }}
-      preaviso_min: "{{ states('input_number.sala_preaviso') | int }}"
+      preaviso_min_helper: "{{ states('input_number.sala_preaviso') | int }}"
+      preaviso_min: "{{ [preaviso_min_helper | int, total_min | int] | min }}"
       total_seg: "{{ (total_min | int) * 60 }}"
       preaviso_seg: "{{ (preaviso_min | int) * 60 }}"
       # Espera hasta el inicio del preaviso (total - preaviso), acotada a >= 0
@@ -287,6 +290,15 @@ automation:
            | selectattr('entity_id','search','^light\\.')
            | map(attribute='entity_id') | list }}
     action:
+      - choose:
+          - conditions: "{{ preaviso_min_helper | int > total_min | int }}"
+            sequence:
+              - service: logbook.log
+                data:
+                  name: Sala - preaviso ajustado
+                  message: >-
+                    Preaviso ({{ preaviso_min_helper }} min) mayor que total
+                    ({{ total_min }} min); ajustado a {{ preaviso_min }} min
       # 1) Arrancar timer TOTAL (para visual en UI)
       - service: timer.start
         target:
@@ -336,8 +348,9 @@ automation:
                    | selectattr('state','eq','on')
                    | map(attribute='entity_id') | list }}
           - if:
-              - condition: template
-                value_template: "{{ encendidas | length > 0 }}"
+              - condition: state
+                entity_id: binary_sensor.motion_sala
+                state: "on"
             then:
               - service: script.sala_preaviso_dim
                 data:

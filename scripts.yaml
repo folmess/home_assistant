@@ -1,3 +1,5 @@
+# yamllint disable rule:line-length
+---
 despertar_google_nest:
   sequence:
     - service: media_player.volume_mute
@@ -598,6 +600,12 @@ sala_fade_de_luces_encendidas_del_area_a_objetivo:
         - repeat:
             count: "{{ steps_i }}"
             sequence:
+              - if:
+                  - condition: state
+                    entity_id: binary_sensor.motion_sala
+                    state: "on"
+                then:
+                  - stop: "Movimiento detectado durante fade"
               - variables:
                   frac: "{{ (repeat.index | float) / (steps_i | float) }}"
               - repeat:
@@ -612,6 +620,64 @@ sala_fade_de_luces_encendidas_del_area_a_objetivo:
                         next_pct:
                           "{{ (pct0 + (frac | float) * (objetivo - pct0)) | round(0)
                           | int }}"
+                    - target:
+                        entity_id: "{{ e }}"
+                      data:
+                        brightness_pct: "{{ next_pct }}"
+                      action: light.turn_on
+              - delay:
+                  milliseconds: "{{ intervalo_ms }}"
+  description: ""
+cocina_fade_de_luces_encendidas_del_area_a_objetivo:
+  alias: Cocina - Fade de luces encendidas del área a % objetivo
+  mode: restart
+  fields:
+    target_pct:
+      description: Porcentaje final objetivo (0-100)
+      default: 50
+    duration:
+      description: Duración total en segundos
+      default: 3
+    steps:
+      description: Cantidad de pasos (más pasos = más suave)
+      default: 12
+  sequence:
+    - variables:
+        luces_on: |
+          {{ expand(area_entities('cocina'))
+             | selectattr('domain','eq','light')
+             | selectattr('state','eq','on')
+             | map(attribute='entity_id') | list }}
+        objetivo: "{{ (target_pct | default(50)) | int }}"
+        steps_i: "{{ (steps | default(12)) | int }}"
+        duration_s: "{{ (duration | default(3)) | float }}"
+        intervalo_ms: |
+          {{ (duration_s * 1000 / (steps_i if steps_i > 0 else 1)) | round(0) | int }}
+    - choose:
+        - conditions: "{{ luces_on | length == 0 or steps_i <= 0 }}"
+          sequence: []
+      default:
+        - repeat:
+            count: "{{ steps_i }}"
+            sequence:
+              - if:
+                  - condition: state
+                    entity_id: binary_sensor.motion_cocina
+                    state: "on"
+                then:
+                  - stop: "Movimiento detectado durante fade"
+              - variables:
+                  frac: "{{ (repeat.index | float) / (steps_i | float) }}"
+              - repeat:
+                  for_each: "{{ luces_on }}"
+                  sequence:
+                    - variables:
+                        e: "{{ repeat.item }}"
+                        bri0_255: |
+                          {{ state_attr(e,'brightness') | default(0, true) | int }}
+                        pct0: "{{ (bri0_255 / 2.55) | round(0) | int }}"
+                        next_pct: |
+                          {{ (pct0 + (frac | float) * (objetivo - pct0)) | round(0) | int }}
                     - target:
                         entity_id: "{{ e }}"
                       data:
