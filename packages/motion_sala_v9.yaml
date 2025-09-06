@@ -288,24 +288,36 @@ automation:
                     target:
                       entity_id: input_boolean.sala_snapshot_ready
 
-          # 4) PREAVISO: fijar TODAS las luces ON al % objetivo (piso 10%)
+          # 4) PREAVISO: fade de luces encendidas al % objetivo (piso 10%)
           - variables:
-              encendidas: >-
-                {{ expand(luces_area)
-                   | selectattr('state','eq','on')
-                   | map(attribute='entity_id') | list }}
               target_preaviso: "{{ [ preaviso_target_pct | int, 10 ] | max }}"
+          - service: script.sala_fade_de_luces_encendidas_del_area_a_objetivo
+            data:
+              target_pct: "{{ target_preaviso }}"
           - if:
-              - condition: template
-                value_template: "{{ encendidas | length > 0 }}"
+              - condition: state
+                entity_id: binary_sensor.motion_sala
+                state: "on"
             then:
-              - repeat:
-                  for_each: "{{ encendidas }}"
-                  sequence:
-                    - service: light.turn_on
-                      data:
-                        entity_id: "{{ repeat.item }}"
-                        brightness_pct: "{{ target_preaviso }}"
+              - service: timer.cancel
+                target:
+                  entity_id:
+                    - timer.apagado_sala
+              - choose:
+                  - conditions:
+                      - condition: state
+                        entity_id: input_boolean.sala_snapshot_ready
+                        state: "on"
+                      - condition: template
+                        value_template: "{{ states('scene.sala_snapshot') not in ['unknown','unavailable'] }}"
+                    sequence:
+                      - service: scene.turn_on
+                        data:
+                          entity_id: scene.sala_snapshot
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.sala_snapshot_ready
+              - stop: "Movimiento volvió durante el fade"
 
           # 5) Arrancar timer de PREAVISO (independiente para UI)
           - service: timer.start
