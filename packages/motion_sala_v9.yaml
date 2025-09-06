@@ -1,6 +1,6 @@
 # ===========================================================
 #  SALA DE ESTAR — CONTROL POR MOVIMIENTO (v9.1)
-#  - Helpers: tiempos por parte del día + preaviso + bypass (externo)
+#  - Helpers: tiempos por parte del día + preaviso + bypass mantener_luces_sala
 #  - 2 automatizaciones: motion detected / motion clear
 #  - Sin scripts ni transiciones. Sólo turn_on/turn_off/brightness_pct.
 #  - Usa scene.create/scene.turn_on SÓLO para restaurar snapshot.
@@ -8,7 +8,7 @@
 #       timer.apagado_sala  -> total (visible en UI)
 #       timer.preaviso_sala -> preaviso (visible en UI)
 #  - Área usada: "sala_de_estar" (area_id). Ajustar si tu area difiere.
-#  - NUEVO: input_number.sala_preaviso_target_pct para fijar brillo objetivo del preaviso (ABSOLUTO, con piso 10%).
+#  - NUEVO: input_number.sala_preaviso_target_pct para fijar reducción de brillo del preaviso (relativa, con piso 10%).
 # ===========================================================
 
 homeassistant:
@@ -21,6 +21,9 @@ input_boolean:
   sala_snapshot_ready:
     name: Sala - Snapshot listo
     icon: mdi:camera-burst
+  mantener_luces_sala:
+    name: Sala - Mantener luces
+    icon: mdi:lightbulb-on
 
 input_number:
   sala_off_manana:
@@ -61,9 +64,9 @@ input_number:
     step: 1
     unit_of_measurement: min
 
-  # NUEVO: Target absoluto de brillo para el preaviso
+  # NUEVO: Porcentaje de reducción de brillo para el preaviso
   sala_preaviso_target_pct:
-    name: Sala - Preaviso: brillo objetivo (%)
+    name: "Sala - Preaviso: reducción de brillo (%)"
     min: 1
     max: 100
     step: 1
@@ -86,6 +89,56 @@ timer:
     name: Preaviso - Sala
     restore: true
 
+script:
+  sala_preaviso_dim:
+    alias: Sala - Preaviso dim manual
+    mode: parallel
+    fields:
+      lights:
+        description: Lista de luces a atenuar
+      reduction_pct:
+        description: Porcentaje de reducción de brillo
+    sequence:
+      - variables:
+          step_pct: 5
+          luces: "{{ lights | from_json }}"
+          targets: >-
+            {% set ns = namespace(list=[]) %}
+            {% for l in luces %}
+              {% set current = (state_attr(l,'brightness') | default(255) | int / 255 * 100) | round(0) %}
+              {% set t = [ (current * (100 - reduction_pct | int) / 100) | round(0) | int, 10 ] | max %}
+              {% set ns.list = ns.list + [ {'entity': l, 'target': t} ] %}
+            {% endfor %}
+            {{ ns.list }}
+      - repeat:
+          while:
+            - condition: template
+              value_template: >
+                {% set ns = namespace(any=false) %}
+                {% for t in targets %}
+                  {% set current = (state_attr(t.entity,'brightness') | default(0) | int / 255 * 100) | round(0) %}
+                  {% if current > t.target %}
+                    {% set ns.any = true %}
+                  {% endif %}
+                {% endfor %}
+                {{ is_state('binary_sensor.motion_sala','off') and ns.any }}
+          sequence:
+            - repeat:
+                for_each: "{{ targets }}"
+                sequence:
+                  - variables:
+                      current: "{{ (state_attr(repeat.item.entity,'brightness') | default(0) | int / 255 * 100) | round(0) }}"
+                      next_pct: "{{ [current - step_pct, repeat.item.target] | max }}"
+                  - if:
+                      - condition: template
+                        value_template: "{{ current > repeat.item.target }}"
+                    then:
+                      - service: light.turn_on
+                        data:
+                          entity_id: "{{ repeat.item.entity }}"
+                          brightness_pct: "{{ next_pct }}"
+            - delay: "00:00:01"
+
 # ------------------------
 # AUTOMATIZACIÓN 1: DETECTED
 #  - Se ejecuta cuando hay movimiento.
@@ -103,7 +156,7 @@ automation:
         to: "on"
     condition:
       - condition: state
-        entity_id: input_boolean.mantener_luces
+        entity_id: input_boolean.mantener_luces_sala
         state: "off"
     variables:
       # Normalizamos el sensor de parte del día sin tildes
@@ -198,7 +251,7 @@ automation:
         for: "00:00:05"   # debounce 5s (evita falsos OFF)
     condition:
       - condition: state
-        entity_id: input_boolean.mantener_luces
+        entity_id: input_boolean.mantener_luces_sala
         state: "off"
     variables:
       # Parte del día normalizada
@@ -224,8 +277,8 @@ automation:
       # Formatos para timers
       dur_total: "00:{{ '%02d'|format(total_min | int) }}:00"
       dur_preaviso: "00:{{ '%02d'|format(preaviso_min | int) }}:00"
-      # NUEVO: target absoluto para preaviso
-      preaviso_target_pct: "{{ states('input_number.sala_preaviso_target_pct') | int(50) }}"
+      # NUEVO: porcentaje de reducción para preaviso
+      preaviso_reduccion_pct: "{{ states('input_number.sala_preaviso_target_pct') | int(50) }}"
 
       # Área y luces
       area_id_sala: "sala_de_estar"
@@ -276,24 +329,31 @@ automation:
                     target:
                       entity_id: input_boolean.sala_snapshot_ready
 
-          # 4) PREAVISO: fijar TODAS las luces ON al % objetivo (piso 10%)
+          # 4) PREAVISO: reducir TODAS las luces ON según % indicado (piso 10%)
           - variables:
               encendidas: >-
                 {{ expand(luces_area)
                    | selectattr('state','eq','on')
                    | map(attribute='entity_id') | list }}
-              target_preaviso: "{{ [ preaviso_target_pct | int, 10 ] | max }}"
           - if:
               - condition: template
                 value_template: "{{ encendidas | length > 0 }}"
             then:
-              - repeat:
-                  for_each: "{{ encendidas }}"
-                  sequence:
-                    - service: light.turn_on
-                      data:
-                        entity_id: "{{ repeat.item }}"
-                        brightness_pct: "{{ target_preaviso }}"
+              - service: script.sala_preaviso_dim
+                data:
+                  lights: "{{ encendidas | to_json }}"
+                  reduction_pct: "{{ preaviso_reduccion_pct }}"
+              - if:
+                  - condition: state
+                    entity_id: binary_sensor.motion_sala
+                    state: "on"
+                then:
+                  - service: timer.cancel
+                    target:
+                      entity_id:
+                        - timer.apagado_sala
+                        - timer.preaviso_sala
+                  - stop: "Movimiento volvió durante el dimming."
 
           # 5) Arrancar timer de PREAVISO (independiente para UI)
           - service: timer.start
