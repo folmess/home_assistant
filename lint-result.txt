@@ -148,6 +148,8 @@
 ./packages/luces_fuera_de_linea.yaml:98:81: [error] line too long (96 > 80 characters) (line-length)
 ./packages/luces_fuera_de_linea.yaml:104:81: [error] line too long (98 > 80 characters) (line-length)
 ./packages/luces_fuera_de_linea.yaml:124:81: [error] line too long (101 > 80 characters) (line-length)
+./packages/motion_sala_v9.yaml:254:25: [warning] too few spaces before comment: expected 2 (comments)
+./packages/motion_sala_v9.yaml:388:40: [warning] too few spaces before comment: expected 2 (comments)
 ./packages/switch_rf.yaml:7:1: [warning] missing document start "---" (document-start)
 ./packages/switch_rf.yaml:40:26: [error] too many spaces inside braces (braces)
 ./packages/switch_rf.yaml:40:48: [error] too many spaces inside braces (braces)
