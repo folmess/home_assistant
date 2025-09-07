@@ -107,7 +107,7 @@ script:
           targets: >-
             {% set ns = namespace(list=[]) %}
             {% for l in luces %}
-              {% set current = state_attr(l,'brightness') | default(255) | int %}
+              {% set current = state_attr(l, 'brightness') | default(255) | int %}
               {% set target_pct = [ (current / 255 * (100 - reduction_pct | int)), 10 ] | max %}
               {% set target_brightness = (target_pct * 255 / 100) | round(0) | int %}
               {% set ns.list = ns.list + [ {'entity': l, 'target': target_brightness} ] %}
@@ -119,18 +119,18 @@ script:
               value_template: >
                 {% set ns = namespace(any=false) %}
                 {% for t in targets %}
-                  {% set current = state_attr(t.entity,'brightness') | default(0) | int %}
+                  {% set current = state_attr(t.entity, 'brightness') | default(0) | int %}
                   {% if current > t.target %}
                     {% set ns.any = true %}
                   {% endif %}
                 {% endfor %}
-                {{ is_state('binary_sensor.motion_sala','off') and ns.any }}
+                {{ ns.any }}
           sequence:
             - repeat:
                 for_each: "{{ targets }}"
                 sequence:
                   - variables:
-                      current: "{{ state_attr(repeat.item.entity,'brightness') | default(0) | int }}"
+                      current: "{{ state_attr(repeat.item.entity, 'brightness') | default(0) | int }}"
                       next_brightness: "{{ [current - (step_pct * 255 // 100), repeat.item.target] | max }}"
                   - if:
                       - condition: template
