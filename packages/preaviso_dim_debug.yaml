@@ -1,0 +1,150 @@
+# ===========================================================
+#  PACKAGE: Preaviso DIM (debug & helpers)
+#  - Script principal: sala_preaviso_dim
+#  - Helpers para debug: elegir luces, modo, target/reducción, piso
+#  - Botón de prueba: input_button.preaviso_run_dim
+#  - Script wrapper: preaviso_debug_run (lee helpers y llama al principal)
+# ===========================================================
+
+homeassistant:
+  customize: {}
+
+# ------------------------
+# HELPERS (UI / DEBUG)
+# ------------------------
+input_text:
+  # Lista de luces en formato JSON (ej: ["light.riel","light.barra"])
+  preaviso_lights_json:
+    name: Preaviso - Luces (JSON)
+    icon: mdi:string-lights
+    max: 255
+    initial: '[]'
+
+input_select:
+  # Modo de operación del dim:
+  # - target     => fija el brillo a un % absoluto (con piso)
+  # - reduction  => resta puntos porcentuales al nivel actual (con piso)
+  preaviso_dim_mode:
+    name: Preaviso - Modo
+    options:
+      - target
+      - reduction
+    initial: target
+    icon: mdi:lightbulb-outline
+
+input_number:
+  # Piso mínimo, para no bajar de cierto % (aplica en cualquier modo)
+  preaviso_floor_pct:
+    name: Preaviso - Piso mínimo (%)
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: '%'
+    initial: 10
+
+  # Porcentaje objetivo si el modo = target (ABSOLUTO)
+  preaviso_target_pct:
+    name: Preaviso - Objetivo (%)
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: '%'
+    initial: 50
+
+  # Reducción en puntos porcentuales si el modo = reduction
+  preaviso_reduction_pct:
+    name: Preaviso - Reducción (p.p.)
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: 'pp'
+    initial: 50
+
+input_button:
+  preaviso_run_dim:
+    name: Probar DIM
+    icon: mdi:play
+
+# ----------------------------------------------------------
+# SCRIPT PRINCIPAL — sala_preaviso_dim
+#  - Acepta lights como lista YAML o string JSON
+#  - Dos formas de uso:
+#     * target_pct: fija el % final (se impone sobre reduction_pct)
+#     * reduction_pct: resta p.p. al % actual
+#  - Siempre respeta floor_pct como mínimo
+# ----------------------------------------------------------
+script:
+  sala_preaviso_dim:
+    alias: Sala - Preaviso DIM (robusto)
+    mode: parallel
+    fields:
+      lights:
+        description: Lista de luces (p. ej. ["light.riel","light.barra"]) o string JSON equivalente.
+      target_pct:
+        description: Porcentaje final objetivo (0-100). Si se pasa, tiene prioridad sobre reduction_pct.
+        example: 50
+      reduction_pct:
+        description: Reducción en puntos porcentuales respecto del nivel actual (0-100). Se usa si NO hay target_pct.
+        example: 20
+      floor_pct:
+        description: Piso mínimo de brillo (0-100).
+        default: 10
+        example: 10
+    sequence:
+      - variables:
+          in_: "{{ lights | default([], true) }}"
+          # Normalizamos lights: si es string => JSON; si es lista => la usamos; sino => []
+          lights_list: >-
+            {% if in_ is string %}
+              {{ in_ | from_json }}
+            {% elif in_ is iterable %}
+              {{ in_ }}
+            {% else %}
+              []
+            {% endif %}
+          has_target: "{{ target_pct is defined and (target_pct|string) not in ['','none','None','unknown','unavailable'] }}"
+          target: "{{ (target_pct | default(-1)) | int }}"
+          reduce: "{{ (reduction_pct | default(0)) | int }}"
+          floor: "{{ (floor_pct | default(10)) | int }}"
+      - if:
+          - condition: template
+            value_template: "{{ lights_list | length > 0 }}"
+        then:
+          - repeat:
+              for_each: "{{ lights_list }}"
+              sequence:
+                - variables:
+                    e: "{{ repeat.item }}"
+                    bri255: "{{ state_attr(e,'brightness') | int(255) }}"
+                    pct0: "{{ (bri255 / 2.55) | round(0) | int }}"
+                    # Cálculo del próximo %:
+                    # - Si hay target_pct => next = max(target, floor)
+                    # - Si NO hay target_pct => next = max(pct0 - reduce, floor)
+                    next_pct: >-
+                      {% if has_target %}
+                        {{ [ target, floor ] | max }}
+                      {% else %}
+                        {{ [ (pct0 - reduce), floor ] | max }}
+                      {% endif %}
+                - service: light.turn_on
+                  data:
+                    entity_id: "{{ e }}"
+                    brightness_pct: "{{ next_pct }}"
+
+  # ----------------------------------------------------------
+  # SCRIPT WRAPPER — preaviso_debug_run
+  #  - Lee los helpers UI y arma la llamada a sala_preaviso_dim
+  #  - Útil para disparar desde el botón de prueba
+  # ----------------------------------------------------------
+  preaviso_debug_run:
+    alias: Preaviso - Debug Run (helpers)
+    mode: restart
+    sequence:
+      - variables:
+          mode: "{{ states('input_select.preaviso_dim_mode') | lower }}"
+          floor: "{{ states('input_number.preaviso_floor_pct') | int(10) }}"
+          tgt: "{{ states('input_number.preaviso_target_pct') | int(50) }}"
+          red: "{{ states('input_number.preaviso_reduction_pct') | int(50) }}"
+          lights_json: "{{ states('input_text.preaviso_lights_json') }}"
+      - choose:
+          # target mode
