@@ -79,21 +79,17 @@ script:
     mode: parallel
     fields:
       lights:
-        description: Lista de luces (p. ej. ["light.riel","light.barra"]) o string JSON equivalente.
+        description: Lista YAML (["light.riel",...]) o string JSON equivalente.
       target_pct:
-        description: Porcentaje final objetivo (0-100). Si se pasa, tiene prioridad sobre reduction_pct.
-        example: 50
+        description: pct final (0-100). Si viene, tiene prioridad sobre reduction_pct.
       reduction_pct:
-        description: Reducción en puntos porcentuales respecto del nivel actual (0-100). Se usa si NO hay target_pct.
-        example: 20
+        description: Reducción en puntos porcentuales (0-100) respecto del nivel actual.
       floor_pct:
-        description: Piso mínimo de brillo (0-100).
+        description: Piso mínimo (0-100)
         default: 10
-        example: 10
     sequence:
       - variables:
           in_: "{{ lights | default([], true) }}"
-          # Normalizamos lights: si es string => JSON; si es lista => la usamos; sino => []
           lights_list: >-
             {% if in_ is string %}
               {{ in_ | from_json }}
@@ -103,9 +99,9 @@ script:
               []
             {% endif %}
           has_target: "{{ target_pct is defined and (target_pct|string) not in ['','none','None','unknown','unavailable'] }}"
-          target: "{{ (target_pct | default(-1)) | int }}"
-          reduce: "{{ (reduction_pct | default(0)) | int }}"
-          floor: "{{ (floor_pct | default(10)) | int }}"
+          target: "{{ (target_pct | default(-1) | int) }}"
+          reduce: "{{ (reduction_pct | default(0) | int) }}"
+          floor: "{{ (floor_pct | default(10) | int) }}"
       - if:
           - condition: template
             value_template: "{{ lights_list | length > 0 }}"
@@ -115,11 +111,8 @@ script:
               sequence:
                 - variables:
                     e: "{{ repeat.item }}"
-                    bri255: "{{ state_attr(e,'brightness') | int(255) }}"
+                    bri255: "{{ state_attr(e,'brightness') | default(255) | int }}"
                     pct0: "{{ (bri255 / 2.55) | round(0) | int }}"
-                    # Cálculo del próximo %:
-                    # - Si hay target_pct => next = max(target, floor)
-                    # - Si NO hay target_pct => next = max(pct0 - reduce, floor)
                     next_pct: >-
                       {% if has_target %}
                         {{ [ target, floor ] | max }}

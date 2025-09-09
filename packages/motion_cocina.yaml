@@ -1,554 +1,93 @@
-# yamllint disable rule:line-length
----
-# ===========================================================
-#  COCINA — CONTROL POR MOVIMIENTO (v1.1.2, robusta YAML)
-#  - Estrategias por franja: scene / script / fallback
-#  - Timers: apagado_cocina / preaviso_cocina
-#  - Snapshot flag: input_boolean.cocina_snapshot_ready
-#  - Bypass: input_boolean.mantener_luces_cocina
-#  - Preaviso: brillo ABSOLUTO configurable (piso 10%)
-#  - 2 automatizaciones: detected / clear
-#  - Ajustá:
-#      * binary_sensor.motion_cocina
-#      * area_id_cocina: "cocina"
-# ===========================================================
-
-homeassistant:
-  customize: {}
-
-# ------------------------
-# HELPERS
-# ------------------------
-input_boolean:
-  cocina_snapshot_ready:
-    name: Cocina - Snapshot listo
-    icon: mdi:camera-burst
-  mantener_luces_cocina:
-    name: Mantener luces cocina
-    icon: mdi:lightbulb-on
-
-input_number:
-  cocina_off_manana:
-    name: Cocina - Apagado mañana (min)
-    min: 1
-    max: 180
-    step: 1
-    unit_of_measurement: min
-    initial: 10
-  cocina_off_mediodia:
-    name: Cocina - Apagado mediodía (min)
-    min: 1
-    max: 180
-    step: 1
-    unit_of_measurement: min
-    initial: 10
-  cocina_off_tarde:
-    name: Cocina - Apagado tarde (min)
-    min: 1
-    max: 180
-    step: 1
-    unit_of_measurement: min
-    initial: 10
-  cocina_off_noche:
-    name: Cocina - Apagado noche (min)
-    min: 1
-    max: 180
-    step: 1
-    unit_of_measurement: min
-    initial: 8
-  cocina_off_madrugada:
-    name: Cocina - Apagado madrugada (min)
-    min: 1
-    max: 180
-    step: 1
-    unit_of_measurement: min
-    initial: 5
-
-  cocina_preaviso:
-    name: Cocina - Preaviso (min)
-    min: 1
-    max: 30
-    step: 1
-    unit_of_measurement: min
-    initial: 2
-
-  cocina_fallback_manana:
-    name: Cocina - Fallback (mañana) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: "%"
-    initial: 70
-  cocina_fallback_mediodia:
-    name: Cocina - Fallback (mediodía) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: "%"
-    initial: 70
-  cocina_fallback_tarde:
-    name: Cocina - Fallback (tarde) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: "%"
-    initial: 60
-  cocina_fallback_noche:
-    name: Cocina - Fallback (noche) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: "%"
-    initial: 60
-  cocina_fallback_madrugada:
-    name: Cocina - Fallback (madrugada) %
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: "%"
-    initial: 30
-
-  # Brillo objetivo ABSOLUTO para el PREAVISO
-  cocina_preaviso_target_pct:
-    name: "Cocina - Preaviso: brillo objetivo (%)"
-    min: 1
-    max: 100
-    step: 1
-    unit_of_measurement: "%"
-    initial: 50
-
-# Escenas por franja (opcionales). Se usan si strategy = scene
-input_text:
-  cocina_scene_manana:
-    name: Cocina - Escena (mañana)
-    icon: mdi:white-balance-sunny
-    max: 255
-    initial: ""
-  cocina_scene_mediodia:
-    name: Cocina - Escena (mediodía)
-    icon: mdi:weather-sunny
-    max: 255
-    initial: ""
-  cocina_scene_tarde:
-    name: Cocina - Escena (tarde)
-    icon: mdi:weather-sunset
-    max: 255
-    initial: ""
-  cocina_scene_noche:
-    name: Cocina - Escena (noche)
-    icon: mdi:weather-night
-    max: 255
-    initial: ""
-  cocina_scene_madrugada:
-    name: Cocina - Escena (madrugada)
-    icon: mdi:weather-night
-    max: 255
-    initial: ""
-
-  # Scripts por franja (entity_id de script.*). Se usan si la estrategia es "script".
-  # Scripts por franja (opcionales). Se usan si strategy = script
-  cocina_script_manana:
-    name: Cocina - Script (mañana)
-    icon: mdi:script-text
-    max: 255
-    initial: ""
-  cocina_script_mediodia:
-    name: Cocina - Script (mediodía)
-    icon: mdi:script-text
-    max: 255
-    initial: ""
-  cocina_script_tarde:
-    name: Cocina - Script (tarde)
-    icon: mdi:script-text
-    max: 255
-    initial: ""
-  cocina_script_noche:
-    name: Cocina - Script (noche)
-    icon: mdi:script-text
-    max: 255
-    initial: ""
-  cocina_script_madrugada:
-    name: Cocina - Script (madrugada)
-    icon: mdi:script-text
-    max: 255
-    initial: ""
-
-# Estrategia por franja (elige UNA): scene / fallback / script
-input_select:
-  cocina_strategy_manana:
-    name: Cocina - Estrategia (mañana)
-    options:
-      - scene
-      - fallback
-      - script
-    initial: fallback
-  cocina_strategy_mediodia:
-    name: Cocina - Estrategia (mediodía)
-    options:
-      - scene
-      - fallback
-      - script
-    initial: fallback
-  cocina_strategy_tarde:
-    name: Cocina - Estrategia (tarde)
-    options:
-      - scene
-      - fallback
-      - script
-    initial: fallback
-  cocina_strategy_noche:
-    name: Cocina - Estrategia (noche)
-    options:
-      - scene
-      - fallback
-      - script
-    initial: fallback
-  cocina_strategy_madrugada:
-    name: Cocina - Estrategia (madrugada)
-    options:
-      - scene
-      - fallback
-      - script
-    initial: fallback
-
-# Temporizadores
-timer:
-  apagado_cocina:
-    name: Apagado total - Cocina
-    restore: true
-  preaviso_cocina:
-    name: Preaviso - Cocina
-    restore: true
-
-# ------------------------
-# AUTOMATIZACIONES
-# ------------------------
+###################################
+## MOTION BAÑO
+## no usa sensor parte_del_dia
+## no activa timers
+###################################
 automation:
-  # ========== DETECTED ==========
-  - id: cocina_motion_detected_v1_1_2
-    alias: Cocina - motion - detected (v1.1.2)
-    mode: single
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.motion_cocina
-        to: "on"
-    condition:
-      - condition: state
-        entity_id: input_boolean.mantener_luces
-        state: "off"
-      - condition: state
-        entity_id: input_boolean.mantener_luces_cocina
-        state: "off"
-    variables:
-      parte: >-
-        {{ states('sensor.parte_del_dia') | lower
-           | replace('á','a') | replace('é','e') | replace('í','i')
-           | replace('ó','o') | replace('ú','u') }}
-      area_id_cocina: "cocina"
-      luces_area: >-
-        {{ expand(area_entities(area_id_cocina))
-           | selectattr('entity_id','search','^light\\.')
-           | map(attribute='entity_id') | list }}
+- alias: Motion - Baño
+  id: motion_bano_unificado
+  mode: restart
 
-      # Estrategia según parte del día (sin mapas embebidos)
-      strategy: >-
-        {% set p = parte %}
-        {% if p == 'manana' %}{{ states('input_select.cocina_strategy_manana')|lower }}
-        {% elif p == 'mediodia' %}{{ states('input_select.cocina_strategy_mediodia')|lower }}
-        {% elif p == 'tarde' %}{{ states('input_select.cocina_strategy_tarde')|lower }}
-        {% elif p == 'noche' %}{{ states('input_select.cocina_strategy_noche')|lower }}
-        {% elif p == 'madrugada' %}{{ states('input_select.cocina_strategy_madrugada')|lower }}
-        {% else %}fallback{% endif %}
+  trigger:
+    - id: "motion_on"
+      platform: state
+      entity_id: binary_sensor.motion_bano
+      to: "on"
 
-      fb_pct: >-
-        {% set p = parte %}
-        {% if p == 'manana' %}{{ states('input_number.cocina_fallback_manana')|int }}
-        {% elif p == 'mediodia' %}{{ states('input_number.cocina_fallback_mediodia')|int }}
-        {% elif p == 'tarde' %}{{ states('input_number.cocina_fallback_tarde')|int }}
-        {% elif p == 'noche' %}{{ states('input_number.cocina_fallback_noche')|int }}
-        {% elif p == 'madrugada' %}{{ states('input_number.cocina_fallback_madrugada')|int }}
-        {% else %}60{% endif %}
+    - id: "motion_off_120s"
+      platform: state
+      entity_id: binary_sensor.motion_bano
+      to: "off"
+      for: "00:02:00"
 
-      scene_entity: >-
-        {% set p = parte %}
-        {% set s = (
-          states('input_text.cocina_scene_manana') if p == 'manana' else
-          states('input_text.cocina_scene_mediodia') if p == 'mediodia' else
-          states('input_text.cocina_scene_tarde') if p == 'tarde' else
-          states('input_text.cocina_scene_noche') if p == 'noche' else
-          states('input_text.cocina_scene_madrugada') if p == 'madrugada' else
-          ''
-        ) %}
-        {{ s if s not in ['unknown','unavailable','', None] else '' }}
+  condition: []
 
-      script_entity: >-
-        {% set p = parte %}
-        {% set s = (
-          states('input_text.cocina_script_manana') if p == 'manana' else
-          states('input_text.cocina_script_mediodia') if p == 'mediodia' else
-          states('input_text.cocina_script_tarde') if p == 'tarde' else
-          states('input_text.cocina_script_noche') if p == 'noche' else
-          states('input_text.cocina_script_madrugada') if p == 'madrugada' else
-          ''
-        ) %}
-        {{ s if s not in ['unknown','unavailable','', None] else '' }}
+  action:
+    - choose:
+        # ── Al detectar movimiento ─────────────────────────────
+        - conditions:
+            - condition: trigger
+              id: "motion_on"
+          sequence:
+            # Madrugada: cálido y tenue
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {% set ahora = now().strftime('%H:%M:%S') %}
+                        {% set ini = states('input_datetime.hora_inicio_madrugada') %}
+                        {% set fin = states('input_datetime.hora_fin_madrugada') %}
+                        {% if ini <= fin %}{{ ini <= ahora < fin }}{% else %}{{ ahora >= ini or ahora < fin }}{% endif %}
+                  sequence:
+                    - service: light.turn_on
+                      target:
+                        entity_id: light.bano
+                      data:
+                        color_temp: 500
+                        brightness_pct: 15
+              default:
+                # Resto del tiempo
+                - service: light.turn_on
+                  target:
+                    entity_id: light.bano
+                  data:
+                    color_temp: 200
+                    brightness_pct: 100
 
-    action:
-      - service: timer.cancel
-        target:
-          entity_id:
-            - timer.apagado_cocina
-            - timer.preaviso_cocina
+        # ── Sin movimiento por 120s: dim suave (70%) ───────────
+        - conditions:
+            - condition: trigger
+              id: "motion_off_120s"
+            - condition: state
+              entity_id: light.bano
+              state: "on"
+            # Solo si NO es madrugada (porque en madrugada ya está tenue)
+            - condition: template
+              value_template: >
+                {% set ahora = now().strftime('%H:%M:%S') %}
+                {% set ini = states('input_datetime.hora_inicio_madrugada') %}
+                {% set fin = states('input_datetime.hora_fin_madrugada') %}
+                {% if ini <= fin %}{{ not (ini <= ahora < fin) }}{% else %}{{ not (ahora >= ini or ahora < fin) }}{% endif %}
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: light.bano
+              data:
+                color_temp: 200
+                brightness_pct: 70
 
-      - choose:
-          - conditions: "{{ strategy == 'script' }}"
-            sequence:
-              - choose:
-                  - conditions: "{{ script_entity != '' }}"
-                    sequence:
-                      - service: script.turn_on
-                        data:
-                          entity_id: "{{ script_entity }}"
-                      - service: input_boolean.turn_off
-                        target:
-                          entity_id: input_boolean.cocina_snapshot_ready
-                default:
-                  - choose:
-                      - conditions:
-                          - condition: state
-                            entity_id: input_boolean.cocina_snapshot_ready
-                            state: "on"
-                        sequence:
-                          - service: scene.turn_on
-                            data:
-                              entity_id: scene.cocina_snapshot
-                          - service: input_boolean.turn_off
-                            target:
-                              entity_id: input_boolean.cocina_snapshot_ready
-                    default:
-                      - service: light.turn_on
-                        data:
-                          entity_id: "{{ luces_area | join(', ') }}"
-                          brightness_pct: "{{ fb_pct }}"
-
-          - conditions: "{{ strategy == 'scene' }}"
-            sequence:
-              - choose:
-                  - conditions: "{{ scene_entity != '' }}"
-                    sequence:
-                      - service: scene.turn_on
-                        data:
-                          entity_id: "{{ scene_entity }}"
-                      - service: input_boolean.turn_off
-                        target:
-                          entity_id: input_boolean.cocina_snapshot_ready
-                default:
-                  - choose:
-                      - conditions:
-                          - condition: state
-                            entity_id: input_boolean.cocina_snapshot_ready
-                            state: "on"
-                        sequence:
-                          - service: scene.turn_on
-                            data:
-                              entity_id: scene.cocina_snapshot
-                          - service: input_boolean.turn_off
-                            target:
-                              entity_id: input_boolean.cocina_snapshot_ready
-                    default:
-                      - service: light.turn_on
-                        data:
-                          entity_id: "{{ luces_area | join(', ') }}"
-                          brightness_pct: "{{ fb_pct }}"
-
-          - conditions: []
-            sequence:
-              - choose:
-                  - conditions:
-                      - condition: state
-                        entity_id: input_boolean.cocina_snapshot_ready
-                        state: "on"
-                    sequence:
-                      - service: scene.turn_on
-                        data:
-                          entity_id: scene.cocina_snapshot
-                      - service: input_boolean.turn_off
-                        target:
-                          entity_id: input_boolean.cocina_snapshot_ready
-                default:
-                  - service: light.turn_on
-                    data:
-                      entity_id: "{{ luces_area | join(', ') }}"
-                      brightness_pct: "{{ fb_pct }}"
-
-  # ========== CLEAR ==========
-  - id: cocina_motion_clear_v1_1_2
-    alias: Cocina - motion - clear (v1.1.2)
-    mode: restart
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.motion_cocina
-        to: "off"
-        for: "00:00:05"
-    condition:
-      - condition: state
-        entity_id: input_boolean.mantener_luces
-        state: "off"
-      - condition: state
-        entity_id: input_boolean.mantener_luces_cocina
-        state: "off"
-    variables:
-      parte: >-
-        {{ states('sensor.parte_del_dia') | lower
-           | replace('á','a') | replace('é','e') | replace('í','i')
-           | replace('ó','o') | replace('ú','u') }}
-      total_min: >-
-        {% set p = parte %}
-        {% if p == 'manana' %}{{ states('input_number.cocina_off_manana')|int }}
-        {% elif p == 'mediodia' %}{{ states('input_number.cocina_off_mediodia')|int }}
-        {% elif p == 'tarde' %}{{ states('input_number.cocina_off_tarde')|int }}
-        {% elif p == 'noche' %}{{ states('input_number.cocina_off_noche')|int }}
-        {% elif p == 'madrugada' %}{{ states('input_number.cocina_off_madrugada')|int }}
-        {% else %}{{ states('input_number.cocina_off_noche')|int }}{% endif %}
-      preaviso_min_helper: "{{ states('input_number.cocina_preaviso') | int }}"
-      preaviso_min: "{{ [preaviso_min_helper | int, total_min | int] | min }}"
-      total_seg: "{{ (total_min | int) * 60 }}"
-      preaviso_seg: "{{ (preaviso_min | int) * 60 }}"
-      espera_preaviso_s: "{{ [ (total_seg | int) - (preaviso_seg | int), 0 ] | max }}"
-      dur_total: "00:{{ '%02d'|format(total_min | int) }}:00"
-      dur_preaviso: "00:{{ '%02d'|format(preaviso_min | int) }}:00"
-
-      preaviso_target_pct: "{{ states('input_number.cocina_preaviso_target_pct') | int(50) }}"
-
-      area_id_cocina: "cocina"
-      luces_area: >-
-        {{ expand(area_entities(area_id_cocina))
-           | selectattr('entity_id','search','^light\\.')
-           | map(attribute='entity_id') | list }}
-    action:
-      - choose:
-          - conditions: "{{ preaviso_min_helper | int > total_min | int }}"
-            sequence:
-              - service: logbook.log
-                data:
-                  name: Cocina - preaviso ajustado
-                  message: >-
-                    Preaviso ({{ preaviso_min_helper }} min) mayor que total
-                    ({{ total_min }} min); ajustado a {{ preaviso_min }} min
-      - service: timer.start
-        target:
-          entity_id: timer.apagado_cocina
-        data:
-          duration: "{{ dur_total }}"
-
-      - wait_for_trigger:
-          - platform: state
-            entity_id: binary_sensor.motion_cocina
-            to: "on"
-        timeout:
-          seconds: "{{ espera_preaviso_s | int }}"
-        continue_on_timeout: true
-
-      - choose:
-          - conditions: "{{ wait.trigger is not none }}"
-            sequence:
-              - service: timer.cancel
-                target:
-                  entity_id:
-                    - timer.apagado_cocina
-                    - timer.preaviso_cocina
-              - stop: "Movimiento volvió antes del preaviso."
-
-        default:
-          - choose:
-              - conditions: >-
-                  {{ expand(luces_area) | selectattr('state','eq','on') | list | length > 0 }}
-                sequence:
-                  - service: scene.create
-                    data:
-                      scene_id: cocina_snapshot
-                      snapshot_entities: "{{ luces_area }}"
-                  - service: input_boolean.turn_on
-                    target:
-                      entity_id: input_boolean.cocina_snapshot_ready
-
-          # 4) PREAVISO: fade de luces encendidas al % objetivo (piso 10%)
-          - variables:
-              target_preaviso: "{{ [ preaviso_target_pct | int, 10 ] | max }}"
-          - service: script.cocina_fade_de_luces_encendidas_del_area_a_objetivo
-            data:
-              target_pct: "{{ target_preaviso }}"
-          - if:
-              - condition: state
-                entity_id: binary_sensor.motion_cocina
-                state: "on"
-            then:
-              - service: timer.cancel
-                target:
-                  entity_id:
-                    - timer.apagado_cocina
-              - choose:
-                  - conditions:
-                      - condition: state
-                        entity_id: input_boolean.cocina_snapshot_ready
-                        state: "on"
-                      - condition: template
-                        value_template: "{{ states('scene.cocina_snapshot') not in ['unknown','unavailable'] }}"
-                    sequence:
-                      - service: scene.turn_on
-                        data:
-                          entity_id: scene.cocina_snapshot
-              - service: input_boolean.turn_off
-                target:
-                  entity_id: input_boolean.cocina_snapshot_ready
-              - stop: "Movimiento volvió durante el fade"
-
-          - service: timer.start
-            target:
-              entity_id: timer.preaviso_cocina
-            data:
-              duration: "{{ dur_preaviso }}"
-
-          - wait_for_trigger:
-              - platform: state
-                entity_id: binary_sensor.motion_cocina
-                to: "on"
-              - platform: event
-                event_type: timer.finished
-                event_data:
-                  entity_id: timer.preaviso_cocina
-            timeout: "{{ dur_total }}"
-            continue_on_timeout: true
-
-          - choose:
-              - conditions: >-
-                  {{ wait.trigger is not none and
-                     (wait.trigger.platform == 'state' or
-                      (wait.trigger.platform == 'event' and wait.trigger.event.data.entity_id == 'timer.preaviso_cocina' and 0)) }}
-                sequence:
-                  - service: timer.cancel
-                    target:
-                      entity_id:
-                        - timer.preaviso_cocina
-                        - timer.apagado_cocina
-                  - choose:
-                      - conditions:
-                          - condition: state
-                            entity_id: input_boolean.cocina_snapshot_ready
-                            state: "on"
-                        sequence:
-                          - service: scene.turn_on
-                            data:
-                              entity_id: scene.cocina_snapshot
-                  - service: input_boolean.turn_off
-                    target:
-                      entity_id: input_boolean.cocina_snapshot_ready
-                  - stop: "Movimiento volvió durante el preaviso."
-
-            default:
-              - service: light.turn_off
-                data:
-                  entity_id: "{{ luces_area | join(', ') }}"
-              - service: input_boolean.turn_off
-                target:
-                  entity_id: input_boolean.cocina_snapshot_ready
+            # Espera breve y apaga si sigue sin movimiento
+            - wait_for_trigger:
+                - platform: state
+                  entity_id: binary_sensor.motion_bano
+                  to: "on"
+              timeout: "00:01:00"
+              continue_on_timeout: true
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ wait.trigger is none }}"
+                  sequence:
+                    - service: light.turn_off
+                      target:
+                        entity_id: light.bano

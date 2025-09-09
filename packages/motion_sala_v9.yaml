@@ -1,5 +1,3 @@
-# yamllint disable rule:line-length
----
 # ===========================================================
 #  SALA DE ESTAR — CONTROL POR MOVIMIENTO (v9.1)
 #  - Helpers: tiempos por parte del día + preaviso + bypass mantener_luces_sala
@@ -10,7 +8,7 @@
 #       timer.apagado_sala  -> total (visible en UI)
 #       timer.preaviso_sala -> preaviso (visible en UI)
 #  - Área usada: "sala_de_estar" (area_id). Ajustar si tu area difiere.
-#  - NUEVO: input_number.sala_preaviso_target_pct para fijar reducción de brillo del preaviso (relativa, con piso 10%).
+#  - NUEVO: input_number.sala_preaviso_target_pct para fijar brillo objetivo del preaviso (ABSOLUTO, con piso 10%).
 # ===========================================================
 
 homeassistant:
@@ -66,13 +64,13 @@ input_number:
     step: 1
     unit_of_measurement: min
 
-  # NUEVO: Porcentaje de reducción de brillo para el preaviso
+  # NUEVO: Target absoluto de brillo para el preaviso
   sala_preaviso_target_pct:
-    name: "Sala - Preaviso: brillo objetivo (%)"
+    name: Sala - Preaviso brillo objetivo (pct)
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: "%"
+    unit_of_measurement: '%'
     initial: 50
 
 # (Opcional) Escena para madrugada. Si está vacía/unknown, se usa fallback a 15% brillo.
@@ -90,57 +88,6 @@ timer:
   preaviso_sala:
     name: Preaviso - Sala
     restore: true
-
-script:
-  sala_preaviso_dim:
-    alias: Sala - Preaviso dim manual
-    mode: parallel
-    fields:
-      lights:
-        description: Lista de luces a atenuar
-      reduction_pct:
-        description: Porcentaje de reducción de brillo
-    sequence:
-      - variables:
-          step_pct: 5
-          luces: "{{ lights | from_json }}"
-          targets: >-
-            {% set ns = namespace(list=[]) %}
-            {% for l in luces %}
-              {% set current = state_attr(l, 'brightness') | default(255) | int %}
-              {% set target_pct = [ (current / 255 * (100 - reduction_pct | int)), 10 ] | max %}
-              {% set target_brightness = (target_pct * 255 / 100) | round(0) | int %}
-              {% set ns.list = ns.list + [ {'entity': l, 'target': target_brightness} ] %}
-            {% endfor %}
-            {{ ns.list }}
-      - repeat:
-          while:
-            - condition: template
-              value_template: >
-                {% set ns = namespace(any=false) %}
-                {% for t in targets %}
-                  {% set current = state_attr(t.entity, 'brightness') | default(0) | int %}
-                  {% if current > t.target %}
-                    {% set ns.any = true %}
-                  {% endif %}
-                {% endfor %}
-                {{ ns.any }}
-          sequence:
-            - repeat:
-                for_each: "{{ targets }}"
-                sequence:
-                  - variables:
-                      current: "{{ state_attr(repeat.item.entity, 'brightness') | default(0) | int }}"
-                      next_brightness: "{{ [current - (step_pct * 255 // 100), repeat.item.target] | max }}"
-                  - if:
-                      - condition: template
-                        value_template: "{{ current > repeat.item.target }}"
-                    then:
-                      - service: light.turn_on
-                        data:
-                          entity_id: "{{ repeat.item.entity }}"
-                          brightness: "{{ next_brightness }}"
-            - delay: "00:00:01"
 
 # ------------------------
 # AUTOMATIZACIÓN 1: DETECTED
@@ -251,7 +198,7 @@ automation:
       - platform: state
         entity_id: binary_sensor.motion_sala
         to: "off"
-        for: "00:00:05" # debounce 5s (evita falsos OFF)
+        for: "00:00:05"   # debounce 5s (evita falsos OFF)
     condition:
       - condition: state
         entity_id: input_boolean.mantener_luces_sala
@@ -272,8 +219,7 @@ automation:
           'madrugada': states('input_number.sala_off_madrugada')|int
         } %}
         {{ mapa.get(parte, states('input_number.sala_off_noche')|int) }}
-      preaviso_min_helper: "{{ states('input_number.sala_preaviso') | int }}"
-      preaviso_min: "{{ [preaviso_min_helper | int, total_min | int] | min }}"
+      preaviso_min: "{{ states('input_number.sala_preaviso') | int }}"
       total_seg: "{{ (total_min | int) * 60 }}"
       preaviso_seg: "{{ (preaviso_min | int) * 60 }}"
       # Espera hasta el inicio del preaviso (total - preaviso), acotada a >= 0
@@ -281,8 +227,8 @@ automation:
       # Formatos para timers
       dur_total: "00:{{ '%02d'|format(total_min | int) }}:00"
       dur_preaviso: "00:{{ '%02d'|format(preaviso_min | int) }}:00"
-      # NUEVO: porcentaje de reducción para preaviso
-      preaviso_reduccion_pct: "{{ states('input_number.sala_preaviso_target_pct') | int(50) }}"
+      # NUEVO: target absoluto para preaviso
+      preaviso_target_pct: "{{ states('input_number.sala_preaviso_target_pct') | int(50) }}"
 
       # Área y luces
       area_id_sala: "sala_de_estar"
@@ -291,15 +237,6 @@ automation:
            | selectattr('entity_id','search','^light\\.')
            | map(attribute='entity_id') | list }}
     action:
-      - choose:
-          - conditions: "{{ preaviso_min_helper | int > total_min | int }}"
-            sequence:
-              - service: logbook.log
-                data:
-                  name: Sala - preaviso ajustado
-                  message: >-
-                    Preaviso ({{ preaviso_min_helper }} min) mayor que total
-                    ({{ total_min }} min); ajustado a {{ preaviso_min }} min
       # 1) Arrancar timer TOTAL (para visual en UI)
       - service: timer.start
         target:
@@ -337,37 +274,29 @@ automation:
                   - service: scene.create
                     data:
                       scene_id: sala_snapshot
-                      snapshot_entities: "{{ luces_area | join(', ') }}"
+                      snapshot_entities: "{{ luces_area }}"
                   - service: input_boolean.turn_on
                     target:
                       entity_id: input_boolean.sala_snapshot_ready
 
-          # 4) PREAVISO: reducir TODAS las luces ON según % indicado (piso 10%)
+          # 4) PREAVISO: fijar TODAS las luces ON al % objetivo (piso 10%)
           - variables:
               encendidas: >-
                 {{ expand(luces_area)
                    | selectattr('state','eq','on')
                    | map(attribute='entity_id') | list }}
+              target_preaviso: "{{ [ preaviso_target_pct | int, 10 ] | max }}"
           - if:
-              - condition: state
-                entity_id: binary_sensor.motion_sala
-                state: "on"
+              - condition: template
+                value_template: "{{ encendidas | length > 0 }}"
             then:
-              - service: script.sala_preaviso_dim
-                data:
-                  lights: "{{ encendidas | to_json }}"
-                  reduction_pct: "{{ preaviso_reduccion_pct }}"
-              - if:
-                  - condition: state
-                    entity_id: binary_sensor.motion_sala
-                    state: "on"
-                then:
-                  - service: timer.cancel
-                    target:
-                      entity_id:
-                        - timer.apagado_sala
-                        - timer.preaviso_sala
-                  - stop: "Movimiento volvió durante el dimming."
+              - repeat:
+                  for_each: "{{ encendidas }}"
+                  sequence:
+                    - service: light.turn_on
+                      data:
+                        entity_id: "{{ repeat.item }}"
+                        brightness_pct: "{{ target_preaviso }}"
 
           # 5) Arrancar timer de PREAVISO (independiente para UI)
           - service: timer.start
@@ -385,7 +314,7 @@ automation:
                 event_type: timer.finished
                 event_data:
                   entity_id: timer.preaviso_sala
-            timeout: "{{ dur_total }}" # salvaguarda
+            timeout: "{{ dur_total }}"   # salvaguarda
             continue_on_timeout: true
 
           - choose:
