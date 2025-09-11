@@ -18,7 +18,7 @@ input_text:
     name: Preaviso - Luces (JSON)
     icon: mdi:string-lights
     max: 255
-    initial: '[]'
+    initial: "[]"
 
 input_select:
   # Modo de operación del dim:
@@ -39,7 +39,7 @@ input_number:
     min: 0
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 10
 
   # Porcentaje objetivo si el modo = target (ABSOLUTO)
@@ -48,7 +48,7 @@ input_number:
     min: 0
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 50
 
   # Reducción en puntos porcentuales si el modo = reduction
@@ -57,7 +57,7 @@ input_number:
     min: 0
     max: 100
     step: 1
-    unit_of_measurement: 'pp'
+    unit_of_measurement: "pp"
     initial: 50
 
 input_button:

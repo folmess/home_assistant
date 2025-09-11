@@ -5,11 +5,9 @@
 
 powercalc:
   sensors:
-
     # --------- GRUPO GU10 (WiZ) ---------
     - create_group: Luces GU10
       entities:
-
         - entity_id: light.riel2
           standby_power: 0.2
           linear:
@@ -53,7 +51,6 @@ powercalc:
     # --------- GRUPO E27 (WiZ) ---------
     - create_group: Luces E27 WiZ
       entities:
-
         - entity_id: light.rgb
           standby_power: 0.5
           linear:
@@ -79,7 +76,6 @@ powercalc:
     # --------- GRUPO Tuya 7W (GENÉRICO) ---------
     - create_group: Luces Tuya 7W
       entities:
-
         - entity_id: light.barra1
           standby_power: 0.3
           linear:
