@@ -1,0 +1,308 @@
+##############################
+# Helpers
+##############################
+input_datetime:
+  lavadora_inicio:
+    name: Lavadora - Inicio de ciclo
+    has_date: true
+    has_time: true
+  lavadora_fin_anterior:
+    name: Lavadora - Fin anterior (baseline)
+    has_date: true
+    has_time: true
+
+input_number:
+  lavadora_duracion_estimada_min:
+    name: Lavadora - Duración estimada (min)
+    min: 30
+    max: 480
+    step: 5
+    unit_of_measurement: "min"
+    icon: mdi:timer-cog
+    initial: 180
+
+  lavadora_umbral_adelanto_min:
+    name: Lavadora - Umbral adelanto (min)
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: "min"
+    icon: mdi:bell-alert
+    initial: 10
+
+##############################
+# Automations
+##############################
+automation:
+  # 1) Inicio estimado en Delay wash (inicio = fin - duración_estimada)
+  - id: lavadora_marcar_inicio_delay
+    alias: Lavadora - Marcar inicio estimado (Delay wash)
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: sensor.lavadora_estado_del_trabajo
+        to: "Delay wash"
+      # Si cambias la duración mientras está en Delay, recalcular
+      - platform: state
+        entity_id: input_number.lavadora_duracion_estimada_min
+    condition:
+      - condition: state
+        entity_id: sensor.lavadora_estado_del_trabajo
+        state: "Delay wash"
+    action:
+      - variables:
+          fin_str: "{{ states('sensor.lavadora_tiempo_de_finalizacion') }}"
+          fin_dt: "{{ as_datetime(fin_str, none) }}"
+          minutos: "{{ states('input_number.lavadora_duracion_estimada_min') | int(180) }}"
+      - if:
+          - condition: template
+            value_template: "{{ fin_dt is not none }}"
+        then:
+          - service: input_datetime.set_datetime
+            target: { entity_id: input_datetime.lavadora_inicio }
+            data:
+              datetime: >
+                {{ (as_timestamp(fin_dt) - (minutos*60)) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+          # Baseline de fin para medir adelantos
+          - service: input_datetime.set_datetime
+            target: { entity_id: input_datetime.lavadora_fin_anterior }
+            data:
+              datetime: >
+                {{ as_timestamp(fin_dt) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+
+  # 2) Inicio REAL al pasar a Running (siempre pisa el estimado)
+  - id: lavadora_marcar_inicio_running
+    alias: Lavadora - Marcar inicio (Running)
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.lavadora_estado_de_la_maquina
+        to: "Running"
+        for: "00:00:10"   # pequeño debounce
+    action:
+      - service: input_datetime.set_datetime
+        target: { entity_id: input_datetime.lavadora_inicio }
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+      # También toma el fin actual como baseline inicial para adelantos
+      - variables:
+          fin_dt: "{{ as_datetime(states('sensor.lavadora_tiempo_de_finalizacion'), none) }}"
+      - if:
+          - condition: template
+            value_template: "{{ fin_dt is not none }}"
+        then:
+          - service: input_datetime.set_datetime
+            target: { entity_id: input_datetime.lavadora_fin_anterior }
+            data:
+              datetime: >
+                {{ as_timestamp(fin_dt) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+
+  # 3) Mantener "fin anterior": si el fin se ATRASA, actualizar baseline; si se adelanta, NO tocar (así lo detectamos)
+  - id: lavadora_actualizar_fin_anterior_si_atrasa
+    alias: Lavadora - Actualizar baseline si el fin se atrasa
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: sensor.lavadora_tiempo_de_finalizacion
+    condition: >
+      {% set nuevo = as_datetime(states('sensor.lavadora_tiempo_de_finalizacion'), none) %}
+      {% set base  = as_datetime(states('input_datetime.lavadora_fin_anterior'), none) %}
+      {{ nuevo is not none and base is not none and as_timestamp(nuevo) > as_timestamp(base) }}
+    action:
+      - variables:
+          nuevo: "{{ as_datetime(states('sensor.lavadora_tiempo_de_finalizacion')) }}"
+      - service: input_datetime.set_datetime
+        target: { entity_id: input_datetime.lavadora_fin_anterior }
+        data:
+          datetime: >
+            {{ as_timestamp(nuevo) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+
+  # 4) Limpiar inicio/baseline al terminar
+  - id: lavadora_limpiar_inicio_al_terminar
+    alias: Lavadora - Limpiar inicio y baseline al terminar
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.lavadora_estado_del_trabajo
+        to: "Finish"
+      - platform: state
+        entity_id: sensor.lavadora_estado_de_la_maquina
+        to: "Stopped"
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id:
+            - input_datetime.lavadora_inicio
+            - input_datetime.lavadora_fin_anterior
+        data:
+          datetime: "1970-01-01 00:00:00"
+
+  # 5) (OPCIONAL - DESACTIVADA) Notificar si se adelanta más que el umbral y luego fijar nueva baseline
+  - id: lavadora_notificar_adelanto
+    alias: Lavadora - Notificar adelanto de fin (opcional)
+    initial_state: false        # <- desactivada por defecto
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.lavadora_min_adelantados
+    condition:
+      - condition: numeric_state
+        entity_id: sensor.lavadora_min_adelantados
+        above: input_number.lavadora_umbral_adelanto_min
+      - condition: state
+        entity_id: sensor.lavadora_estado_de_la_maquina
+        state: "Running"
+    action:
+      # Ejemplo de notificación (cambiá notify_*)
+      - service: notify.persistent_notification
+        data:
+          title: "Lavadora"
+          message: >
+            El ciclo se adelantó {{ states('sensor.lavadora_min_adelantados') }} min.
+      # Al notificar, fijamos la baseline al nuevo fin para no repetir avisos
+      - variables:
+          fin_dt: "{{ as_datetime(states('sensor.lavadora_tiempo_de_finalizacion'), none) }}"
+      - if:
+          - condition: template
+            value_template: "{{ fin_dt is not none }}"
+        then:
+          - service: input_datetime.set_datetime
+            target: { entity_id: input_datetime.lavadora_fin_anterior }
+            data:
+              datetime: >
+                {{ as_timestamp(fin_dt) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+
+##############################
+# Sensores unificados
+##############################
+template:
+  - sensor:
+      # --- Unificado para el dashboard ---
+      - name: "Lavadora"
+        unique_id: lavadora_panel_unified
+        icon: mdi:washing-machine
+        state: >-
+          {% set machine = states('sensor.lavadora_estado_de_la_maquina') %}
+          {% set work = states('sensor.lavadora_estado_del_trabajo') %}
+          {% if work == 'Delay wash' %} delay
+          {% elif machine == 'Running' %} running
+          {% elif work == 'Finish' %} finished
+          {% else %} idle
+          {% endif %}
+        attributes:
+          machine_state: "{{ states('sensor.lavadora_estado_de_la_maquina') }}"
+          work_state: "{{ states('sensor.lavadora_estado_del_trabajo') }}"
+
+          # Mapeo a español con "…" cuando está ejecutando
+          work_state_text_es: >-
+            {% set s = states('sensor.lavadora_estado_del_trabajo') %}
+            {% set running = is_state('sensor.lavadora_estado_de_la_maquina','Running') %}
+            {% if s == 'Wash' %}{{ 'Lavando' ~ ('…' if running else '') }}
+            {% elif s == 'Drying' %}{{ 'Secando' ~ ('…' if running else '') }}
+            {% elif s == 'Spin' %}{{ 'Centrifugando' ~ ('…' if running else '') }}
+            {% elif s == 'Rinse' %}{{ 'Enjuagando' ~ ('…' if running else '') }}
+            {% elif s == 'Weight sensing' %}{{ 'Pesando' ~ ('…' if running else '') }}
+            {% elif s == 'Delay wash' %}Lavado diferido…
+            {% elif s == 'Finish' %}Finalizado
+            {% elif s == 'None' %}—
+            {% else %}{{ s }}
+            {% endif %}
+
+          # Tiempos (objetos y texto local)
+          end_time: >-
+            {{ as_datetime(states('sensor.lavadora_tiempo_de_finalizacion'), none) }}
+          end_time_text: >-
+            {% set dt = as_datetime(states('sensor.lavadora_tiempo_de_finalizacion'), none) %}
+            {% if dt is none %}{{ '' }}
+            {% else %}{{ as_local(dt).strftime('%H:%M') }}{% endif %}
+
+          start_time: >-
+            {{ as_datetime(states('input_datetime.lavadora_inicio'), none) }}
+          start_time_text: >-
+            {% set dt = as_datetime(states('input_datetime.lavadora_inicio'), none) %}
+            {% if dt is none %}{{ '' }}
+            {% else %}{{ as_local(dt).strftime('%H:%M') }}{% endif %}
+
+          delay_active: "{{ is_state('sensor.lavadora_estado_del_trabajo','Delay wash') }}"
+
+          # Restante (seg y texto mm:ss / h:mm)
+          remaining_seconds: >-
+            {% set fin = as_datetime(states('sensor.lavadora_tiempo_de_finalizacion'), none) %}
+            {% if fin is none %} 0
+            {% else %} {{ [ (as_timestamp(fin) - as_timestamp(now())) | int(0), 0 ] | max }}
+            {% endif %}
+          remaining_text: >-
+            {% set sec = state_attr('sensor.lavadora','remaining_seconds') | int(0) %}
+            {% set h = (sec // 3600) | int %}
+            {% set m = ((sec % 3600) // 60) | int %}
+            {% set s = (sec % 60) | int %}
+            {% set pad = '%02d' %}
+            {% if h > 0 %}{{ h }}:{{ pad|format(m) }}
+            {% else %}{{ m }}:{{ pad|format(s) }}{% endif %}
+
+          # Progreso % (corregido)
+          progress_pct: >-
+            {% set fin = as_datetime(states('sensor.lavadora_tiempo_de_finalizacion'), none) %}
+            {% set ini = as_datetime(states('input_datetime.lavadora_inicio'), none) %}
+            {% if is_state('sensor.lavadora_estado_del_trabajo','Finish') %}
+              100
+            {% elif fin is none or ini is none %}
+              0
+            {% elif as_timestamp(now()) < as_timestamp(ini) %}
+              0
+            {% else %}
+              {% set total = (as_timestamp(fin) - as_timestamp(ini)) %}
+              {% set trans  = (as_timestamp(now()) - as_timestamp(ini)) %}
+              {% if total <= 0 %} 0
+              {% else %} {{ ([ (trans/total*100)|round(0), 100 ]|min, 0 )|max }}
+              {% endif %}
+            {% endif %}
+
+          # Enjuagues / centrifugado
+          rinses: "{{ states('number.lavadora_ciclos_de_enjuague') | int(0) }}"
+          spin_rpm: "{{ states('select.lavadora_nivel_de_centrifugado') | int(0) }}"
+          spin_level: >-
+            {% set rpm = states('select.lavadora_nivel_de_centrifugado') | int(0) %}
+            {% if rpm >= 1400 %}5
+            {% elif rpm >= 1200 %}4
+            {% elif rpm >= 1000 %}3
+            {% elif rpm >= 800 %}2
+            {% elif rpm > 0 %}1
+            {% else %}0
+            {% endif %}
+
+          # Textos listos para la cabecera
+          title_text: >-
+            {% if is_state('sensor.lavadora_estado_del_trabajo','Delay wash') %}
+              El retraso de término está definido
+            {% else %}{{ state_attr('sensor.lavadora','work_state_text_es') }}{% endif %}
+          line1_text: >-
+            {% if is_state('sensor.lavadora_estado_del_trabajo','Delay wash') %}
+              {% set t = state_attr('sensor.lavadora','start_time_text') %}
+              {{ 'Comienza a las ' ~ t if t else '' }}
+            {% else %}{{ state_attr('sensor.lavadora','remaining_text') }}
+            {% endif %}
+          line2_text: >-
+            {% set t = state_attr('sensor.lavadora','end_time_text') %}
+            {{ 'Finaliza a las ' ~ t if t else '' }}
+
+      # --- Minutos adelantados (si el fin actual es antes que el baseline) ---
+      - name: "Lavadora - Min adelantados"
+        unique_id: lavadora_min_adelantados
+        unit_of_measurement: "min"
+        state: >-
+          {% set fin = as_datetime(states('sensor.lavadora_tiempo_de_finalizacion'), none) %}
+          {% set base = as_datetime(states('input_datetime.lavadora_fin_anterior'), none) %}
+          {% if fin is none or base is none %} 0
+          {% else %}
+            {% set diff = (as_timestamp(base) - as_timestamp(fin)) / 60 %}
+            {{ [diff|round(0), 0] | max }}
+          {% endif %}
+
+  - binary_sensor:
+      - name: "Lavadora - Fin adelantado"
+        unique_id: lavadora_fin_adelantado
+        state: >-
+          {% set mins = states('sensor.lavadora_-_min_adelantados') | int(0) %}
+          {% set thr  = states('input_number.lavadora_umbral_adelanto_min') | int(10) %}
+          {{ mins >= thr }}

@@ -1,0 +1,8 @@
+template:
+  - sensor:
+      - name: "Temperatura_exterior"
+        unique_id: temperatura_exterior_pirateweather
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state: >
+          {{ state_attr('weather.pirateweather', 'temperature') }}

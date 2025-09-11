@@ -1,0 +1,298 @@
+# =========================================
+#  EPE Santa Fe - Cálculo de costos (Luces)
+#  Fuente: tu boleta (ago/sep 2025)
+#  Aplica a sensor.luces_total_monthly (kWh)
+# =========================================
+
+# ---------- Helpers (editables desde UI) ----------
+input_number:
+  epe_tier1_limit_kwh:
+    name: EPE Tier1 límite (kWh)
+    min: 1
+    max: 1000
+    step: 1
+    mode: box
+    unit_of_measurement: kWh
+    icon: mdi:counter
+    initial: 150
+  epe_tier2_limit_kwh:
+    name: EPE Tier2 límite (kWh, acumulado)
+    min: 1
+    max: 2000
+    step: 1
+    mode: box
+    unit_of_measurement: kWh
+    icon: mdi:counter
+    initial: 300
+
+  epe_tier1_price_ars_kwh:
+    name: Precio Tier1 ($/kWh)
+    min: 0
+    max: 100000
+    step: 0.0001
+    mode: box
+    unit_of_measurement: $/kWh
+    icon: mdi:currency-usd
+    initial: 143.2161
+  epe_tier2_price_ars_kwh:
+    name: Precio Tier2 ($/kWh)
+    min: 0
+    max: 100000
+    step: 0.0001
+    mode: box
+    unit_of_measurement: $/kWh
+    icon: mdi:currency-usd
+    initial: 158.6685
+  epe_tier3_price_ars_kwh:
+    name: Precio Tier3 ($/kWh)
+    min: 0
+    max: 100000
+    step: 0.0001
+    mode: box
+    unit_of_measurement: $/kWh
+    icon: mdi:currency-usd
+    initial: 211.9952
+
+  epe_cuota_servicio_mensual:
+    name: Cuota de servicio ($/mes)
+    min: 0
+    max: 1000000
+    step: 0.01
+    mode: box
+    unit_of_measurement: $
+    icon: mdi:cash
+    initial: 1946.28
+
+  epe_cap_fijo_mensual:
+    name: CAP Alumbrado Público ($/mes)
+    min: 0
+    max: 1000000
+    step: 0.01
+    mode: box
+    unit_of_measurement: $
+    icon: mdi:street-light
+    initial: 9758.11
+
+  epe_fer_pct:
+    name: FER 6604 (% del Básico)
+    min: 0
+    max: 100
+    step: 0.01
+    mode: box
+    unit_of_measurement: "%"
+    icon: mdi:percent
+    initial: 1.5
+  epe_ord1592_pct:
+    name: Ord. 1592/62 (% del Básico)
+    min: 0
+    max: 100
+    step: 0.01
+    mode: box
+    unit_of_measurement: "%"
+    icon: mdi:percent
+    initial: 0.6
+  epe_ord1618_pct:
+    name: Ord. 1618/62 (% del Básico)
+    min: 0
+    max: 100
+    step: 0.01
+    mode: box
+    unit_of_measurement: "%"
+    icon: mdi:percent
+    initial: 1.8
+  epe_ley7797_pct:
+    name: Ley 7797 (% del Básico)
+    min: 0
+    max: 100
+    step: 0.01
+    mode: box
+    unit_of_measurement: "%"
+    icon: mdi:percent
+    initial: 6.0
+
+  epe_iva_pct:
+    name: IVA Consumidor Final (% sobre Básico + CAP)
+    min: 0
+    max: 100
+    step: 0.01
+    mode: box
+    unit_of_measurement: "%"
+    icon: mdi:percent
+    initial: 21.0
+
+  epe_ley12692_fijo:
+    name: Ley 12692 Energías Renovables ($/mes)
+    min: 0
+    max: 1000000
+    step: 0.01
+    mode: box
+    unit_of_measurement: $
+    icon: mdi:leaf
+    initial: 251.31
+
+# ---------- Sensores de costo ----------
+template:
+  - sensor:
+
+      # Consumo mensual base (kWh) - viene del utility_meter que armamos para "Total"
+    - name: "EPE Consumo mensual (kWh)"
+      unique_id: epe_consumo_mensual_kwh
+      device_class: energy
+      state_class: measurement
+      unit_of_measurement: kWh
+      state: "{{ states('sensor.luces_total_monthly') | float(0) }}"
+
+      # KWh por tramo calculados con límites configurables
+    - name: "EPE KWh Tier1"
+      unique_id: epe_kwh_tier1
+      unit_of_measurement: kWh
+      state: >
+        {% set c = states('sensor.luces_total_monthly')|float(0) %}
+        {% set l1 = states('input_number.epe_tier1_limit_kwh')|float(150) %}
+        {{ [c, l1]|min | round(3) }}
+
+    - name: "EPE KWh Tier2"
+      unique_id: epe_kwh_tier2
+      unit_of_measurement: kWh
+      state: >
+        {% set c = states('sensor.luces_total_monthly')|float(0) %}
+        {% set l1 = states('input_number.epe_tier1_limit_kwh')|float(150) %}
+        {% set l2 = states('input_number.epe_tier2_limit_kwh')|float(300) %}
+        {% set v = (c - l1) %}
+        {% set span = (l2 - l1) %}
+        {{ [ [v, 0]|max, span ]|min | round(3) }}
+
+    - name: "EPE KWh Tier3"
+      unique_id: epe_kwh_tier3
+      unit_of_measurement: kWh
+      state: >
+        {% set c = states('sensor.luces_total_monthly')|float(0) %}
+        {% set l2 = states('input_number.epe_tier2_limit_kwh')|float(300) %}
+        {{ (c - l2) | max(0) | round(3) }}
+
+      # Precio marginal actual (según el tramo donde vas en el mes)
+    - name: "EPE Precio marginal ($/kWh)"
+      unique_id: epe_precio_marginal
+      unit_of_measurement: $/kWh
+      state: >
+        {% set c = states('sensor.luces_total_monthly')|float(0) %}
+        {% set l1 = states('input_number.epe_tier1_limit_kwh')|float(150) %}
+        {% set l2 = states('input_number.epe_tier2_limit_kwh')|float(300) %}
+        {% set p1 = states('input_number.epe_tier1_price_ars_kwh')|float(0) %}
+        {% set p2 = states('input_number.epe_tier2_price_ars_kwh')|float(0) %}
+        {% set p3 = states('input_number.epe_tier3_price_ars_kwh')|float(0) %}
+        {{ p1 if c < l1 else (p2 if c < l2 else p3) }}
+
+      # Costo energía (solo kWh, sin cuota ni adicionales)
+    - name: "EPE Energía ($)"
+      unique_id: epe_costo_energia
+      unit_of_measurement: $
+      icon: mdi:cash
+      state: >
+        {% set k1 = states('sensor.epe_kwh_tier1')|float(0) %}
+        {% set k2 = states('sensor.epe_kwh_tier2')|float(0) %}
+        {% set k3 = states('sensor.epe_kwh_tier3')|float(0) %}
+        {% set p1 = states('input_number.epe_tier1_price_ars_kwh')|float(0) %}
+        {% set p2 = states('input_number.epe_tier2_price_ars_kwh')|float(0) %}
+        {% set p3 = states('input_number.epe_tier3_price_ars_kwh')|float(0) %}
+        {{ (k1*p1 + k2*p2 + k3*p3) | round(2) }}
+
+      # Básico = Energía + Cuota de servicio (base para recargos %)
+    - name: "EPE Básico ($)"
+      unique_id: epe_importe_basico
+      unit_of_measurement: $
+      icon: mdi:cash
+      state: >
+        {% set energia = states('sensor.epe_energia')|float(0) %}
+        {% set cuota  = states('input_number.epe_cuota_servicio_mensual')|float(0) %}
+        {{ (energia + cuota) | round(2) }}
+
+      # Recargos porcentuales sobre el Básico
+    - name: "EPE FER 6604 ($)"
+      unique_id: epe_fer_6604
+      unit_of_measurement: $
+      state: >
+        {% set b = states('sensor.epe_basico')|float(0) %}
+        {% set pct = states('input_number.epe_fer_pct')|float(0) / 100 %}
+        {{ (b * pct) | round(2) }}
+
+    - name: "EPE Ord. 1592/62 ($)"
+      unique_id: epe_ord_1592
+      unit_of_measurement: $
+      state: >
+        {% set b = states('sensor.epe_basico')|float(0) %}
+        {% set pct = states('input_number.epe_ord1592_pct')|float(0) / 100 %}
+        {{ (b * pct) | round(2) }}
+
+    - name: "EPE Ord. 1618/62 ($)"
+      unique_id: epe_ord_1618
+      unit_of_measurement: $
+      state: >
+        {% set b = states('sensor.epe_basico')|float(0) %}
+        {% set pct = states('input_number.epe_ord1618_pct')|float(0) / 100 %}
+        {{ (b * pct) | round(2) }}
+
+    - name: "EPE Ley 7797 ($)"
+      unique_id: epe_ley_7797
+      unit_of_measurement: $
+      state: >
+        {% set b = states('sensor.epe_basico')|float(0) %}
+        {% set pct = states('input_number.epe_ley7797_pct')|float(0) / 100 %}
+        {{ (b * pct) | round(2) }}
+
+      # CAP fijo (se suma antes de IVA)
+    - name: "EPE CAP ($)"
+      unique_id: epe_cap
+      unit_of_measurement: $
+      state: "{{ states('input_number.epe_cap_fijo_mensual') | float(0) | round(2) }}"
+
+      # IVA 21% sobre (Básico + CAP)
+    - name: "EPE IVA ($)"
+      unique_id: epe_iva
+      unit_of_measurement: $
+      state: >
+        {% set b = states('sensor.epe_basico')|float(0) %}
+        {% set cap = states('sensor.epe_cap')|float(0) %}
+        {% set pct = states('input_number.epe_iva_pct')|float(0) / 100 %}
+        {{ ((b + cap) * pct) | round(2) }}
+
+      # Ley 12692 (fijo)
+    - name: "EPE Ley 12692 ($)"
+      unique_id: epe_ley_12692
+      unit_of_measurement: $
+      state: "{{ states('input_number.epe_ley12692_fijo') | float(0) | round(2) }}"
+
+      # Total mensual estimado (formato factura)
+    - name: "EPE Total mensual ($)"
+      unique_id: epe_total_mensual
+      unit_of_measurement: $
+      icon: mdi:cash-multiple
+      state: >
+        {% set basico = states('sensor.epe_basico')|float(0) %}
+        {% set fer = states('sensor.epe_fer_6604')|float(0) %}
+        {% set o1592 = states('sensor.epe_ord_1592')|float(0) %}
+        {% set o1618 = states('sensor.epe_ord_1618')|float(0) %}
+        {% set l7797 = states('sensor.epe_ley_7797')|float(0) %}
+        {% set cap = states('sensor.epe_cap')|float(0) %}
+        {% set iva = states('sensor.epe_iva')|float(0) %}
+        {% set l12692 = states('sensor.epe_ley_12692')|float(0) %}
+        {{ (basico + fer + o1592 + o1618 + l7797 + cap + iva + l12692) | round(2) }}
+
+      # ---- Costo variable aprox HOY y SEMANA (sin fijos, usando precio marginal actual) ----
+    - name: "EPE Costo variable diario aprox ($)"
+      unique_id: epe_costo_variable_diario
+      unit_of_measurement: $
+      icon: mdi:cash-clock
+      state: >
+        {% set kwh_hoy = states('sensor.luces_total_daily')|float(0) %}
+        {% set p = states('sensor.epe_precio_marginal')|float(0) %}
+        {{ (kwh_hoy * p) | round(2) }}
+
+    - name: "EPE Costo variable semanal aprox ($)"
+      unique_id: epe_costo_variable_semanal
+      unit_of_measurement: $
+      icon: mdi:cash-clock
+      state: >
+        {% set kwh_sem = states('sensor.luces_total_weekly')|float(0) %}
+        {% set p = states('sensor.epe_precio_marginal')|float(0) %}
+        {{ (kwh_sem * p) | round(2) }}

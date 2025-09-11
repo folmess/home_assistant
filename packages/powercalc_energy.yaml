@@ -1,0 +1,162 @@
+# ============================
+#  Powercalc - Luces (WiZ + Tuya)
+#  Corrigido con comillas en calibrate
+# ============================
+
+powercalc:
+  sensors:
+
+    # --------- GRUPO GU10 (WiZ) ---------
+    - create_group: Luces GU10
+      entities:
+
+        - entity_id: light.riel2
+          standby_power: 0.2
+          linear:
+            calibrate:
+              - "26 -> 0.5"
+              - "77 -> 1"
+              - "102 -> 2"
+              - "128 -> 3"
+              - "255 -> 5"
+
+        - entity_id: light.riel3
+          standby_power: 0.2
+          linear:
+            calibrate:
+              - "26 -> 0.5"
+              - "77 -> 1"
+              - "102 -> 2"
+              - "128 -> 3"
+              - "255 -> 5"
+
+        - entity_id: light.pieza1
+          standby_power: 0.2
+          linear:
+            calibrate:
+              - "26 -> 0.5"
+              - "77 -> 1"
+              - "102 -> 2"
+              - "128 -> 3"
+              - "255 -> 5"
+
+        - entity_id: light.pieza2
+          standby_power: 0.2
+          linear:
+            calibrate:
+              - "26 -> 0.5"
+              - "77 -> 1"
+              - "102 -> 2"
+              - "128 -> 3"
+              - "255 -> 5"
+
+    # --------- GRUPO E27 (WiZ) ---------
+    - create_group: Luces E27 WiZ
+      entities:
+
+        - entity_id: light.rgb
+          standby_power: 0.5
+          linear:
+            calibrate:
+              - "26 -> 0.9"
+              - "77 -> 3"
+              - "102 -> 4"
+              - "128 -> 5"
+              - "179 -> 6"
+              - "255 -> 9"
+
+        - entity_id: light.bano
+          standby_power: 0.5
+          linear:
+            calibrate:
+              - "26 -> 0.9"
+              - "77 -> 3"
+              - "102 -> 4"
+              - "128 -> 5"
+              - "179 -> 6"
+              - "255 -> 9"
+
+    # --------- GRUPO Tuya 7W (GENÉRICO) ---------
+    - create_group: Luces Tuya 7W
+      entities:
+
+        - entity_id: light.barra1
+          standby_power: 0.3
+          linear:
+            calibrate:
+              - "26 -> 0.8"
+              - "77 -> 2.2"
+              - "128 -> 3.5"
+              - "179 -> 5"
+              - "255 -> 7"
+
+        - entity_id: light.barra2
+          standby_power: 0.3
+          linear:
+            calibrate:
+              - "26 -> 0.8"
+              - "77 -> 2.2"
+              - "128 -> 3.5"
+              - "179 -> 5"
+              - "255 -> 7"
+
+        - entity_id: light.cocina
+          standby_power: 0.3
+          linear:
+            calibrate:
+              - "26 -> 0.8"
+              - "77 -> 2.2"
+              - "128 -> 3.5"
+              - "179 -> 5"
+              - "255 -> 7"
+
+        - entity_id: light.riel1
+          standby_power: 0.3
+          linear:
+            calibrate:
+              - "26 -> 0.8"
+              - "77 -> 2.2"
+              - "128 -> 3.5"
+              - "179 -> 5"
+              - "255 -> 7"
+
+        - entity_id: light.riel4
+          standby_power: 0.3
+          linear:
+            calibrate:
+              - "26 -> 0.8"
+              - "77 -> 2.2"
+              - "128 -> 3.5"
+              - "179 -> 5"
+              - "255 -> 7"
+
+    # --------- GRUPO TOTAL (anidado) ---------
+    - create_group: Luces - Total
+      entities:
+        - create_group: Luces GU10
+        - create_group: Luces E27 WiZ
+        - create_group: Luces Tuya 7W
+
+    # --------- GRUPOS POR ÁREA ---------
+    - create_group: Area - Sala de estar
+      entities:
+        - entity_id: light.riel1
+        - entity_id: light.riel2
+        - entity_id: light.riel3
+        - entity_id: light.riel4
+        - entity_id: light.rgb
+        - entity_id: light.barra1
+        - entity_id: light.barra2
+
+    - create_group: Area - Cocina
+      entities:
+        - entity_id: light.cocina
+
+    - create_group: Area - Pieza
+      entities:
+        - entity_id: light.pieza1
+        - entity_id: light.pieza2
+
+    - create_group: Area - Bano
+      entities:
+        - entity_id: light.bano
