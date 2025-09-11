@@ -78,7 +78,7 @@ automation:
       - platform: state
         entity_id: sensor.lavadora_estado_de_la_maquina
         to: "Running"
-        for: "00:00:10"   # pequeño debounce
+        for: "00:00:10" # pequeño debounce
     action:
       - service: input_datetime.set_datetime
         target: { entity_id: input_datetime.lavadora_inicio }
@@ -140,7 +140,7 @@ automation:
   # 5) (OPCIONAL - DESACTIVADA) Notificar si se adelanta más que el umbral y luego fijar nueva baseline
   - id: lavadora_notificar_adelanto
     alias: Lavadora - Notificar adelanto de fin (opcional)
-    initial_state: false        # <- desactivada por defecto
+    initial_state: false # <- desactivada por defecto
     mode: single
     trigger:
       - platform: state

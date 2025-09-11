@@ -70,7 +70,7 @@ input_number:
     min: 1
     max: 100
     step: 1
-    unit_of_measurement: '%'
+    unit_of_measurement: "%"
     initial: 50
 
 # (Opcional) Escena para madrugada. Si está vacía/unknown, se usa fallback a 15% brillo.
@@ -198,7 +198,7 @@ automation:
       - platform: state
         entity_id: binary_sensor.motion_sala
         to: "off"
-        for: "00:00:05"   # debounce 5s (evita falsos OFF)
+        for: "00:00:05" # debounce 5s (evita falsos OFF)
     condition:
       - condition: state
         entity_id: input_boolean.mantener_luces_sala
@@ -314,7 +314,7 @@ automation:
                 event_type: timer.finished
                 event_data:
                   entity_id: timer.preaviso_sala
-            timeout: "{{ dur_total }}"   # salvaguarda
+            timeout: "{{ dur_total }}" # salvaguarda
             continue_on_timeout: true
 
           - choose:
