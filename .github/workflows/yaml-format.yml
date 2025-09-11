@@ -31,29 +31,29 @@ jobs:
             echo "found_errors=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Set up Node.js (for Prettier)
-        if: steps.lint.outputs.found_errors == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
+      # - name: Set up Node.js (for Prettier)
+      #   if: steps.lint.outputs.found_errors == 'true'
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: 18
 
-      - name: Install Prettier
-        if: steps.lint.outputs.found_errors == 'true'
-        run: npm install --global prettier
+      # - name: Install Prettier
+      #   if: steps.lint.outputs.found_errors == 'true'
+      #   run: npm install --global prettier
 
-      - name: Auto-format YAML files with Prettier
-        if: steps.lint.outputs.found_errors == 'true'
-        run: prettier --write "**/*.yaml"
+      # - name: Auto-format YAML files with Prettier
+      #   if: steps.lint.outputs.found_errors == 'true'
+      #   run: prettier --write "**/*.yaml"
 
-      - name: Commit and push fixed files
-        if: steps.lint.outputs.found_errors == 'true'
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add .
-            git commit -m "fix: auto-format YAML after lint errors"
-            git push
-          else
-            echo "No changes after formatting"
-          fi
+      # - name: Commit and push fixed files
+      #   if: steps.lint.outputs.found_errors == 'true'
+      #   run: |
+      #     if [ -n "$(git status --porcelain)" ]; then
+      #       git config user.name "github-actions[bot]"
+      #       git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      #       git add .
+      #       git commit -m "fix: auto-format YAML after lint errors"
+      #       git push
+      #     else
+      #       echo "No changes after formatting"
+      #     fi
