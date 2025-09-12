@@ -1,12 +1,16 @@
-# ============================
-#  Powercalc - Luces (WiZ + Tuya)
-#  Corrigido con comillas en calibrate
-# ============================
+# ============================================================
+#  Luces: Powercalc + Utility Meter + Proxies seguros
+#  Genera sensores de potencia/energía y acumuladores diarios,
+#  semanales y mensuales para luces, áreas y total.
+# ============================================================
 
 powercalc:
   sensors:
-    # --------- GRUPO GU10 (WiZ) ---------
-    - create_group: Luces GU10
+
+    # ---------------------------
+    # WiZ GU10
+    # ---------------------------
+    - create_group: luces_gu10
       entities:
         - entity_id: light.riel2
           standby_power: 0.2
@@ -17,7 +21,6 @@ powercalc:
               - "102 -> 2"
               - "128 -> 3"
               - "255 -> 5"
-
         - entity_id: light.riel3
           standby_power: 0.2
           linear:
@@ -27,7 +30,6 @@ powercalc:
               - "102 -> 2"
               - "128 -> 3"
               - "255 -> 5"
-
         - entity_id: light.pieza1
           standby_power: 0.2
           linear:
@@ -37,7 +39,6 @@ powercalc:
               - "102 -> 2"
               - "128 -> 3"
               - "255 -> 5"
-
         - entity_id: light.pieza2
           standby_power: 0.2
           linear:
@@ -48,8 +49,10 @@ powercalc:
               - "128 -> 3"
               - "255 -> 5"
 
-    # --------- GRUPO E27 (WiZ) ---------
-    - create_group: Luces E27 WiZ
+    # ---------------------------
+    # WiZ E27
+    # ---------------------------
+    - create_group: luces_e27_wiz
       entities:
         - entity_id: light.rgb
           standby_power: 0.5
@@ -61,7 +64,6 @@ powercalc:
               - "128 -> 5"
               - "179 -> 6"
               - "255 -> 9"
-
         - entity_id: light.bano
           standby_power: 0.5
           linear:
@@ -73,8 +75,10 @@ powercalc:
               - "179 -> 6"
               - "255 -> 9"
 
-    # --------- GRUPO Tuya 7W (GENÉRICO) ---------
-    - create_group: Luces Tuya 7W
+    # ---------------------------
+    # Tuya 7W (genérico)
+    # ---------------------------
+    - create_group: luces_tuya_7w
       entities:
         - entity_id: light.barra1
           standby_power: 0.3
@@ -85,7 +89,6 @@ powercalc:
               - "128 -> 3.5"
               - "179 -> 5"
               - "255 -> 7"
-
         - entity_id: light.barra2
           standby_power: 0.3
           linear:
@@ -95,7 +98,6 @@ powercalc:
               - "128 -> 3.5"
               - "179 -> 5"
               - "255 -> 7"
-
         - entity_id: light.cocina
           standby_power: 0.3
           linear:
@@ -105,7 +107,6 @@ powercalc:
               - "128 -> 3.5"
               - "179 -> 5"
               - "255 -> 7"
-
         - entity_id: light.riel1
           standby_power: 0.3
           linear:
@@ -115,7 +116,6 @@ powercalc:
               - "128 -> 3.5"
               - "179 -> 5"
               - "255 -> 7"
-
         - entity_id: light.riel4
           standby_power: 0.3
           linear:
@@ -126,15 +126,21 @@ powercalc:
               - "179 -> 5"
               - "255 -> 7"
 
-    # --------- GRUPO TOTAL (anidado) ---------
-    - create_group: Luces - Total
+    # ---------------------------
+    # Grupo TOTAL
+    # => genera sensor.luces_total_power / _energy
+    # ---------------------------
+    - create_group: luces_total
       entities:
-        - create_group: Luces GU10
-        - create_group: Luces E27 WiZ
-        - create_group: Luces Tuya 7W
+        - create_group: luces_gu10
+        - create_group: luces_e27_wiz
+        - create_group: luces_tuya_7w
 
-    # --------- GRUPOS POR ÁREA ---------
-    - create_group: Area - Sala de estar
+    # ---------------------------
+    # Grupos por ÁREA
+    # => sensor.area_<slug>_power / _energy
+    # ---------------------------
+    - create_group: area_sala_de_estar
       entities:
         - entity_id: light.riel1
         - entity_id: light.riel2
@@ -144,15 +150,165 @@ powercalc:
         - entity_id: light.barra1
         - entity_id: light.barra2
 
-    - create_group: Area - Cocina
+    - create_group: area_cocina
       entities:
         - entity_id: light.cocina
 
-    - create_group: Area - Pieza
+    - create_group: area_pieza
       entities:
         - entity_id: light.pieza1
         - entity_id: light.pieza2
 
-    - create_group: Area - Bano
+    - create_group: area_bano
       entities:
         - entity_id: light.bano
+
+
+# ============================================================
+# Proxies: aseguran valor numérico (0 si no hay datos aún)
+# ============================================================
+template:
+  - sensor:
+      - name: "luces_total_energy_src"
+        unique_id: luces_total_energy_src
+        device_class: energy
+        state_class: total_increasing
+        unit_of_measurement: kWh
+        state: "{{ states('sensor.luces_total_energy') | float(0) }}"
+
+      - name: "area_sala_de_estar_energy_src"
+        unique_id: area_sala_de_estar_energy_src
+        device_class: energy
+        state_class: total_increasing
+        unit_of_measurement: kWh
+        state: "{{ states('sensor.area_sala_de_estar_energy') | float(0) }}"
+
+      - name: "area_cocina_energy_src"
+        unique_id: area_cocina_energy_src
+        device_class: energy
+        state_class: total_increasing
+        unit_of_measurement: kWh
+        state: "{{ states('sensor.area_cocina_energy') | float(0) }}"
+
+      - name: "area_pieza_energy_src"
+        unique_id: area_pieza_energy_src
+        device_class: energy
+        state_class: total_increasing
+        unit_of_measurement: kWh
+        state: "{{ states('sensor.area_pieza_energy') | float(0) }}"
+
+      - name: "area_bano_energy_src"
+        unique_id: area_bano_energy_src
+        device_class: energy
+        state_class: total_increasing
+        unit_of_measurement: kWh
+        state: "{{ states('sensor.area_bano_energy') | float(0) }}"
+
+
+      # TOTAL POWER (W) = suma de las potencias de cada área
+      - name: "luces_total_power_tpl"
+        unique_id: luces_total_power_tpl
+        unit_of_measurement: W
+        device_class: power
+        state: >
+          {{
+            states('sensor.area_sala_de_estar_power')|float(0) +
+            states('sensor.area_cocina_power')|float(0) +
+            states('sensor.area_pieza_power')|float(0) +
+            states('sensor.area_bano_power')|float(0)
+          }}
+
+      # TOTAL ENERGY (kWh) = suma de las energías de cada área
+      - name: "luces_total_energy_tpl"
+        unique_id: luces_total_energy_tpl
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        state: >
+          {{
+            states('sensor.area_sala_de_estar_energy')|float(0) +
+            states('sensor.area_cocina_energy')|float(0) +
+            states('sensor.area_pieza_energy')|float(0) +
+            states('sensor.area_bano_energy')|float(0)
+          }}
+
+      # (re)definimos el PROXY para que apunte al total por plantilla
+      - name: "luces_total_energy_src"
+        unique_id: luces_total_energy_src
+        device_class: energy
+        state_class: total_increasing
+        unit_of_measurement: kWh
+        state: "{{ states('sensor.luces_total_energy_tpl') | float(0) }}"
+
+
+# ============================================================
+# Utility meters (TOTAL + ÁREAS + INDIVIDUALES)
+# ============================================================
+utility_meter:
+
+  # -------- TOTAL --------
+  luces_total_daily:   { source: sensor.luces_total_energy_src, cycle: daily }
+  luces_total_weekly:  { source: sensor.luces_total_energy_src, cycle: weekly }
+  luces_total_monthly: { source: sensor.luces_total_energy_src, cycle: monthly }
+
+  # -------- ÁREAS --------
+  area_sala_de_estar_daily:   { source: sensor.area_sala_de_estar_energy_src, cycle: daily }
+  area_sala_de_estar_weekly:  { source: sensor.area_sala_de_estar_energy_src, cycle: weekly }
+  area_sala_de_estar_monthly: { source: sensor.area_sala_de_estar_energy_src, cycle: monthly }
+
+  area_cocina_daily:   { source: sensor.area_cocina_energy_src, cycle: daily }
+  area_cocina_weekly:  { source: sensor.area_cocina_energy_src, cycle: weekly }
+  area_cocina_monthly: { source: sensor.area_cocina_energy_src, cycle: monthly }
+
+  area_pieza_daily:   { source: sensor.area_pieza_energy_src, cycle: daily }
+  area_pieza_weekly:  { source: sensor.area_pieza_energy_src, cycle: weekly }
+  area_pieza_monthly: { source: sensor.area_pieza_energy_src, cycle: monthly }
+
+  area_bano_daily:   { source: sensor.area_bano_energy_src, cycle: daily }
+  area_bano_weekly:  { source: sensor.area_bano_energy_src, cycle: weekly }
+  area_bano_monthly: { source: sensor.area_bano_energy_src, cycle: monthly }
+
+  # -------- INDIVIDUALES --------
+  riel1_daily:   { source: sensor.riel1_energy, cycle: daily }
+  riel1_weekly:  { source: sensor.riel1_energy, cycle: weekly }
+  riel1_monthly: { source: sensor.riel1_energy, cycle: monthly }
+
+  riel2_daily:   { source: sensor.riel2_energy, cycle: daily }
+  riel2_weekly:  { source: sensor.riel2_energy, cycle: weekly }
+  riel2_monthly: { source: sensor.riel2_energy, cycle: monthly }
+
+  riel3_daily:   { source: sensor.riel3_energy, cycle: daily }
+  riel3_weekly:  { source: sensor.riel3_energy, cycle: weekly }
+  riel3_monthly: { source: sensor.riel3_energy, cycle: monthly }
+
+  riel4_daily:   { source: sensor.riel4_energy, cycle: daily }
+  riel4_weekly:  { source: sensor.riel4_energy, cycle: weekly }
+  riel4_monthly: { source: sensor.riel4_energy, cycle: monthly }
+
+  rgb_daily:     { source: sensor.rgb_energy, cycle: daily }
+  rgb_weekly:    { source: sensor.rgb_energy, cycle: weekly }
+  rgb_monthly:   { source: sensor.rgb_energy, cycle: monthly }
+
+  barra1_daily:   { source: sensor.barra1_energy, cycle: daily }
+  barra1_weekly:  { source: sensor.barra1_energy, cycle: weekly }
+  barra1_monthly: { source: sensor.barra1_energy, cycle: monthly }
+
+  barra2_daily:   { source: sensor.barra2_energy, cycle: daily }
+  barra2_weekly:  { source: sensor.barra2_energy, cycle: weekly }
+  barra2_monthly: { source: sensor.barra2_energy, cycle: monthly }
+
+  cocina_daily:   { source: sensor.cocina_energy, cycle: daily }
+  cocina_weekly:  { source: sensor.cocina_energy, cycle: weekly }
+  cocina_monthly: { source: sensor.cocina_energy, cycle: monthly }
+
+  pieza1_daily:   { source: sensor.pieza1_energy, cycle: daily }
+  pieza1_weekly:  { source: sensor.pieza1_energy, cycle: weekly }
+  pieza1_monthly: { source: sensor.pieza1_energy, cycle: monthly }
+
+  pieza2_daily:   { source: sensor.pieza2_energy, cycle: daily }
+  pieza2_weekly:  { source: sensor.pieza2_energy, cycle: weekly }
+  pieza2_monthly: { source: sensor.pieza2_energy, cycle: monthly }
+
+  bano_daily:   { source: sensor.bano_energy, cycle: daily }
+  bano_weekly:  { source: sensor.bano_energy, cycle: weekly }
+  bano_monthly: { source: sensor.bano_energy, cycle: monthly }

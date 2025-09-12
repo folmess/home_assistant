@@ -1,0 +1,9 @@
+script:
+  zigbee2mqtt_republish_discovery:
+    alias: "Z2M - Re-publicar discovery"
+    sequence:
+      - service: mqtt.publish
+        data:
+          topic: zigbee2mqtt/bridge/request/discovery
+          payload: ""
+    mode: single
