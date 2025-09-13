@@ -1,0 +1,636 @@
+homeassistant:
+  customize: {}
+
+# ---------------------------------
+# HELPERS (LITE + Sesiones / Arribo por franja, con ACCIÓN por franja)
+# + Fallbacks de brillo por franja (seguro)
+# ---------------------------------
+input_number:
+  # Duración total (min) por parte del día
+  sala_off_manana:
+    name: Sala - Apagado mañana (min)
+    min: 1
+    max: 25
+    step: 1
+    unit_of_measurement: min
+  sala_off_mediodia:
+    name: Sala - Apagado mediodía (min)
+    min: 1
+    max: 25
+    step: 1
+    unit_of_measurement: min
+  sala_off_tarde:
+    name: Sala - Apagado tarde (min)
+    min: 1
+    max: 25
+    step: 1
+    unit_of_measurement: min
+  sala_off_noche:
+    name: Sala - Apagado noche (min)
+    min: 1
+    max: 30
+    step: 1
+    unit_of_measurement: min
+  sala_off_madrugada:
+    name: Sala - Apagado madrugada (min)
+    min: 1
+    max: 20
+    step: 1
+    unit_of_measurement: min
+
+  # Preaviso (min) por parte del día (1 solo preaviso)
+  sala_preaviso_manana:
+    name: Sala - Preaviso mañana (min)
+    min: 1
+    max: 10
+    step: 1
+    unit_of_measurement: min
+    initial: 2
+  sala_preaviso_mediodia:
+    name: Sala - Preaviso mediodía (min)
+    min: 1
+    max: 10
+    step: 1
+    unit_of_measurement: min
+    initial: 2
+  sala_preaviso_tarde:
+    name: Sala - Preaviso tarde (min)
+    min: 1
+    max: 10
+    step: 1
+    unit_of_measurement: min
+    initial: 2
+  sala_preaviso_noche:
+    name: Sala - Preaviso noche (min)
+    min: 1
+    max: 10
+    step: 1
+    unit_of_measurement: min
+    initial: 2
+  sala_preaviso_madrugada:
+    name: Sala - Preaviso madrugada (min)
+    min: 1
+    max: 5
+    step: 1
+    unit_of_measurement: min
+    initial: 2
+
+  # Reducción relativa única (todas las franjas)
+  sala_preaviso_reduccion_pct:
+    name: Sala - % reducción preaviso
+    min: 1
+    max: 90
+    step: 1
+    unit_of_measurement: '%'
+    initial: 50
+
+  # Umbrales de sesión (min)
+  sala_umbral_continua_min:
+    name: Sala - Umbral sesión continua (min)
+    min: 0
+    max: 8
+    step: 1
+    unit_of_measurement: min
+    initial: 5
+  sala_umbral_arribo_min:
+    name: Sala - Umbral arribo (min)
+    min: 10
+    max: 30
+    step: 1
+    unit_of_measurement: min
+    initial: 15
+
+  # Fallbacks por franja (si no hay snapshot/escena/script)
+  sala_fallback_pct_manana:
+    name: Sala - Fallback Mañana (%)
+    min: 1
+    max: 100
+    step: 1
+    unit_of_measurement: '%'
+    initial: 60
+  sala_fallback_pct_mediodia:
+    name: Sala - Fallback Mediodía (%)
+    min: 1
+    max: 100
+    step: 1
+    unit_of_measurement: '%'
+    initial: 60
+  sala_fallback_pct_tarde:
+    name: Sala - Fallback Tarde (%)
+    min: 1
+    max: 100
+    step: 1
+    unit_of_measurement: '%'
+    initial: 60
+  sala_fallback_pct_noche:
+    name: Sala - Fallback Noche (%)
+    min: 1
+    max: 100
+    step: 1
+    unit_of_measurement: '%'
+    initial: 30
+  sala_fallback_pct_madrugada:
+    name: Sala - Fallback Madrugada (%)
+    min: 1
+    max: 100
+    step: 1
+    unit_of_measurement: '%'
+    initial: 15
+
+input_select:
+  sala_restore_modo:
+    name: Sala - Modo de restauración (normal)
+    options:
+      - estado_anterior
+      - escena
+      - script
+    initial: estado_anterior
+
+  sala_arribo_accion:
+    name: Sala - Acción de arribo (global)
+    options:
+      - escena
+      - script
+      - estado_anterior
+    initial: escena
+
+  # Acciones por franja (pueden heredar del global con "usar_global")
+  sala_arribo_accion_manana:
+    name: Sala - Acción de arribo (mañana)
+    options: [usar_global, escena, script, estado_anterior]
+    initial: usar_global
+  sala_arribo_accion_mediodia:
+    name: Sala - Acción de arribo (mediodía)
+    options: [usar_global, escena, script, estado_anterior]
+    initial: usar_global
+  sala_arribo_accion_tarde:
+    name: Sala - Acción de arribo (tarde)
+    options: [usar_global, escena, script, estado_anterior]
+    initial: usar_global
+  sala_arribo_accion_noche:
+    name: Sala - Acción de arribo (noche)
+    options: [usar_global, escena, script, estado_anterior]
+    initial: usar_global
+  sala_arribo_accion_madrugada:
+    name: Sala - Acción de arribo (madrugada)
+    options: [usar_global, escena, script, estado_anterior]
+    initial: usar_global
+
+input_text:
+  # Restauración normal (cuando había timers y volvió motion)
+  sala_restore_escena:
+    name: Sala - Escena (normal) a restaurar (entity_id)
+    max: 255
+    initial: ""
+  sala_restore_script:
+    name: Sala - Script (normal) a ejecutar (entity_id)
+    max: 255
+    initial: ""
+
+  # ARRIBO — Recursos por franja (escena/script)
+  sala_scene_manana:
+    name: Sala - Escena de arribo (mañana)
+    max: 255
+    initial: ""
+  sala_script_manana:
+    name: Sala - Script de arribo (mañana)
+    max: 255
+    initial: ""
+
+  sala_scene_mediodia:
+    name: Sala - Escena de arribo (mediodía)
+    max: 255
+    initial: ""
+  sala_script_mediodia:
+    name: Sala - Script de arribo (mediodía)
+    max: 255
+    initial: ""
+
+  sala_scene_tarde:
+    name: Sala - Escena de arribo (tarde)
+    max: 255
+    initial: ""
+  sala_script_tarde:
+    name: Sala - Script de arribo (tarde)
+    max: 255
+    initial: ""
+
+  sala_scene_noche:
+    name: Sala - Escena de arribo (noche)
+    max: 255
+    initial: ""
+  sala_script_noche:
+    name: Sala - Script de arribo (noche)
+    max: 255
+    initial: ""
+
+  sala_scene_madrugada:
+    name: Sala - Escena de arribo (madrugada)
+    max: 255
+    initial: ""
+  sala_script_madrugada:
+    name: Sala - Script de arribo (madrugada)
+    max: 255
+    initial: ""
+
+  # Estado/Eventos para la UI
+  sala_estado:
+    name: Sala - Estado
+    max: 120
+    initial: ""
+  sala_evento:
+    name: Sala - Último evento
+    max: 255
+    initial: ""
+
+# Marca temporal: último OFF (para sesiones, sin timers)
+input_datetime:
+  sala_last_off:
+    name: Sala - Último OFF
+    has_date: true
+    has_time: true
+
+# ------------------------
+# TIMERS (LITE)
+# ------------------------
+timer:
+  sala_preaviso_delay:
+    name: Sala - Delay hasta preaviso
+    restore: true
+  sala_preaviso:
+    name: Sala - Preaviso (duración)
+    restore: true
+
+# ------------------------
+# SCRIPT (preaviso, preciso con piso 10%)
+# ------------------------
+script:
+  sala_lite_preaviso_reduce:
+    alias: Sala lite - aplicar preaviso (preciso por luz)
+    mode: parallel
+    max: 4
+    fields:
+      grupo:
+        description: light.* con luces de sala
+      reduccion_pct:
+        description: pct de reducción (0-100)
+    sequence:
+      - variables:
+          miembros: "{{ state_attr(grupo, 'entity_id') or [] }}"
+          factor: "{{ (100 - (reduccion_pct | int)) / 100 }}"
+          encendidas: >-
+            {{ expand(miembros)
+               | selectattr('entity_id','search','^light\\.')
+               | selectattr('state','eq','on')
+               | map(attribute='entity_id') | list }}
+      - repeat:
+          for_each: "{{ encendidas }}"
+          sequence:
+            - variables:
+                current_pct: >-
+                  {{ ((state_attr(repeat.item, 'brightness') | default(255) | int) / 255 * 100) | float }}
+                target_pct: >-
+                  {{ [ (current_pct * factor) | round(0), 10 ] | max }}   # piso fijo 10%
+            - service: light.turn_on
+              data:
+                entity_id: "{{ repeat.item }}"
+                brightness_pct: "{{ target_pct }}"
+
+# ------------------------
+# CORE (LITE + Sesiones, con ARRIBO por franja y FALLBACKS)
+# ------------------------
+automation:
+  # A) Guardar último OFF
+  - id: sala_lite_sessions_mark_off_v10_0C
+    alias: Sala lite - marcar último OFF (v10.0C)
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sala
+        to: "off"
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.sala_last_off
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.sala_evento
+        data:
+          value: "Motion OFF → guardado last_off"
+
+  # B) Motion OFF: programa delay para preaviso
+  - id: sala_lite_motion_off_v10_0C
+    alias: Sala lite - motion OFF (v10.0C)
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sala
+        to: "off"
+    variables:
+      parte: >
+        {{ states('sensor.parte_del_dia') | lower
+           | replace('á','a') | replace('é','e') | replace('í','i')
+           | replace('ó','o') | replace('ú','u') }}
+      total_min: >-
+        {% set mapa = {
+          'manana': states('input_number.sala_off_manana')|int,
+          'mediodia': states('input_number.sala_off_mediodia')|int,
+          'tarde': states('input_number.sala_off_tarde')|int,
+          'noche': states('input_number.sala_off_noche')|int,
+          'madrugada': states('input_number.sala_off_madrugada')|int
+        } %}
+        {{ mapa.get(parte, states('input_number.sala_off_noche')|int) }}
+      preaviso_min: >-
+        {% set mapa = {
+          'manana': states('input_number.sala_preaviso_manana')|int,
+          'mediodia': states('input_number.sala_preaviso_mediodia')|int,
+          'tarde': states('input_number.sala_preaviso_tarde')|int,
+          'noche': states('input_number.sala_preaviso_noche')|int,
+          'madrugada': states('input_number.sala_preaviso_madrugada')|int
+        } %}
+        {{ mapa.get(parte, 5) }}
+      delay_s: "{{ [ (total_min | int) * 60 - (preaviso_min | int) * 60, 0 ] | max }}"
+    action:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.sala_estado
+        data:
+          value: "Esperando preaviso"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.sala_evento
+        data:
+          value: "Motion OFF → timers programados"
+      - service: timer.start
+        target:
+          entity_id: timer.sala_preaviso_delay
+        data:
+          duration: "00:00:{{ delay_s }}"
+
+  # C) Listener de timers (inicio y fin del preaviso)
+  - id: sala_lite_timer_listener_v10_0C
+    alias: Sala lite - timer listener (v10.0C)
+    mode: queued
+    trigger:
+      - platform: event
+        event_type: timer.finished
+    variables:
+      t: "{{ trigger.event.data.entity_id | default('') }}"
+      grupo: "light.luces_sala_de_estar"
+      reduccion: "{{ states('input_number.sala_preaviso_reduccion_pct') | int }}"
+      preaviso_min: >-
+        {% set parte = states('sensor.parte_del_dia') | lower
+             | replace('á','a') | replace('é','e') | replace('í','i')
+             | replace('ó','o') | replace('ú','u') %}
+        {% set mapa = {
+          'manana': states('input_number.sala_preaviso_manana')|int,
+          'mediodia': states('input_number.sala_preaviso_mediodia')|int,
+          'tarde': states('input_number.sala_preaviso_tarde')|int,
+          'noche': states('input_number.sala_preaviso_noche')|int,
+          'madrugada': states('input_number.sala_preaviso_madrugada')|int
+        } %}
+        {{ mapa.get(parte, 5) }}
+    condition:
+      - condition: template
+        value_template: "{{ t in ['timer.sala_preaviso_delay','timer.sala_preaviso'] }}"
+    action:
+      - choose:
+          - conditions: "{{ t == 'timer.sala_preaviso_delay' }}"
+            sequence:
+              - service: scene.create
+                data:
+                  scene_id: sala_snapshot_lite
+                  snapshot_entities: "{{ state_attr(grupo, 'entity_id') or [] }}"
+              - service: script.turn_on
+                target:
+                  entity_id: script.sala_lite_preaviso_reduce
+                data:
+                  variables:
+                    grupo: "{{ grupo }}"
+                    reduccion_pct: "{{ reduccion }}"
+              - service: timer.start
+                target:
+                  entity_id: timer.sala_preaviso
+                data:
+                  duration: "00:{{ '%02d'|format(preaviso_min | int) }}:00"
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.sala_estado
+                data:
+                  value: "Preaviso"
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.sala_evento
+                data:
+                  value: "Arrancó preaviso (reducción aplicada)"
+
+          - conditions: "{{ t == 'timer.sala_preaviso' }}"
+            sequence:
+              - service: light.turn_off
+                target:
+                  entity_id: "{{ grupo }}"
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.sala_estado
+                data:
+                  value: "Apagado"
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.sala_evento
+                data:
+                  value: "Fin de preaviso → apagado"
+
+  # D) Motion ON: sesiones + ARRIBO con ACCIÓN por franja + FALLBACKS
+  - id: sala_lite_motion_on_v10_0C
+    alias: Sala lite - motion ON (v10.0C)
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sala
+        to: "on"
+    variables:
+      grupo: "light.luces_sala_de_estar"
+      # Gap desde último OFF (min)
+      last_dt: >-
+        {% set v = states('input_datetime.sala_last_off') %}
+        {{ as_datetime(v) if v not in ['unknown','unavailable','None',''] else none }}
+      gap_min: >-
+        {{ (((now() - last_dt).total_seconds() / 60) if last_dt else 9999) | round(0) }}
+      t_continua: "{{ states('input_number.sala_umbral_continua_min') | int }}"
+      t_arribo: "{{ states('input_number.sala_umbral_arribo_min') | int }}"
+
+      # Parte del día
+      parte: >
+        {{ states('sensor.parte_del_dia') | lower
+           | replace('á','a') | replace('é','e') | replace('í','i')
+           | replace('ó','o') | replace('ú','u') }}
+
+      # Recursos por franja
+      escena_pd: >-
+        {% set mapa = {
+          'manana': states('input_text.sala_scene_manana'),
+          'mediodia': states('input_text.sala_scene_mediodia'),
+          'tarde': states('input_text.sala_scene_tarde'),
+          'noche': states('input_text.sala_scene_noche'),
+          'madrugada': states('input_text.sala_scene_madrugada')
+        } %}
+        {{ (mapa.get(parte, '')) | string }}
+      script_pd: >-
+        {% set mapa = {
+          'manana': states('input_text.sala_script_manana'),
+          'mediodia': states('input_text.sala_script_mediodia'),
+          'tarde': states('input_text.sala_script_tarde'),
+          'noche': states('input_text.sala_script_noche'),
+          'madrugada': states('input_text.sala_script_madrugada')
+        } %}
+        {{ (mapa.get(parte, '')) | string }}
+
+      # Acciones de ARRIBO (por franja) y GLOBAL (fallback)
+      arribo_accion_pd: >-
+        {% set mapa = {
+          'manana': states('input_select.sala_arribo_accion_manana'),
+          'mediodia': states('input_select.sala_arribo_accion_mediodia'),
+          'tarde': states('input_select.sala_arribo_accion_tarde'),
+          'noche': states('input_select.sala_arribo_accion_noche'),
+          'madrugada': states('input_select.sala_arribo_accion_madrugada')
+        } %}
+        {{ (mapa.get(parte, '')) | lower | trim }}
+      arribo_accion_global: "{{ (states('input_select.sala_arribo_accion') | lower) | trim }}"
+      arribo_accion: >-
+        {% set cand = arribo_accion_pd %}
+        {% if cand in ['escena','script','estado_anterior'] %}{{ cand }}{% else %}{{ arribo_accion_global }}{% endif %}
+
+      # Restauración normal
+      modo_normal: "{{ (states('input_select.sala_restore_modo') | lower) | trim }}"
+      escena_normal: "{{ states('input_text.sala_restore_escena') }}"
+      script_normal: "{{ states('input_text.sala_restore_script') }}"
+
+      # Fallback por franja (para arribo/restore si no hay snapshot/escena/script)
+      fallback_pct_pd: >-
+        {% set mapa = {
+          'manana': states('input_number.sala_fallback_pct_manana')|int,
+          'mediodia': states('input_number.sala_fallback_pct_mediodia')|int,
+          'tarde': states('input_number.sala_fallback_pct_tarde')|int,
+          'noche': states('input_number.sala_fallback_pct_noche')|int,
+          'madrugada': states('input_number.sala_fallback_pct_madrugada')|int
+        } %}
+        {{ mapa.get(parte, 60) }}
+
+      snapshot_ok: "{{ states('scene.sala_snapshot_lite') not in ['unknown','unavailable'] }}"
+    action:
+      # 1) ARRIBO si gap >= T_arribo
+      - choose:
+          - conditions: "{{ gap_min >= t_arribo }}"
+            sequence:
+              - service: timer.cancel
+                target:
+                  entity_id:
+                    - timer.sala_preaviso
+                    - timer.sala_preaviso_delay
+              - choose:
+                  - conditions: "{{ arribo_accion == 'escena' and escena_pd not in ['', 'unknown', 'unavailable'] }}"
+                    sequence:
+                      - service: scene.turn_on
+                        data:
+                          entity_id: "{{ escena_pd }}"
+                  - conditions: "{{ arribo_accion == 'script' and script_pd not in ['', 'unknown', 'unavailable'] }}"
+                    sequence:
+                      - service: script.turn_on
+                        data:
+                          entity_id: "{{ script_pd }}"
+                  - conditions: "{{ arribo_accion == 'estado_anterior' and snapshot_ok }}"
+                    sequence:
+                      - service: scene.turn_on
+                        data:
+                          entity_id: scene.sala_snapshot_lite
+                default:
+                  # Fallback seguro por franja
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ grupo }}"
+                    data:
+                      brightness_pct: "{{ fallback_pct_pd }}"
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.sala_estado
+                data:
+                  value: "Arribo"
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.sala_evento
+                data:
+                  value: >-
+                    Arribo (gap {{ gap_min }}m, acción {{ arribo_accion }}, franja {{ parte }})
+              - stop: "Arribo ejecutado"
+
+      # 2) Flujo normal (si había timers → restaurar; si no, sólo marcar)
+      - choose:
+          - conditions:
+              - condition: or
+                conditions:
+                  - condition: state
+                    entity_id: timer.sala_preaviso
+                    state: active
+                  - condition: state
+                    entity_id: timer.sala_preaviso_delay
+                    state: active
+            sequence:
+              - service: timer.cancel
+                target:
+                  entity_id:
+                    - timer.sala_preaviso
+                    - timer.sala_preaviso_delay
+              - choose:
+                  - conditions: "{{ modo_normal == 'estado_anterior' and snapshot_ok }}"
+                    sequence:
+                      - service: scene.turn_on
+                        data:
+                          entity_id: scene.sala_snapshot_lite
+                  - conditions: "{{ modo_normal == 'escena' and escena_normal not in ['', 'unknown', 'unavailable'] }}"
+                    sequence:
+                      - service: scene.turn_on
+                        data:
+                          entity_id: "{{ escena_normal }}"
+                  - conditions: "{{ modo_normal == 'script' and script_normal not in ['', 'unknown', 'unavailable'] }}"
+                    sequence:
+                      - service: script.turn_on
+                        data:
+                          entity_id: "{{ script_normal }}"
+                default:
+                  # Fallback seguro si no hay snapshot/escena/script
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ grupo }}"
+                    data:
+                      brightness_pct: "{{ fallback_pct_pd }}"
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.sala_estado
+                data:
+                  value: "Detectado (continua)"
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.sala_evento
+                data:
+                  value: >-
+                    Restauración: {{ modo_normal }} (gap {{ gap_min }}m) — fallback {{ fallback_pct_pd }}% si aplicó
+        default:
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.sala_estado
+            data:
+              value: "Detectado"
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.sala_evento
+            data:
+              value: "Motion ON (gap {{ gap_min }}m)"
+
+# ===========================================================
+#  SALA DE ESTAR — v10.0 LITE-C (sesiones + arribo por franja + FALLBACKS)
+#  - Cambios vs LITE-B: guardias de snapshot + fallback por franja (brillo) para ARRIBO y RESTORE.
+#  - Usa light.luces_sala_de_estar (light group) en todas las acciones.
+#  - Mantiene piso 10%, un solo preaviso, sin flags/cooldown/debounce.
+# ===========================================================
