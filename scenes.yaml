@@ -5278,3 +5278,215 @@
       entity_only: true
     light.riel4:
       entity_only: true
+- id: '1757778529343'
+  name: luces_sala_global
+  entities:
+    light.riel:
+      min_color_temp_kelvin: 2200
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 454
+      effect_list:
+      - Alarm
+      - Bedtime
+      - Candlelight
+      - Christmas
+      - Cool white
+      - Cozy
+      - Daylight
+      - Deep dive
+      - Diwali
+      - Fall
+      - Fireplace
+      - Focus
+      - Forest
+      - Golden white
+      - Halloween
+      - Jungle
+      - Mojito
+      - Music
+      - Night light
+      - Ocean
+      - Party
+      - Pastel colors
+      - Plantgrowth
+      - Pulse
+      - Relax
+      - Rhythm
+      - Romance
+      - Scene
+      - Spring
+      - Steampunk
+      - Summer
+      - Sunset
+      - TV time
+      - True colors
+      - Wake-up
+      - Warm white
+      - White
+      - 'off'
+      supported_color_modes:
+      - color_temp
+      - hs
+      - rgbw
+      effect: 'off'
+      color_mode: color_temp
+      brightness: 166
+      color_temp_kelvin: 4502
+      color_temp: 222
+      hs_color:
+      - 26.728
+      - 26.465
+      rgb_color:
+      - 255
+      - 218
+      - 188
+      xy_color:
+      - 0.392
+      - 0.357
+      rgbw_color:
+      entity_id:
+      - light.riel1
+      - light.riel2
+      - light.riel3
+      - light.riel4
+      icon: mdi:lightbulb-group
+      friendly_name: Riel
+      supported_features: 4
+      state: 'on'
+    light.luz_rack:
+      effect_list:
+      - flash_effect
+      - smooth_trans
+      - color:white
+      - color:orange
+      - color:red
+      - color:green
+      - color:blue
+      - color:lightorange
+      - color:yellow
+      - color:lima
+      - color:teal
+      - color:cyan
+      - color:realblue
+      - color:lightblue
+      - color:violeta1
+      - color:violeta2
+      - color:rosa
+      - color:magenta
+      supported_color_modes:
+      - onoff
+      effect: color:orange
+      color_mode: onoff
+      icon: mdi:led-strip-variant
+      friendly_name: Luz Rack
+      supported_features: 4
+      state: 'on'
+    light.rgb:
+      min_color_temp_kelvin: 2200
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 454
+      effect_list:
+      - Alarm
+      - Bedtime
+      - Candlelight
+      - Christmas
+      - Cozy
+      - Cool white
+      - Daylight
+      - Diwali
+      - Deep dive
+      - Fall
+      - Fireplace
+      - Forest
+      - Focus
+      - Golden white
+      - Halloween
+      - Jungle
+      - Mojito
+      - Night light
+      - Ocean
+      - Party
+      - Pulse
+      - Pastel colors
+      - Plantgrowth
+      - Romance
+      - Relax
+      - Sunset
+      - Spring
+      - Summer
+      - Steampunk
+      - True colors
+      - TV time
+      - White
+      - Wake-up
+      - Warm white
+      - Rhythm
+      supported_color_modes:
+      - color_temp
+      - rgbw
+      effect:
+      color_mode: color_temp
+      brightness: 71
+      color_temp_kelvin: 2202
+      color_temp: 454
+      hs_color:
+      - 29.79
+      - 84.553
+      rgb_color:
+      - 255
+      - 146
+      - 39
+      xy_color:
+      - 0.579
+      - 0.388
+      rgbw_color:
+      icon: mdi:floor-lamp-torchiere
+      friendly_name: rgb
+      supported_features: 4
+      state: 'on'
+    light.barra:
+      min_color_temp_kelvin: 2700
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 370
+      effect_list:
+      - Music
+      - Scene
+      - 'off'
+      supported_color_modes:
+      - color_temp
+      - hs
+      effect: 'off'
+      color_mode: hs
+      brightness: 26
+      color_temp_kelvin:
+      color_temp:
+      hs_color:
+      - 32
+      - 100
+      rgb_color:
+      - 255
+      - 136
+      - 0
+      xy_color:
+      - 0.601
+      - 0.384
+      entity_id:
+      - light.barra1
+      - light.barra2
+      icon: mdi:track-light
+      friendly_name: Barra
+      supported_features: 4
+      state: 'on'
+  metadata:
+    light.riel:
+      entity_only: true
+    light.luz_rack:
+      entity_only: true
+    light.rgb:
+      entity_only: true
+    light.barra:
+      entity_only: true
+  icon: mdi:lightbulb-auto-outline

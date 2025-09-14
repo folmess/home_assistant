@@ -46,6 +46,8 @@ input_datetime:
 # SENSOR GLOBAL: Parte del día
 # Calcula en tiempo real usando los helpers y maneja correctamente la medianoche.
 # Parte del día (con icono dinámico)
+# Estado interno machine-friendly (manana, mediodia, etc.).
+# En UI se puede usar label state_attr('sensor.parte_del_dia','label') para ver “Mañana”, “Tarde”, etc.
 ###############################################################################
 template:
   - sensor:
@@ -64,22 +66,31 @@ template:
           {% set med_end  = t_tar if t_tar > t_med else t_tar + timedelta(days=1) %}
           {% set tar_end  = t_noc if t_noc > t_tar else t_noc + timedelta(days=1) %}
 
-          {% if t_now >= t_madr and t_now < madr_end %}Madrugada
-          {% elif t_now >= t_man and t_now < man_end %}Mañana
-          {% elif t_now >= t_med and t_now < med_end %}Mediodía
-          {% elif t_now >= t_tar and t_now < tar_end %}Tarde
-          {% else %}Noche
+          {% if t_now >= t_madr and t_now < madr_end %}madrugada
+          {% elif t_now >= t_man and t_now < man_end %}manana
+          {% elif t_now >= t_med and t_now < med_end %}mediodia
+          {% elif t_now >= t_tar and t_now < tar_end %}tarde
+          {% else %}noche
           {% endif %}
         icon: >
-          {% set mapa = {
-            'Madrugada': state_attr('input_datetime.parte_madrugada_inicio','icon'),
-            'Mañana'   : state_attr('input_datetime.parte_manana_inicio','icon'),
-            'Mediodía' : state_attr('input_datetime.parte_mediodia_inicio','icon'),
-            'Tarde'    : state_attr('input_datetime.parte_tarde_inicio','icon'),
-            'Noche'    : state_attr('input_datetime.parte_noche_inicio','icon')
-          } %}
-          {{ mapa.get(this.state, 'mdi:clock-outline') }}
+          {% set src = {
+            'madrugada': 'input_datetime.parte_madrugada_inicio',
+            'manana'   : 'input_datetime.parte_manana_inicio',
+            'mediodia' : 'input_datetime.parte_mediodia_inicio',
+            'tarde'    : 'input_datetime.parte_tarde_inicio',
+            'noche'    : 'input_datetime.parte_noche_inicio'
+          }.get(this.state) %}
+          {{ state_attr(src, 'icon') if src else 'mdi:clock-outline' }}
         attributes:
+          label: >
+            {% set map = {
+              'madrugada': 'Madrugada',
+              'manana'   : 'Mañana',
+              'mediodia' : 'Mediodía',
+              'tarde'    : 'Tarde',
+              'noche'    : 'Noche'
+            } %}
+            {{ map.get(this.state, this.state) }}
           range: >
             {% set t_now = now() %}
             {% set madr = states('input_datetime.parte_madrugada_inicio')[0:5] %}
@@ -110,3 +121,4 @@ template:
             {% else %}
               {{ noc }} → {{ madr }}
             {% endif %}
+

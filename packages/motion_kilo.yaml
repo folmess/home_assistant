@@ -1,0 +1,366 @@
+# Package for Automatic Lighting Control in Sala de Estar
+
+input_number:
+  sala_de_estar_timeout_manana:
+    name: Timeout - Mañana
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: minutes
+    initial: 10
+  sala_de_estar_timeout_mediodia:
+    name: Timeout - Mediodia
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: minutes
+    initial: 15
+  sala_de_estar_timeout_tarde:
+    name: Timeout - Tarde
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: minutes
+    initial: 20
+  sala_de_estar_timeout_noche:
+    name: Timeout - Noche
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: minutes
+    initial: 30
+  sala_de_estar_timeout_madrugada:
+    name: Timeout - Madrugada
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: minutes
+    initial: 5
+  sala_de_estar_brightness_manana:
+    name: Brightness - Mañana
+    min: 0
+    max: 255
+    step: 1
+    initial: 200
+  sala_de_estar_brightness_mediodia:
+    name: Brightness - Mediodia
+    min: 0
+    max: 255
+    step: 1
+    initial: 255
+  sala_de_estar_brightness_tarde:
+    name: Brightness - Tarde
+    min: 0
+    max: 255
+    step: 1
+    initial: 220
+  sala_de_estar_brightness_noche:
+    name: Brightness - Noche
+    min: 0
+    max: 255
+    step: 1
+    initial: 150
+  sala_de_estar_brightness_madrugada:
+    name: Brightness - Madrugada
+    min: 0
+    max: 255
+    step: 1
+    initial: 100
+  sala_de_estar_reduction_percentage:
+    name: Reduction Percentage
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    initial: 50
+  sala_de_estar_max_time_without_motion:
+    name: Max Time Without Motion
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: minutes
+    initial: 15
+
+input_text:
+  sala_de_estar_effect_script_name:
+    name: Effect Script Name
+    initial: turn_on_lights_effect
+
+input_boolean:
+  sala_de_estar_debug_mode:
+    name: Debug Mode
+    initial: off
+
+script:
+  sala_de_estar_save_scene:
+    sequence:
+      - service: system_log.write
+        data:
+          message: "Saving scene for sala_de_estar"
+          level: info
+      - condition: state
+        entity_id: input_boolean.sala_de_estar_debug_mode
+        state: "on"
+      - service: persistent_notification.create
+        data:
+          title: "Scene Saved"
+          message: "Scene saved for sala_de_estar."
+      - service: scene.create
+        data:
+          scene_id: sala_de_estar_auto_snapshot
+          snapshot_entities: "{{ area_entities('sala_de_estar') | select('match', 'light\\..*') | list }}"
+
+  sala_de_estar_reduce_brightness:
+    sequence:
+      - service: system_log.write
+        data:
+          message: "Reducing brightness in sala_de_estar"
+          level: info
+      - condition: state
+        entity_id: input_boolean.sala_de_estar_debug_mode
+        state: "on"
+      - service: persistent_notification.create
+        data:
+          title: "Brightness Reduced"
+          message: "Brightness reduced in sala_de_estar."
+      - service: light.turn_on
+        data:
+          entity_id: "{{ area_entities('sala_de_estar') | select('match', 'light\\..*') | list }}"
+          brightness: "{{ (states('input_number.sala_de_estar_brightness_' + states('sensor.parte_del_dia')) | int * (100 - states('input_number.sala_de_estar_reduction_percentage') | int) / 100) | int if states('sensor.parte_del_dia') in ['manana', 'mediodia', 'tarde', 'noche', 'madrugada'] else 100 }}"
+
+  sala_de_estar_turn_off_lights:
+    sequence:
+      - service: system_log.write
+        data:
+          message: "Turning off lights in sala_de_estar"
+          level: info
+      - condition: state
+        entity_id: input_boolean.sala_de_estar_debug_mode
+        state: "on"
+      - service: persistent_notification.create
+        data:
+          title: "Lights Off"
+          message: "Lights turned off in sala_de_estar."
+      - service: light.turn_off
+        data:
+          entity_id: "{{ area_entities('sala_de_estar') | select('match', 'light\\..*') | list }}"
+
+  sala_de_estar_turn_on_lights:
+    fields:
+      use_scene:
+        name: Use Scene
+        description: Whether to use the saved scene or effect script
+        default: true
+        selector:
+          boolean:
+    sequence:
+      - service: system_log.write
+        data:
+          message: "Turning on lights in sala_de_estar. Use scene: {{ use_scene }}"
+          level: info
+      - condition: state
+        entity_id: input_boolean.sala_de_estar_debug_mode
+        state: "on"
+      - service: persistent_notification.create
+        data:
+          title: "Lights On"
+          message: "Lights turned on in sala_de_estar. Mode: {% if use_scene %}Scene{% else %}Effect{% endif %}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ use_scene and (states.scene.sala_de_estar_auto_snapshot.attributes.entity_id | default([]) | count > 0) }}"
+            sequence:
+              - service: scene.apply
+                entity_id: scene.sala_de_estar_auto_snapshot
+          - conditions:
+              - condition: template
+                value_template: "{{ use_scene and not (states.scene.sala_de_estar_auto_snapshot.attributes.entity_id | default([]) | count > 0) }}"
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: "{{ area_entities('sala_de_estar') | select('match', 'light\\..*') | list }}"
+                  brightness: "{{ (states('input_number.sala_de_estar_brightness_' + states('sensor.parte_del_dia')) | int) if states('sensor.parte_del_dia') in ['manana', 'mediodia', 'tarde', 'noche', 'madrugada'] else 200 }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ not use_scene }}"
+            sequence:
+              - service: "{{ 'script.' + states('input_text.sala_de_estar_effect_script_name') }}"
+
+automation:
+  - alias: Motion Lighting - Turn On
+    variables:
+      area_id: sala_de_estar
+      motion_sensor: binary_sensor.motion_sala
+      day_part_sensor: sensor.parte_del_dia
+      debug_mode: "{{ states('input_boolean.sala_de_estar_debug_mode') }}"
+      current_timeout: >
+        {% if states(day_part_sensor) == 'manana' %}
+          {{ states('input_number.sala_de_estar_timeout_manana') | int }}
+        {% elif states(day_part_sensor) == 'mediodia' %}
+          {{ states('input_number.sala_de_estar_timeout_mediodia') | int }}
+        {% elif states(day_part_sensor) == 'tarde' %}
+          {{ states('input_number.sala_de_estar_timeout_tarde') | int }}
+        {% elif states(day_part_sensor) == 'noche' %}
+          {{ states('input_number.sala_de_estar_timeout_noche') | int }}
+        {% elif states(day_part_sensor) == 'madrugada' %}
+          {{ states('input_number.sala_de_estar_timeout_madrugada') | int }}
+        {% else %}
+          10
+        {% endif %}
+      current_brightness: >
+        {% if states(day_part_sensor) == 'manana' %}
+          {{ states('input_number.sala_de_estar_brightness_manana') | int }}
+        {% elif states(day_part_sensor) == 'mediodia' %}
+          {{ states('input_number.sala_de_estar_brightness_mediodia') | int }}
+        {% elif states(day_part_sensor) == 'tarde' %}
+          {{ states('input_number.sala_de_estar_brightness_tarde') | int }}
+        {% elif states(day_part_sensor) == 'noche' %}
+          {{ states('input_number.sala_de_estar_brightness_noche') | int }}
+        {% elif states(day_part_sensor) == 'madrugada' %}
+          {{ states('input_number.sala_de_estar_brightness_madrugada') | int }}
+        {% else %}
+          200
+        {% endif %}
+      lights_in_area: "{{ area_entities(area_id) | select('match', 'light\\..*') | list }}"
+      scene_name: scene.sala_de_estar_auto_snapshot
+      timer_name: timer.sala_de_estar_auto_timer
+      timer_max_name: timer.sala_de_estar_max_timer
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sala
+        to: "on"
+        id: motion_on
+    condition: []
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.sala_de_estar_debug_mode
+                state: "on"
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  title: "Motion Detected"
+                  message: "Motion in {{ area_id }}. Timer was {{ states(timer_name) }}."
+      - variables:
+          use_scene: "{{ states(timer_max_name) != 'idle' }}"
+      - service: timer.cancel
+        data:
+          entity_id: "{{ timer_name }}"
+      - service: timer.cancel
+        data:
+          entity_id: "{{ timer_max_name }}"
+      - service: timer.start
+        data:
+          entity_id: "{{ timer_max_name }}"
+          duration: "{{ states('input_number.sala_de_estar_max_time_without_motion') | int * 60 }}"
+      - service: script.sala_de_estar_turn_on_lights
+        data:
+          use_scene: "{{ use_scene }}"
+    mode: single
+
+  - alias: Motion Lighting - Timeout and Reduction
+    variables:
+      area_id: sala_de_estar
+      motion_sensor: binary_sensor.motion_sala
+      day_part_sensor: sensor.parte_del_dia
+      debug_mode: "{{ states('input_boolean.sala_de_estar_debug_mode') }}"
+      current_timeout: >
+        {% if states(day_part_sensor) == 'manana' %}
+          {{ states('input_number.sala_de_estar_timeout_manana') | int }}
+        {% elif states(day_part_sensor) == 'mediodia' %}
+          {{ states('input_number.sala_de_estar_timeout_mediodia') | int }}
+        {% elif states(day_part_sensor) == 'tarde' %}
+          {{ states('input_number.sala_de_estar_timeout_tarde') | int }}
+        {% elif states(day_part_sensor) == 'noche' %}
+          {{ states('input_number.sala_de_estar_timeout_noche') | int }}
+        {% elif states(day_part_sensor) == 'madrugada' %}
+          {{ states('input_number.sala_de_estar_timeout_madrugada') | int }}
+        {% else %}
+          10
+        {% endif %}
+      current_brightness: >
+        {% if states(day_part_sensor) == 'manana' %}
+          {{ states('input_number.sala_de_estar_brightness_manana') | int }}
+        {% elif states(day_part_sensor) == 'mediodia' %}
+          {{ states('input_number.sala_de_estar_brightness_mediodia') | int }}
+        {% elif states(day_part_sensor) == 'tarde' %}
+          {{ states('input_number.sala_de_estar_brightness_tarde') | int }}
+        {% elif states(day_part_sensor) == 'noche' %}
+          {{ states('input_number.sala_de_estar_brightness_noche') | int }}
+        {% elif states(day_part_sensor) == 'madrugada' %}
+          {{ states('input_number.sala_de_estar_brightness_madrugada') | int }}
+        {% else %}
+          200
+        {% endif %}
+      lights_in_area: "{{ area_entities(area_id) | select('match', 'light\\..*') | list }}"
+      scene_name: scene.sala_de_estar_auto_snapshot
+      timer_name: timer.sala_de_estar_auto_timer
+      timer_max_name: timer.sala_de_estar_max_timer
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sala
+        to: "off"
+        id: motion_off
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.sala_de_estar_auto_timer
+        id: timer_finished
+    condition: []
+    action:
+      - choose:
+          - conditions:
+              - condition: trigger
+                id: motion_off
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: state
+                        entity_id: input_boolean.sala_de_estar_debug_mode
+                        state: "on"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          title: "Motion Cleared"
+                          message: "No motion in {{ area_id }}. Timeout: {{ current_timeout }} min."
+              - delay: "{{ max((current_timeout | int - 2), 0) * 60 }}"
+              - service: script.sala_de_estar_save_scene
+              - service: script.sala_de_estar_reduce_brightness
+              - service: timer.start
+                data:
+                  entity_id: "{{ timer_name }}"
+                  duration: 120
+              - service: timer.start
+                data:
+                  entity_id: "{{ timer_max_name }}"
+                  duration: "{{ states('input_number.sala_de_estar_max_time_without_motion') | int * 60 }}"
+          - conditions:
+              - condition: trigger
+                id: timer_finished
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: state
+                        entity_id: input_boolean.sala_de_estar_debug_mode
+                        state: "on"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          title: "Lights Turning Off"
+                          message: "Timeout reached in {{ area_id }}. Turning off lights."
+              - service: script.sala_de_estar_turn_off_lights
+    mode: single
+
+scene:
+  - name: Sala de Estar Auto Snapshot
+    id: sala_de_estar_auto_snapshot
+    entities: {}
+
+timer:
+  sala_de_estar_auto_timer:
+    name: Sala de Estar Auto Timer
+    duration: 120
+  sala_de_estar_max_timer:
+    name: Sala de Estar Max Timer
+    duration: "{{ states('input_number.sala_de_estar_max_time_without_motion') | int * 60 }}"
