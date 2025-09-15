@@ -1,0 +1,190 @@
+# =========================
+# Script: Gradual Brightness Change
+# Allows gradual transition of one or more lights to a target brightness over a specified time
+# =========================
+
+script:
+  gradual_brightness_change:
+    alias: Gradual Brightness Change
+    mode: parallel
+    fields:
+      target:
+        name: Target
+        description: Select areas, devices, entities or labels containing lights
+        required: true
+        selector:
+          target:
+            entity:
+              domain: light
+      target_brightness:
+        name: Target Brightness (%)
+        description: Target brightness percentage (0-100%)
+        selector:
+          number:
+            min: 0
+            max: 100
+            step: 1
+            unit_of_measurement: "%"
+      transition_time:
+        name: Transition Time (seconds)
+        description: Total time for the transition
+        selector:
+          number:
+            min: 0.1
+            max: 300
+            step: 0.1
+            unit_of_measurement: "s"
+      steps:
+        name: Number of Steps
+        description: Number of steps for the gradual change (more steps = smoother transition)
+        selector:
+          number:
+            min: 1
+            max: 50
+            step: 1
+      queue_mode:
+        name: Modo de ejecución
+        description: Paralelo (por defecto) o en cola (secuencial)
+        default: parallel
+        selector:
+          select:
+            mode: dropdown
+            options:
+              - label: Paralelo
+                value: parallel
+              - label: En cola
+                value: queue
+    sequence:
+      - variables:
+          target_entities_raw: "{{ target.entity_id | default([]) }}"
+          target_devices_raw: "{{ target.device_id | default([]) }}"
+          target_areas_raw: "{{ target.area_id | default([]) }}"
+          target_entities: "{{ target_entities_raw if (target_entities_raw is iterable and target_entities_raw is not string) else [target_entities_raw] }}"
+          target_devices: "{{ target_devices_raw if (target_devices_raw is iterable and target_devices_raw is not string) else [target_devices_raw] }}"
+          target_areas: "{{ target_areas_raw if (target_areas_raw is iterable and target_areas_raw is not string) else [target_areas_raw] }}"
+          lights_from_devices: "{{ (target_devices | map('device_entities') | list) | sum(start=[]) | select('match', '^light\\.') | list }}"
+          lights_from_areas: "{{ (target_areas | map('area_entities') | list) | sum(start=[]) | select('match', '^light\\.') | list }}"
+          direct_lights: "{{ target_entities | select('match', '^light\\.') | list }}"
+          lights_list: "{{ (direct_lights + lights_from_devices + lights_from_areas) | unique | list }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ (lights_list | length) == 0 }}"
+            sequence:
+              - service: system_log.write
+                data:
+                  level: warning
+                  message: "gradual_brightness: no lights resolved from target={{ target | tojson }}"
+              - stop: "No target lights"
+          - conditions:
+              - condition: template
+                value_template: "{{ queue_mode == 'parallel' }}"
+            sequence:
+              - variables:
+                  steps_int: "{{ steps | int }}"
+                  step_delay_ms: "{{ (((transition_time | float) / (steps | float)) * 1000) | int }}"
+              - repeat:
+                  for_each: "{{ lights_list }}"
+                  sequence:
+                    - service: script.turn_on
+                      target:
+                        entity_id: script.gradual_brightness_worker
+                      data:
+                        variables:
+                          light: "{{ repeat.item }}"
+                          target_brightness: "{{ target_brightness }}"
+                          steps: "{{ steps_int }}"
+                          step_delay_ms: "{{ step_delay_ms }}"
+              - stop: "Parallel ramp dispatched"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ queue_mode == 'queue' }}"
+            sequence:
+              - variables:
+                  steps_int: "{{ steps | int }}"
+                  step_delay_ms: "{{ (((transition_time | float) / (steps | float)) * 1000) | int }}"
+              - repeat:
+                  for_each: "{{ lights_list }}"
+                  sequence:
+                    - service: script.gradual_brightness_worker
+                      data:
+                        variables:
+                          light: "{{ repeat.item }}"
+                          target_brightness: "{{ target_brightness }}"
+                          steps: "{{ steps_int }}"
+                          step_delay_ms: "{{ step_delay_ms }}"
+              - stop: "Queue ramp done"
+  gradual_brightness_worker:
+    alias: Gradual Brightness Worker
+    mode: parallel
+    fields:
+      light:
+        name: Light entity
+        selector:
+          entity:
+            domain: light
+      target_brightness:
+        name: Target Brightness (%)
+        selector:
+          number:
+            min: 0
+            max: 100
+            step: 1
+      steps:
+        name: Steps
+        selector:
+          number:
+            min: 1
+            max: 100
+            step: 1
+      step_delay_ms:
+        name: Step delay (ms)
+        selector:
+          number:
+            min: 0
+            max: 5000
+            step: 10
+    sequence:
+      - variables:
+          is_off: "{{ states(light) == 'off' }}"
+          start_bri: "{{ state_attr(light, 'brightness') | int(0) }}"
+          start_pct: "{{ (10 if is_off else (start_bri / 255 * 100)) | float }}"
+          target_pct: "{{ target_brightness | float }}"
+          delta: "{{ target_pct - start_pct }}"
+          step_size: "{{ (delta | float) / (steps | float) }}"
+      - if:
+          - condition: template
+            value_template: "{{ is_off and (delta | float) > 0 }}"
+        then:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ light }}"
+            data:
+              brightness: 25
+      - if:
+          - condition: template
+            value_template: "{{ (delta | float) == 0 or (is_off and (delta | float) <= 0) }}"
+        then: []
+        else:
+          - repeat:
+              count: "{{ steps | int }}"
+              sequence:
+                - variables:
+                    new_pct: "{{ (start_pct | float) + ((repeat.index | float) * (step_size | float)) }}"
+                    new_pct_clamped: "{{ ([new_pct | float, 1.0] | max) if (target_pct | float) <= 0 else ([new_pct | float, 100.0] | min) }}"
+                    new_brightness: "{{ (((new_pct_clamped | float) / 100.0) * 255.0) | round(0) | int }}"
+                - service: light.turn_on
+                  target:
+                    entity_id: "{{ light }}"
+                  data:
+                    brightness: "{{ new_brightness }}"
+                - delay:
+                    milliseconds: "{{ step_delay_ms | int }}"
+          - if:
+              - condition: template
+                value_template: "{{ (target_pct | float) <= 0 }}"
+            then:
+              - service: light.turn_off
+                target:
+                  entity_id: "{{ light }}"

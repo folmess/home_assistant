@@ -1,6 +1,11 @@
-# Package for Automatic Lighting Control in Sala de Estar
+# =========================
+# Package: motion_kilo (leaf-lights)
+# Auto lights Sala de Estar con escena, reducción, arribo por franja, scripts por franja
+# y uso consistente de "luces hoja" (expande grupos a integrantes)
+# =========================
 
 input_number:
+  # --- Timeouts de apagado suave por franja ---
   sala_de_estar_timeout_manana:
     name: Timeout - Mañana
     min: 1
@@ -36,6 +41,8 @@ input_number:
     step: 1
     unit_of_measurement: minutes
     initial: 5
+
+  # --- Brillo por franja ---
   sala_de_estar_brightness_manana:
     name: Brightness - Mañana
     min: 0
@@ -66,6 +73,7 @@ input_number:
     max: 255
     step: 1
     initial: 100
+
   sala_de_estar_reduction_percentage:
     name: Reduction Percentage
     min: 0
@@ -73,230 +81,345 @@ input_number:
     step: 1
     unit_of_measurement: "%"
     initial: 50
-  sala_de_estar_max_time_without_motion:
-    name: Max Time Without Motion
+
+  # --- ARRIBO por franja (ventana máx. sin movimiento que conserva la escena) ---
+  sala_de_estar_arribo_manana:
+    name: Arribo - Mañana
     min: 1
     max: 120
     step: 1
     unit_of_measurement: minutes
     initial: 15
+  sala_de_estar_arribo_mediodia:
+    name: Arribo - Mediodia
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: minutes
+    initial: 15
+  sala_de_estar_arribo_tarde:
+    name: Arribo - Tarde
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: minutes
+    initial: 20
+  sala_de_estar_arribo_noche:
+    name: Arribo - Noche
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: minutes
+    initial: 30
+  sala_de_estar_arribo_madrugada:
+    name: Arribo - Madrugada
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: minutes
+    initial: 10
 
 input_text:
+  # --- Script global (fallback) ---
   sala_de_estar_effect_script_name:
-    name: Effect Script Name
-    initial: turn_on_lights_effect
+    name: Effect Script - Global
+    initial: motion_kilo_default_effect
+
+  # --- Script por franja (opcional). Vacío => usa Global ---
+  sala_de_estar_effect_script_manana:
+    name: Effect Script - Mañana
+    initial: ""
+  sala_de_estar_effect_script_mediodia:
+    name: Effect Script - Mediodia
+    initial: ""
+  sala_de_estar_effect_script_tarde:
+    name: Effect Script - Tarde
+    initial: ""
+  sala_de_estar_effect_script_noche:
+    name: Effect Script - Noche
+    initial: ""
+  sala_de_estar_effect_script_madrugada:
+    name: Effect Script - Madrugada
+    initial: ""
 
 input_boolean:
   sala_de_estar_debug_mode:
     name: Debug Mode
     initial: off
 
+# -------------------------
+# SCRIPTS
+# -------------------------
 script:
   sala_de_estar_save_scene:
+    alias: SALA - Guardar escena snapshot (leaf)
+    mode: parallel
     sequence:
       - service: system_log.write
-        data:
-          message: "Saving scene for sala_de_estar"
-          level: info
-      - condition: state
-        entity_id: input_boolean.sala_de_estar_debug_mode
-        state: "on"
-      - service: persistent_notification.create
-        data:
-          title: "Scene Saved"
-          message: "Scene saved for sala_de_estar."
+        data: { message: "[motion_kilo] Saving scene (leaf) for sala_de_estar", level: info }
+      - event: motion_kilo_debug
+        event_data: { title: "Scene Saved", message: "Snapshot leaf en sala_de_estar." }
+      - variables:
+          leaf_lights: >
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
       - service: scene.create
         data:
           scene_id: sala_de_estar_auto_snapshot
-          snapshot_entities: "{{ area_entities('sala_de_estar') | select('match', 'light\\..*') | list }}"
+          snapshot_entities: "{{ leaf_lights }}"
 
   sala_de_estar_reduce_brightness:
+    alias: SALA - Reducir brillo (solo encendidas, leaf)
+    mode: parallel
     sequence:
       - service: system_log.write
-        data:
-          message: "Reducing brightness in sala_de_estar"
-          level: info
-      - condition: state
-        entity_id: input_boolean.sala_de_estar_debug_mode
-        state: "on"
-      - service: persistent_notification.create
-        data:
-          title: "Brightness Reduced"
-          message: "Brightness reduced in sala_de_estar."
-      - service: light.turn_on
-        data:
-          entity_id: "{{ area_entities('sala_de_estar') | select('match', 'light\\..*') | list }}"
-          brightness: "{{ (states('input_number.sala_de_estar_brightness_' + states('sensor.parte_del_dia')) | int * (100 - states('input_number.sala_de_estar_reduction_percentage') | int) / 100) | int if states('sensor.parte_del_dia') in ['manana', 'mediodia', 'tarde', 'noche', 'madrugada'] else 100 }}"
-
-  sala_de_estar_turn_off_lights:
-    sequence:
-      - service: system_log.write
-        data:
-          message: "Turning off lights in sala_de_estar"
-          level: info
-      - condition: state
-        entity_id: input_boolean.sala_de_estar_debug_mode
-        state: "on"
-      - service: persistent_notification.create
-        data:
-          title: "Lights Off"
-          message: "Lights turned off in sala_de_estar."
-      - service: light.turn_off
-        data:
-          entity_id: "{{ area_entities('sala_de_estar') | select('match', 'light\\..*') | list }}"
-
-  sala_de_estar_turn_on_lights:
-    fields:
-      use_scene:
-        name: Use Scene
-        description: Whether to use the saved scene or effect script
-        default: true
-        selector:
-          boolean:
-    sequence:
-      - service: system_log.write
-        data:
-          message: "Turning on lights in sala_de_estar. Use scene: {{ use_scene }}"
-          level: info
-      - condition: state
-        entity_id: input_boolean.sala_de_estar_debug_mode
-        state: "on"
-      - service: persistent_notification.create
-        data:
-          title: "Lights On"
-          message: "Lights turned on in sala_de_estar. Mode: {% if use_scene %}Scene{% else %}Effect{% endif %}"
+        data: { message: "[motion_kilo] Reducing brightness (leaf) in sala_de_estar", level: info }
+      - variables:
+          pd: "{{ states('sensor.parte_del_dia') }}"
+          map_bri: >
+            {{ {
+              'manana':'input_number.sala_de_estar_brightness_manana',
+              'mediodia':'input_number.sala_de_estar_brightness_mediodia',
+              'tarde':'input_number.sala_de_estar_brightness_tarde',
+              'noche':'input_number.sala_de_estar_brightness_noche',
+              'madrugada':'input_number.sala_de_estar_brightness_madrugada'
+            } }}
+          base: "{{ states(map_bri[pd])|int if pd in map_bri else 200 }}"
+          red: "{{ states('input_number.sala_de_estar_reduction_percentage')|int }}"
+          target_bri: "{{ (base * (100 - red) / 100) | int }}"
+          leaf_lights: >
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
+          on_lights: >
+            {{ expand(leaf_lights) | selectattr('state','equalto','on') | map(attribute='entity_id') | list }}
       - choose:
           - conditions:
               - condition: template
-                value_template: "{{ use_scene and (states.scene.sala_de_estar_auto_snapshot.attributes.entity_id | default([]) | count > 0) }}"
+                value_template: "{{ on_lights | length > 0 }}"
             sequence:
-              - service: scene.apply
-                entity_id: scene.sala_de_estar_auto_snapshot
-          - conditions:
-              - condition: template
-                value_template: "{{ use_scene and not (states.scene.sala_de_estar_auto_snapshot.attributes.entity_id | default([]) | count > 0) }}"
-            sequence:
+              - event: motion_kilo_debug
+                event_data:
+                  title: "Brightness Reduced"
+                  message: "Luces afectadas: {{ on_lights | count }}. Nuevo brillo: {{ target_bri }}."
               - service: light.turn_on
-                data:
-                  entity_id: "{{ area_entities('sala_de_estar') | select('match', 'light\\..*') | list }}"
-                  brightness: "{{ (states('input_number.sala_de_estar_brightness_' + states('sensor.parte_del_dia')) | int) if states('sensor.parte_del_dia') in ['manana', 'mediodia', 'tarde', 'noche', 'madrugada'] else 200 }}"
+                target: { entity_id: "{{ on_lights }}" }
+                data: { brightness: "{{ target_bri }}", transition: 1 }
+
+  sala_de_estar_turn_off_lights:
+    alias: SALA - Apagar luces (leaf)
+    mode: parallel
+    sequence:
+      - service: system_log.write
+        data: { message: "[motion_kilo] Turning off lights (leaf) in sala_de_estar", level: info }
+      - event: motion_kilo_debug
+        event_data: { title: "Lights Off", message: "Apagado por timeout en sala_de_estar." }
+      - variables:
+          leaf_lights: >
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
+      - service: light.turn_off
+        target: { entity_id: "{{ leaf_lights }}" }
+
+  sala_de_estar_turn_on_lights:
+    alias: SALA - Encender (escena/efecto por franja, leaf)
+    mode: parallel
+    fields:
+      use_scene:
+        name: Use Scene
+        description: Si existe snapshot reciente, restaurarlo
+        default: true
+        selector: { boolean: {} }
+    sequence:
+      - variables:
+          pd: "{{ states('sensor.parte_del_dia') }}"
+          map_bri: >
+            {{ {
+              'manana':'input_number.sala_de_estar_brightness_manana',
+              'mediodia':'input_number.sala_de_estar_brightness_mediodia',
+              'tarde':'input_number.sala_de_estar_brightness_tarde',
+              'noche':'input_number.sala_de_estar_brightness_noche',
+              'madrugada':'input_number.sala_de_estar_brightness_madrugada'
+            } }}
+          map_fx: >
+            {{ {
+              'manana':'input_text.sala_de_estar_effect_script_manana',
+              'mediodia':'input_text.sala_de_estar_effect_script_mediodia',
+              'tarde':'input_text.sala_de_estar_effect_script_tarde',
+              'noche':'input_text.sala_de_estar_effect_script_noche',
+              'madrugada':'input_text.sala_de_estar_effect_script_madrugada'
+            } }}
+          brightness: "{{ states(map_bri[pd])|int if pd in map_bri else 200 }}"
+          per_slot_fx: "{{ states(map_fx[pd]) if pd in map_fx else '' }}"
+          global_fx: "{{ states('input_text.sala_de_estar_effect_script_name') }}"
+          effect_service: >
+            {% set pick = (per_slot_fx | trim) if (per_slot_fx | trim) != '' else (global_fx | trim) %}
+            {{ pick }}
+          leaf_lights: >
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
+      - service: system_log.write
+        data: { message: "[motion_kilo] Turn ON (leaf). use_scene={{ use_scene }}", level: info }
+
+      - choose:
+          # 1) Restaurar escena si existe y fue tomada antes
           - conditions:
               - condition: template
-                value_template: "{{ not use_scene }}"
+                value_template: >
+                  {{ use_scene and
+                     (state_attr('scene.sala_de_estar_auto_snapshot','entity_id') | default([]) | count > 0) }}
             sequence:
-              - service: "{{ 'script.' + states('input_text.sala_de_estar_effect_script_name') }}"
+              - event: motion_kilo_debug
+                event_data: { title: "Lights On - Scene", message: "Restaurando snapshot." }
+              - service: scene.turn_on
+                target: { entity_id: scene.sala_de_estar_auto_snapshot }
 
+          # 2) Efecto por franja (si existe servicio), sino global, sino fallback
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ (not use_scene) and (effect_service != '') and has_service('script', effect_service) }}
+            sequence:
+              - event: motion_kilo_debug
+                event_data:
+                  title: "Lights On - Effect"
+                  message: "Usando script {{ effect_service }}."
+              - service: >
+                  {{ 'script.' + effect_service }}
+
+        # 3) Fallback: encender por brillo (leaf)
+        default:
+          - event: motion_kilo_debug
+            event_data:
+              title: "Lights On - Fallback"
+              message: "Encendido simple (leaf) por brillo={{ brightness }}."
+          - service: light.turn_on
+            target: { entity_id: "{{ leaf_lights }}" }
+            data: { brightness: "{{ brightness }}", transition: 1 }
+
+  # --------- Script de efecto por defecto ----------
+  motion_kilo_default_effect:
+    alias: Motion Kilo - Default Turn On Effect (leaf)
+    mode: parallel
+    sequence:
+      - variables:
+          pd: "{{ states('sensor.parte_del_dia') }}"
+          map_bri: >
+            {{ {
+              'manana':'input_number.sala_de_estar_brightness_manana',
+              'mediodia':'input_number.sala_de_estar_brightness_mediodia',
+              'tarde':'input_number.sala_de_estar_brightness_tarde',
+              'noche':'input_number.sala_de_estar_brightness_noche',
+              'madrugada':'input_number.sala_de_estar_brightness_madrugada'
+            } }}
+          brightness: "{{ states(map_bri[pd])|int if pd in map_bri else 200 }}"
+          leaf_lights: >
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
+      - event: motion_kilo_debug
+        event_data:
+          title: "Default Effect"
+          message: "Encendiendo (leaf) {{ leaf_lights | count }} luces con brillo={{ brightness }} (transición 1s)."
+      - service: light.turn_on
+        target: { entity_id: "{{ leaf_lights }}" }
+        data: { brightness: "{{ brightness }}", transition: 1 }
+
+# -------------------------
+# AUTOMATIONS
+# -------------------------
 automation:
-  - alias: Motion Lighting - Turn On
+  - alias: motion_kilo - Turn On (motion)
+    id: motion_kilo_turn_on
+    mode: single
     variables:
       area_id: sala_de_estar
       motion_sensor: binary_sensor.motion_sala
       day_part_sensor: sensor.parte_del_dia
-      debug_mode: "{{ states('input_boolean.sala_de_estar_debug_mode') }}"
-      current_timeout: >
-        {% if states(day_part_sensor) == 'manana' %}
-          {{ states('input_number.sala_de_estar_timeout_manana') | int }}
-        {% elif states(day_part_sensor) == 'mediodia' %}
-          {{ states('input_number.sala_de_estar_timeout_mediodia') | int }}
-        {% elif states(day_part_sensor) == 'tarde' %}
-          {{ states('input_number.sala_de_estar_timeout_tarde') | int }}
-        {% elif states(day_part_sensor) == 'noche' %}
-          {{ states('input_number.sala_de_estar_timeout_noche') | int }}
-        {% elif states(day_part_sensor) == 'madrugada' %}
-          {{ states('input_number.sala_de_estar_timeout_madrugada') | int }}
-        {% else %}
-          10
-        {% endif %}
-      current_brightness: >
-        {% if states(day_part_sensor) == 'manana' %}
-          {{ states('input_number.sala_de_estar_brightness_manana') | int }}
-        {% elif states(day_part_sensor) == 'mediodia' %}
-          {{ states('input_number.sala_de_estar_brightness_mediodia') | int }}
-        {% elif states(day_part_sensor) == 'tarde' %}
-          {{ states('input_number.sala_de_estar_brightness_tarde') | int }}
-        {% elif states(day_part_sensor) == 'noche' %}
-          {{ states('input_number.sala_de_estar_brightness_noche') | int }}
-        {% elif states(day_part_sensor) == 'madrugada' %}
-          {{ states('input_number.sala_de_estar_brightness_madrugada') | int }}
-        {% else %}
-          200
-        {% endif %}
-      lights_in_area: "{{ area_entities(area_id) | select('match', 'light\\..*') | list }}"
-      scene_name: scene.sala_de_estar_auto_snapshot
       timer_name: timer.sala_de_estar_auto_timer
       timer_max_name: timer.sala_de_estar_max_timer
+      current_arribo: >
+        {% set pd = states(day_part_sensor) %}
+        {% set map = {
+          'manana':'input_number.sala_de_estar_arribo_manana',
+          'mediodia':'input_number.sala_de_estar_arribo_mediodia',
+          'tarde':'input_number.sala_de_estar_arribo_tarde',
+          'noche':'input_number.sala_de_estar_arribo_noche',
+          'madrugada':'input_number.sala_de_estar_arribo_madrugada'
+        } %}
+        {{ states(map[pd])|int if pd in map else 15 }}
     trigger:
       - platform: state
         entity_id: binary_sensor.motion_sala
         to: "on"
         id: motion_on
-    condition: []
     action:
-      - choose:
-          - conditions:
-              - condition: state
-                entity_id: input_boolean.sala_de_estar_debug_mode
-                state: "on"
-            sequence:
-              - service: persistent_notification.create
-                data:
-                  title: "Motion Detected"
-                  message: "Motion in {{ area_id }}. Timer was {{ states(timer_name) }}."
+      - event: motion_kilo_debug
+        event_data:
+          title: "Motion Detected"
+          message: "Movimiento en {{ area_id }}. Cancelando timers."
+      - service: timer.cancel
+        target: { entity_id: "{{ timer_name }}" }
+      - service: timer.cancel
+        target: { entity_id: "{{ timer_max_name }}" }
+
+      # Usar escena si el "max timer" estaba activo (venimos de pausa corta)
       - variables:
           use_scene: "{{ states(timer_max_name) != 'idle' }}"
-      - service: timer.cancel
-        data:
-          entity_id: "{{ timer_name }}"
-      - service: timer.cancel
-        data:
-          entity_id: "{{ timer_max_name }}"
+
       - service: timer.start
         data:
           entity_id: "{{ timer_max_name }}"
-          duration: "{{ states('input_number.sala_de_estar_max_time_without_motion') | int * 60 }}"
+          duration: "{{ (current_arribo | int) * 60 }}"
       - service: script.sala_de_estar_turn_on_lights
-        data:
-          use_scene: "{{ use_scene }}"
-    mode: single
+        data: { use_scene: "{{ use_scene }}" }
 
-  - alias: Motion Lighting - Timeout and Reduction
+  - alias: motion_kilo - Timeout & Reduction
+    id: motion_kilo_timeout_and_reduction
+    mode: restart
     variables:
       area_id: sala_de_estar
-      motion_sensor: binary_sensor.motion_sala
       day_part_sensor: sensor.parte_del_dia
-      debug_mode: "{{ states('input_boolean.sala_de_estar_debug_mode') }}"
-      current_timeout: >
-        {% if states(day_part_sensor) == 'manana' %}
-          {{ states('input_number.sala_de_estar_timeout_manana') | int }}
-        {% elif states(day_part_sensor) == 'mediodia' %}
-          {{ states('input_number.sala_de_estar_timeout_mediodia') | int }}
-        {% elif states(day_part_sensor) == 'tarde' %}
-          {{ states('input_number.sala_de_estar_timeout_tarde') | int }}
-        {% elif states(day_part_sensor) == 'noche' %}
-          {{ states('input_number.sala_de_estar_timeout_noche') | int }}
-        {% elif states(day_part_sensor) == 'madrugada' %}
-          {{ states('input_number.sala_de_estar_timeout_madrugada') | int }}
-        {% else %}
-          10
-        {% endif %}
-      current_brightness: >
-        {% if states(day_part_sensor) == 'manana' %}
-          {{ states('input_number.sala_de_estar_brightness_manana') | int }}
-        {% elif states(day_part_sensor) == 'mediodia' %}
-          {{ states('input_number.sala_de_estar_brightness_mediodia') | int }}
-        {% elif states(day_part_sensor) == 'tarde' %}
-          {{ states('input_number.sala_de_estar_brightness_tarde') | int }}
-        {% elif states(day_part_sensor) == 'noche' %}
-          {{ states('input_number.sala_de_estar_brightness_noche') | int }}
-        {% elif states(day_part_sensor) == 'madrugada' %}
-          {{ states('input_number.sala_de_estar_brightness_madrugada') | int }}
-        {% else %}
-          200
-        {% endif %}
-      lights_in_area: "{{ area_entities(area_id) | select('match', 'light\\..*') | list }}"
-      scene_name: scene.sala_de_estar_auto_snapshot
       timer_name: timer.sala_de_estar_auto_timer
       timer_max_name: timer.sala_de_estar_max_timer
+      current_timeout: >
+        {% set pd = states(day_part_sensor) %}
+        {% set map = {
+          'manana':'input_number.sala_de_estar_timeout_manana',
+          'mediodia':'input_number.sala_de_estar_timeout_mediodia',
+          'tarde':'input_number.sala_de_estar_timeout_tarde',
+          'noche':'input_number.sala_de_estar_timeout_noche',
+          'madrugada':'input_number.sala_de_estar_timeout_madrugada'
+        } %}
+        {{ states(map[pd])|int if pd in map else 10 }}
+      current_arribo: >
+        {% set pd = states(day_part_sensor) %}
+        {% set map = {
+          'manana':'input_number.sala_de_estar_arribo_manana',
+          'mediodia':'input_number.sala_de_estar_arribo_mediodia',
+          'tarde':'input_number.sala_de_estar_arribo_tarde',
+          'noche':'input_number.sala_de_estar_arribo_noche',
+          'madrugada':'input_number.sala_de_estar_arribo_madrugada'
+        } %}
+        {{ states(map[pd])|int if pd in map else 15 }}
     trigger:
       - platform: state
         entity_id: binary_sensor.motion_sala
@@ -304,63 +427,77 @@ automation:
         id: motion_off
       - platform: event
         event_type: timer.finished
-        event_data:
-          entity_id: timer.sala_de_estar_auto_timer
+        event_data: { entity_id: timer.sala_de_estar_auto_timer }
         id: timer_finished
-    condition: []
     action:
       - choose:
-          - conditions:
-              - condition: trigger
-                id: motion_off
+          - conditions: [ { condition: trigger, id: motion_off } ]
             sequence:
-              - choose:
-                  - conditions:
-                      - condition: state
-                        entity_id: input_boolean.sala_de_estar_debug_mode
-                        state: "on"
-                    sequence:
-                      - service: persistent_notification.create
-                        data:
-                          title: "Motion Cleared"
-                          message: "No motion in {{ area_id }}. Timeout: {{ current_timeout }} min."
+              - event: motion_kilo_debug
+                event_data:
+                  title: "Motion Cleared"
+                  message: "Sin movimiento. Esperando {{ current_timeout }} min antes de reducir."
               - delay: "{{ max((current_timeout | int - 2), 0) * 60 }}"
+
+              # Si volvió el movimiento, abortar reducción
+              - condition: state
+                entity_id: binary_sensor.motion_sala
+                state: "off"
+
               - service: script.sala_de_estar_save_scene
               - service: script.sala_de_estar_reduce_brightness
               - service: timer.start
-                data:
-                  entity_id: "{{ timer_name }}"
-                  duration: 120
+                data: { entity_id: "{{ timer_name }}", duration: 120 }
               - service: timer.start
                 data:
                   entity_id: "{{ timer_max_name }}"
-                  duration: "{{ states('input_number.sala_de_estar_max_time_without_motion') | int * 60 }}"
-          - conditions:
-              - condition: trigger
-                id: timer_finished
-            sequence:
-              - choose:
-                  - conditions:
-                      - condition: state
-                        entity_id: input_boolean.sala_de_estar_debug_mode
-                        state: "on"
-                    sequence:
-                      - service: persistent_notification.create
-                        data:
-                          title: "Lights Turning Off"
-                          message: "Timeout reached in {{ area_id }}. Turning off lights."
-              - service: script.sala_de_estar_turn_off_lights
-    mode: single
+                  duration: "{{ (current_arribo | int) * 60 }}"
 
+          - conditions: [ { condition: trigger, id: timer_finished } ]
+            sequence:
+              - event: motion_kilo_debug
+                event_data:
+                  title: "Lights Turning Off"
+                  message: "Se cumplió el auto_timer. Apagando."
+              - service: script.sala_de_estar_turn_off_lights
+
+  # -------------------------
+  # DEBUG Relay (notis/logs solo si el boolean está ON)
+  # -------------------------
+  - alias: motion_kilo - Debug Relay
+    id: motion_kilo_debug_relay
+    mode: parallel
+    trigger: [ { platform: event, event_type: motion_kilo_debug } ]
+    condition:
+      - condition: state
+        entity_id: input_boolean.sala_de_estar_debug_mode
+        state: "on"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "{{ trigger.event.data.title | default('motion_kilo') }}"
+          message: "{{ trigger.event.data.message | default('') }}"
+      - service: system_log.write
+        data:
+          message: >
+            [motion_kilo][DEBUG] {{ trigger.event.data.title | default('') }} - {{ trigger.event.data.message | default('') }}
+          level: info
+
+# -------------------------
+# SCENE (vacía; se llena con scene.create)
+# -------------------------
 scene:
   - name: Sala de Estar Auto Snapshot
     id: sala_de_estar_auto_snapshot
     entities: {}
 
+# -------------------------
+# TIMERS (duración fija; siempre se sobreescriben al iniciar)
+# -------------------------
 timer:
   sala_de_estar_auto_timer:
     name: Sala de Estar Auto Timer
-    duration: 120
+    duration: "00:02:00"
   sala_de_estar_max_timer:
     name: Sala de Estar Max Timer
-    duration: "{{ states('input_number.sala_de_estar_max_time_without_motion') | int * 60 }}"
+    duration: "00:15:00"

@@ -2248,3 +2248,241 @@ luces_manana:
       entity_id: light.barra2
   alias: luces_sala_global
   description: ''
+'1757915118959':
+  sequence:
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 100
+    target:
+      entity_id: light.barra1
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 100
+    target:
+      entity_id: light.barra2
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 90
+    target:
+      entity_id: light.riel1
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 90
+    target:
+      entity_id:
+      - light.riel2
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2184
+      brightness_pct: 90
+    target:
+      entity_id:
+      - light.riel3
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2133
+      brightness_pct: 90
+    target:
+      entity_id: light.riel4
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 5051
+      brightness_pct: 50
+    target:
+      entity_id: light.riel
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 75
+    target:
+      entity_id: light.rgb
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: light.luz_rack
+  - action: light.turn_on
+    metadata: {}
+    data:
+      brightness_pct: 12
+    target:
+      entity_id: light.barra1
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      brightness_pct: 12
+    target:
+      entity_id: light.barra2
+  alias: sala_de_estar_turn_on_lights
+  description: ''
+'1757915343387':
+  sequence:
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 100
+    target:
+      entity_id: light.barra1
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 100
+    target:
+      entity_id: light.barra2
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 90
+    target:
+      entity_id: light.riel1
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 90
+    target:
+      entity_id:
+      - light.riel2
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2184
+      brightness_pct: 90
+    target:
+      entity_id:
+      - light.riel3
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2133
+      brightness_pct: 90
+    target:
+      entity_id: light.riel4
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 5051
+      brightness_pct: 50
+    target:
+      entity_id: light.riel
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 75
+    target:
+      entity_id: light.rgb
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: light.luz_rack
+  - action: light.turn_on
+    metadata: {}
+    data:
+      brightness_pct: 12
+    target:
+      entity_id: light.barra1
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      brightness_pct: 12
+    target:
+      entity_id: light.barra2
+  alias: arribo_global
+  description: ''

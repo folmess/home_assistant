@@ -451,7 +451,11 @@
     after: 08:30:00
     before: '10:30:00'
   actions:
-  - delay: 00:00:04
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
   - data:
       title: Wakeupoffice
       message: waking up PCvzn...
