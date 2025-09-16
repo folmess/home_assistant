@@ -2486,3 +2486,20 @@ luces_manana:
       entity_id: light.barra2
   alias: arribo_global
   description: ''
+'1757986312251':
+  sequence:
+  - action: scene.create
+    metadata: {}
+    data:
+      snapshot_entities:
+      - light.riel1
+      - light.riel2
+      - light.riel3
+      - light.riel4
+      - light.barra1
+      - light.barra2
+      - light.rgb
+      - light.luz_rack
+      scene_id: Snapshot_sala_hardcoded
+  alias: 00_snapshot_sala
+  description: ''
