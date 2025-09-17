@@ -106,7 +106,7 @@ script:
         description: Nombre de color (opcional; si no, toma el del helper)
     sequence:
       - variables:
-          _color: "{{ (color or states('input_select.luz_rack_color')) | string }}"
+          _color: "{{ color | default(states('input_select.luz_rack_color')) | string }}"
       # Encender si está apagada
       - choose:
           - conditions: "{{ is_state('input_boolean.luz_rack_power','off') }}"
