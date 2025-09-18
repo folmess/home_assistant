@@ -2369,6 +2369,14 @@ luces_manana:
   description: ''
 '1757915343387':
   sequence:
+  - action: tts.speak
+    metadata: {}
+    data:
+      cache: true
+      media_player_entity_id: media_player.nest_mini
+      message: se ejecutó el script de movimiento.
+    target:
+      entity_id: tts.home_assistant_cloud
   - action: light.turn_on
     metadata: {}
     data:
@@ -2485,21 +2493,4 @@ luces_manana:
     target:
       entity_id: light.barra2
   alias: arribo_global
-  description: ''
-'1757986312251':
-  sequence:
-  - action: scene.create
-    metadata: {}
-    data:
-      snapshot_entities:
-      - light.riel1
-      - light.riel2
-      - light.riel3
-      - light.riel4
-      - light.barra1
-      - light.barra2
-      - light.rgb
-      - light.luz_rack
-      scene_id: Snapshot_sala_hardcoded
-  alias: 00_snapshot_sala
   description: ''
