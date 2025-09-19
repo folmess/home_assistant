@@ -1,0 +1,191 @@
+# ===========================================
+# Package: yendo_a_dormir (usa script.gradual_brightness_change externo)
+# ===========================================
+
+###############################################################
+# HELPERS
+###############################################################
+input_boolean:
+  yendo_a_dormir:
+    name: Yendo a dormir
+    initial: off
+
+input_number:
+  yendo_dormir_target_pct:
+    name: Dormir - Target %
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    initial: 10
+  yendo_dormir_fade_sec:
+    name: Dormir - Fade (s)
+    min: 5
+    max: 600
+    step: 5
+    unit_of_measurement: s
+    initial: 60
+  yendo_dormir_wait_after_sec:
+    name: Dormir - Espera luego del fade (s)
+    min: 0
+    max: 900
+    step: 10
+    unit_of_measurement: s
+    initial: 120
+
+###############################################################
+# TIMER PROPIO (para countdown en UI)
+###############################################################
+timer:
+  yendo_dormir_countdown:
+    name: Countdown dormir
+    duration: "00:03:00"   # se sobreescribe dinámicamente
+    restore: true
+
+###############################################################
+# SCRIPTS (solo utilitarios locales)
+###############################################################
+script:
+  yendo_dormir_save_scene:
+    alias: Dormir - Guardar escena (leaf sala_de_estar)
+    mode: parallel
+    sequence:
+      - variables:
+          leaf_lights: >
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
+      - service: scene.create
+        data:
+          scene_id: yendo_dormir_snapshot
+          snapshot_entities: "{{ leaf_lights }}"
+
+  yendo_dormir_turn_off_area:
+    alias: Dormir - Apagar sala (leaf)
+    mode: parallel
+    sequence:
+      - variables:
+          leaf_lights: >
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
+      - service: light.turn_off
+        target: { entity_id: "{{ leaf_lights }}" }
+
+###############################################################
+# AUTOMATIONS
+###############################################################
+automation:
+
+  # ON → Inicia rutina dormir (bypass, cancelar sala_auto, snapshot, fade externo, timer propio)
+  - alias: Dormir - ON start
+    id: yendo_dormir_on_start
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.yendo_a_dormir
+        to: "on"
+    variables:
+      fade_s: "{{ states('input_number.yendo_dormir_fade_sec') | int(60) }}"
+      wait_s: "{{ states('input_number.yendo_dormir_wait_after_sec') | int(120) }}"
+      total_s: "{{ fade_s + wait_s }}"
+      pct: "{{ states('input_number.yendo_dormir_target_pct') | int(10) }}"
+    action:
+      # Aislar sala_auto (no agregamos condiciones en sala_auto)
+      - service: input_boolean.turn_on
+        target: { entity_id: input_boolean.sala_auto_bypass }
+
+      # Cancelar timers de sala_auto
+      - service: timer.cancel
+        target:
+          entity_id:
+            - timer.sala_auto_idle_timeout
+            - timer.sala_auto_dim_notice
+            - timer.sala_auto_restore_window
+
+      # Cancelar timer propio (si venía)
+      - service: timer.cancel
+        target: { entity_id: timer.yendo_dormir_countdown }
+
+      # Guardar escena por si cancelás
+      - service: script.turn_on
+        target: { entity_id: script.yendo_dormir_save_scene }
+
+      # Llamar al script externo de fade gradual (NUNCA subir, 1 step/s)
+      - service: script.gradual_brightness_change
+        data:
+          target:
+            area_id: sala_de_estar
+          target_brightness: "{{ pct }}"
+          transition_time: "{{ fade_s }}"
+          steps: "{{ fade_s }}"
+          queue_mode: parallel
+
+      # Iniciar countdown total (fade + espera)
+      - service: timer.start
+        target: { entity_id: timer.yendo_dormir_countdown }
+        data:
+          duration: "{{ total_s }}"
+
+  # FIN del countdown → apagar, salir de bypass y dejar listo para auto (WAITING_ARRIVAL)
+  - alias: Dormir - FIN
+    id: yendo_dormir_finish
+    mode: single
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.yendo_dormir_countdown
+    action:
+      # Apagar todo
+      - service: script.turn_on
+        target: { entity_id: script.yendo_dormir_turn_off_area }
+
+      # Salir de bypass y dejar máquina lista
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.sala_auto_bypass }
+      - service: input_select.select_option
+        target: { entity_id: input_select.sala_auto_state }
+        data: { option: WAITING_ARRIVAL }
+
+      # (Opcional) apagar el toggle maestro al terminar
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.yendo_a_dormir }
+
+  # OFF manual antes de terminar → cancelar y restaurar escena, salir limpio
+  - alias: Dormir - OFF cancel + restore
+    id: yendo_dormir_off_cancel
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.yendo_a_dormir
+        to: "off"
+    condition:
+      - condition: state
+        entity_id: timer.yendo_dormir_countdown
+        state: "active"
+    action:
+      # Cortar countdown
+      - service: timer.cancel
+        target: { entity_id: timer.yendo_dormir_countdown }
+
+      # (Mejor esfuerzo) intentar detener el script externo si sigue corriendo
+      - service: script.turn_off
+        target: { entity_id: script.gradual_brightness_change }
+
+      # Restaurar snapshot (vuelvo al estado anterior)
+      - service: scene.turn_on
+        target: { entity_id: scene.yendo_dormir_snapshot }
+
+      # Salir de bypass y dejar máquina lista
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.sala_auto_bypass }
+      - service: input_select.select_option
+        target: { entity_id: input_select.sala_auto_state }
+        data: { option: WAITING_ARRIVAL }

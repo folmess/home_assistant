@@ -474,9 +474,9 @@ automation:
                 target: { entity_id: timer.sala_auto_idle_timeout }
                 data: { duration: "{{ timeout }}" }
 
-  # MOTION ON → ACTIVE (restaurar si venimos de PRE_NOTICE/RESTORE)
+# MOTION ON → ACTIVE  (revisada)
   - alias: sala_auto - Motion ON → ACTIVE
-    id: sala_auto_motion_on
+    id: sala_auto_motion_on_active
     mode: restart
     trigger:
       - platform: state
@@ -486,39 +486,82 @@ automation:
       - condition: state
         entity_id: input_boolean.sala_auto_bypass
         state: "off"
+    variables:
+      prev_state: "{{ states('input_select.sala_auto_state') }}"
     action:
-      - variables:
-          prev: "{{ states('input_select.sala_auto_state') }}"
+      - service: system_log.write
+        data:
+          message: >
+            [sala_auto] Motion detectado → ACTIVE. Estado previo={{ prev_state }}.
+          level: info
+
+      # Estado lógico
       - service: input_select.select_option
         target: { entity_id: input_select.sala_auto_state }
         data: { option: ACTIVE }
+
+      # Cancelar timers
       - service: timer.cancel
         target:
           entity_id:
             - timer.sala_auto_idle_timeout
             - timer.sala_auto_dim_notice
             - timer.sala_auto_restore_window
+
+      # Limpiar flags
       - service: input_boolean.turn_off
         target:
           entity_id:
             - input_boolean.sala_auto_restore_window_active
             - input_boolean.sala_auto_dimmed
+
+      # (Opcional) matar script gradual si existe
       - choose:
           - conditions:
               - condition: template
-                value_template: "{{ prev in ['PRE_NOTICE','RESTORE_WINDOW'] }}"
+                value_template: "{{ states('script.sala_auto_gradual_lights') not in ['unknown','unavailable'] }}"
             sequence:
+              - service: script.turn_off
+                target: { entity_id: script.sala_auto_gradual_lights }
+
+      # Decidir acción de luces según estado previo
+      - choose:
+          # 1) Veníamos de PRE_NOTICE o RESTORE_WINDOW → restaurar snapshot
+          - conditions:
+              - condition: template
+                value_template: "{{ prev_state in ['PRE_NOTICE','RESTORE_WINDOW'] }}"
+            sequence:
+              - event: sala_auto_debug
+                event_data:
+                  title: "Motion → Restaurar escena"
+                  message: "Restaurando snapshot previo."
+              - service: scene.turn_on
+                target: { entity_id: scene.sala_auto_snapshot }
+
+          # 2) Veníamos de WAITING_ARRIVAL → encendido por efecto/franja
+          - conditions:
+              - condition: template
+                value_template: "{{ prev_state == 'WAITING_ARRIVAL' }}"
+            sequence:
+              - event: sala_auto_debug
+                event_data:
+                  title: "Motion → Script de franja"
+                  message: "Ejecutando efecto por franja."
               - service: script.turn_on
                 target: { entity_id: script.sala_auto_turn_on_lights }
-                data: { variables: { use_scene: true } }
-        default:
-          - service: script.turn_on
-            target: { entity_id: script.sala_auto_turn_on_lights }
-            data: { variables: { use_scene: false } }
+                data:
+                  variables: { use_scene: false }
 
-  # MOTION OFF → IDLE_COUNTDOWN (arranca idle y programa preaviso)
+        # 3) Otros previos (IDLE_COUNTDOWN, ACTIVE, DISABLED, etc.) → no tocar luces
+        default:
+          - event: sala_auto_debug
+            event_data:
+              title: "Motion → Sin cambios en luces"
+              message: "Previo={{ prev_state }}."
+
+    # MOTION OFF → IDLE_COUNTDOWN (arranca idle y programa preaviso - mata script gradual si existiese - revisada)
   - alias: sala_auto - Motion OFF → IDLE_COUNTDOWN
-    id: sala_auto_motion_off
+    id: sala_auto_motion_off_idle
     mode: restart
     trigger:
       - platform: state
@@ -546,16 +589,22 @@ automation:
       - service: input_select.select_option
         target: { entity_id: input_select.sala_auto_state }
         data: { option: IDLE_COUNTDOWN }
+
+      # Cancelar cualquier aviso/ventana previos (el restore se programará al iniciar PRE_NOTICE)
       - service: timer.cancel
         target:
           entity_id:
             - timer.sala_auto_dim_notice
             - timer.sala_auto_restore_window
+
+      # Limpiar flags visuales
       - service: input_boolean.turn_off
         target:
           entity_id:
             - input_boolean.sala_auto_restore_window_active
             - input_boolean.sala_auto_dimmed
+
+      # Arrancar idle (si corresponde), y luego programar el preaviso
       - choose:
           - conditions:
               - condition: template
@@ -564,6 +613,8 @@ automation:
               - service: timer.start
                 target: { entity_id: timer.sala_auto_idle_timeout }
                 data: { duration: "{{ timeout }}" }
+
+              # Esperar hasta el momento de PRE_NOTICE, verificando que todo siga aplicando
               - delay: "{{ wait_before_pre }}"
               - condition: state
                 entity_id: binary_sensor.motion_sala
@@ -577,13 +628,15 @@ automation:
               - condition: state
                 entity_id: timer.sala_auto_idle_timeout
                 state: "active"
-              # Inicia PRE_NOTICE aquí; el RESTORE se dispara en START (siguiente autom.)
+
+              # Iniciar PRE_NOTICE (el RESTORE paralelo arranca en la automation de START)
               - service: timer.start
                 target: { entity_id: timer.sala_auto_dim_notice }
                 data: { duration: "{{ pre_notice }}" }
+
+              # Cancelar el idle (ya no se necesita)
               - service: timer.cancel
                 target: { entity_id: timer.sala_auto_idle_timeout }
-
   # PRE_NOTICE START → set estado + snapshot + dim + (RESTORE paralelo = pre_notice + arribo)
   - alias: sala_auto - PRE_NOTICE START
     id: sala_auto_pre_notice_start

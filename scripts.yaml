@@ -2494,3 +2494,134 @@ luces_manana:
       entity_id: light.barra2
   alias: arribo_global
   description: ''
+luces_tarde:
+  sequence:
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 65
+    target:
+      entity_id: light.barra1
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 65
+    target:
+      entity_id: light.barra2
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 50
+    target:
+      entity_id: light.riel1
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 50
+    target:
+      entity_id:
+      - light.riel2
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 50
+    target:
+      entity_id:
+      - light.riel3
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2133
+      brightness_pct: 50
+    target:
+      entity_id: light.riel4
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 3891
+      brightness_pct: 30
+    target:
+      entity_id: light.riel
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2000
+      brightness_pct: 35
+    target:
+      entity_id: light.rgb
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: light.luz_rack
+  - action: media_player.play_media
+    metadata: {}
+    data:
+      media:
+        media_content_id: media-source://media_source/local/Notifications/Dulce.ogg
+        media_content_type: audio/ogg
+        metadata:
+          title: Dulce.ogg
+          thumbnail:
+          media_class: music
+          children_media_class:
+          navigateIds:
+          - {}
+          - media_content_type: app
+            media_content_id: media-source://media_source
+          - media_content_type: ''
+            media_content_id: media-source://media_source/local/Notifications
+          browse_entity_id: media_player.nest_mini
+    target:
+      entity_id: media_player.nest_mini
+  alias: luces_tarde
+  description: ''
+luces_madrugada:
+  sequence:
+  - action: scene.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: scene.madrugada1
+  alias: luces_madrugada
+  description: ''
