@@ -1,5 +1,6 @@
 # ===========================================
-# Package: yendo_a_dormir (usa script.gradual_brightness_change externo)
+# Package: yendo_a_dormir
+# Llama a script externo: script.gradual_brightness_change
 # ===========================================
 
 ###############################################################
@@ -43,9 +44,10 @@ timer:
     restore: true
 
 ###############################################################
-# SCRIPTS (solo utilitarios locales)
+# SCRIPTS (utilitarios locales)
 ###############################################################
 script:
+
   yendo_dormir_save_scene:
     alias: Dormir - Guardar escena (leaf sala_de_estar)
     mode: parallel
@@ -83,7 +85,8 @@ script:
 ###############################################################
 automation:
 
-  # ON → Inicia rutina dormir (bypass, cancelar sala_auto, snapshot, fade externo, timer propio)
+  # ON → Inicia rutina dormir:
+  # BYPASS ON, cancelar sala_auto, snapshot, fade externo, iniciar countdown (fade+espera)
   - alias: Dormir - ON start
     id: yendo_dormir_on_start
     mode: restart
@@ -97,7 +100,7 @@ automation:
       total_s: "{{ fade_s + wait_s }}"
       pct: "{{ states('input_number.yendo_dormir_target_pct') | int(10) }}"
     action:
-      # Aislar sala_auto (no agregamos condiciones en sala_auto)
+      # Aislar sala_auto
       - service: input_boolean.turn_on
         target: { entity_id: input_boolean.sala_auto_bypass }
 
@@ -109,15 +112,15 @@ automation:
             - timer.sala_auto_dim_notice
             - timer.sala_auto_restore_window
 
-      # Cancelar timer propio (si venía)
+      # Cancelar timer propio (si venía corriendo)
       - service: timer.cancel
         target: { entity_id: timer.yendo_dormir_countdown }
 
-      # Guardar escena por si cancelás
+      # Guardar escena (posible restore si cancelás)
       - service: script.turn_on
         target: { entity_id: script.yendo_dormir_save_scene }
 
-      # Llamar al script externo de fade gradual (NUNCA subir, 1 step/s)
+      # Fade gradual con script externo (1 paso/seg, paralelo)
       - service: script.gradual_brightness_change
         data:
           target:
@@ -133,7 +136,7 @@ automation:
         data:
           duration: "{{ total_s }}"
 
-  # FIN del countdown → apagar, salir de bypass y dejar listo para auto (WAITING_ARRIVAL)
+  # FIN del countdown → apagar, forzar WAITING_ARRIVAL, delay 2s, bypass OFF, refuerzo WAITING_ARRIVAL, toggle OFF
   - alias: Dormir - FIN
     id: yendo_dormir_finish
     mode: single
@@ -147,18 +150,28 @@ automation:
       - service: script.turn_on
         target: { entity_id: script.yendo_dormir_turn_off_area }
 
-      # Salir de bypass y dejar máquina lista
-      - service: input_boolean.turn_off
-        target: { entity_id: input_boolean.sala_auto_bypass }
+      # Forzar primero WAITING_ARRIVAL
       - service: input_select.select_option
         target: { entity_id: input_select.sala_auto_state }
         data: { option: WAITING_ARRIVAL }
 
-      # (Opcional) apagar el toggle maestro al terminar
+      # Delay de seguridad (anti 'pisada' a ACTIVE)
+      - delay: "00:00:02"
+
+      # Apagar bypass
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.sala_auto_bypass }
+
+      # Refuerzo final de estado
+      - service: input_select.select_option
+        target: { entity_id: input_select.sala_auto_state }
+        data: { option: WAITING_ARRIVAL }
+
+      # Apagar el toggle maestro
       - service: input_boolean.turn_off
         target: { entity_id: input_boolean.yendo_a_dormir }
 
-  # OFF manual antes de terminar → cancelar y restaurar escena, salir limpio
+  # OFF manual antes de terminar → cancelar y restaurar escena, luego misma salida con delay 2s
   - alias: Dormir - OFF cancel + restore
     id: yendo_dormir_off_cancel
     mode: single
@@ -171,21 +184,31 @@ automation:
         entity_id: timer.yendo_dormir_countdown
         state: "active"
     action:
-      # Cortar countdown
+      # Cancelar countdown
       - service: timer.cancel
         target: { entity_id: timer.yendo_dormir_countdown }
 
-      # (Mejor esfuerzo) intentar detener el script externo si sigue corriendo
+      # Intentar detener el script externo (best-effort)
       - service: script.turn_off
         target: { entity_id: script.gradual_brightness_change }
 
-      # Restaurar snapshot (vuelvo al estado anterior)
+      # Restaurar snapshot
       - service: scene.turn_on
         target: { entity_id: scene.yendo_dormir_snapshot }
 
-      # Salir de bypass y dejar máquina lista
+      # Forzar primero WAITING_ARRIVAL
+      - service: input_select.select_option
+        target: { entity_id: input_select.sala_auto_state }
+        data: { option: WAITING_ARRIVAL }
+
+      # Delay de seguridad
+      - delay: "00:00:02"
+
+      # Apagar bypass
       - service: input_boolean.turn_off
         target: { entity_id: input_boolean.sala_auto_bypass }
+
+      # Refuerzo final de estado
       - service: input_select.select_option
         target: { entity_id: input_select.sala_auto_state }
         data: { option: WAITING_ARRIVAL }
