@@ -20,28 +20,28 @@ input_number:
     max: 60
     step: 1
     unit_of_measurement: minutes
-    initial: 15
+    initial: 10
   sala_auto_timeout_tarde:
     name: Timeout - Tarde
     min: 1
     max: 60
     step: 1
     unit_of_measurement: minutes
-    initial: 20
+    initial: 10
   sala_auto_timeout_noche:
     name: Timeout - Noche
     min: 1
     max: 60
     step: 1
     unit_of_measurement: minutes
-    initial: 30
+    initial: 10
   sala_auto_timeout_madrugada:
     name: Timeout - Madrugada
     min: 1
     max: 60
     step: 1
     unit_of_measurement: minutes
-    initial: 5
+    initial: 2
 
   # --- Brillo por franja (0..255) ---
   sala_auto_brightness_manana:
@@ -49,31 +49,31 @@ input_number:
     min: 0
     max: 255
     step: 1
-    initial: 200
+    initial: 128
   sala_auto_brightness_mediodia:
     name: Brightness - Mediodía
     min: 0
     max: 255
     step: 1
-    initial: 255
+    initial: 128
   sala_auto_brightness_tarde:
     name: Brightness - Tarde
     min: 0
     max: 255
     step: 1
-    initial: 220
+    initial: 128
   sala_auto_brightness_noche:
     name: Brightness - Noche
     min: 0
     max: 255
     step: 1
-    initial: 150
+    initial: 128
   sala_auto_brightness_madrugada:
     name: Brightness - Madrugada
     min: 0
     max: 255
     step: 1
-    initial: 100
+    initial: 51
 
   # --- Porcentaje de reducción en PRE_NOTICE ---
   sala_auto_reduction_percentage:
@@ -82,7 +82,7 @@ input_number:
     max: 100
     step: 1
     unit_of_measurement: "%"
-    initial: 50
+    initial: 60
 
   # --- Ventana de ARRIBO (min) ---
   sala_auto_arribo_manana:
@@ -91,35 +91,30 @@ input_number:
     max: 120
     step: 1
     unit_of_measurement: minutes
-    initial: 15
   sala_auto_arribo_mediodia:
     name: Arribo - Mediodía
     min: 1
     max: 120
     step: 1
     unit_of_measurement: minutes
-    initial: 15
   sala_auto_arribo_tarde:
     name: Arribo - Tarde
     min: 1
     max: 120
     step: 1
     unit_of_measurement: minutes
-    initial: 20
   sala_auto_arribo_noche:
     name: Arribo - Noche
     min: 1
     max: 120
     step: 1
     unit_of_measurement: minutes
-    initial: 30
   sala_auto_arribo_madrugada:
     name: Arribo - Madrugada
     min: 1
     max: 120
     step: 1
     unit_of_measurement: minutes
-    initial: 10
 
 input_text:
   # --- Script global (fallback) ---
@@ -129,19 +124,14 @@ input_text:
   # --- Script por franja (vacío => usa Global) ---
   sala_auto_effect_script_manana:
     name: Effect Script - Mañana
-    initial: ""
   sala_auto_effect_script_mediodia:
     name: Effect Script - Mediodía
-    initial: ""
   sala_auto_effect_script_tarde:
     name: Effect Script - Tarde
-    initial: ""
   sala_auto_effect_script_noche:
     name: Effect Script - Noche
-    initial: ""
   sala_auto_effect_script_madrugada:
     name: Effect Script - Madrugada
-    initial: ""
 
 input_boolean:
   sala_auto_debug_mode:
@@ -262,22 +252,22 @@ template:
 # SCRIPTS (leaf + efectos/escena) — todos con prefijo sala_auto_
 #################################################################
 script:
-  sala_auto_save_scene:
-    alias: SALA AUTO - Guardar escena snapshot (leaf)
-    mode: parallel
-    sequence:
-      - variables:
-          leaf_lights: >
-            {% set ns = namespace(leaf=[]) %}
-            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
-              {% set m = state_attr(l,'entity_id') %}
-              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
-            {% endfor %}
-            {{ ns.leaf | unique | list }}
-      - service: scene.create
-        data:
-          scene_id: sala_auto_snapshot
-          snapshot_entities: "{{ leaf_lights }}"
+  # sala_auto_save_scene:
+  #   alias: SALA AUTO - Guardar escena snapshot (leaf)
+  #   mode: parallel
+  #   sequence:
+  #     - variables:
+  #         leaf_lights: >
+  #           {% set ns = namespace(leaf=[]) %}
+  #           {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+  #             {% set m = state_attr(l,'entity_id') %}
+  #             {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+  #           {% endfor %}
+  #           {{ ns.leaf | unique | list }}
+  #     - service: scene.create
+  #       data:
+  #         scene_id: sala_auto_snapshot
+  #         snapshot_entities: "{{ leaf_lights }}"
 
   sala_auto_reduce_brightness:
     alias: SALA AUTO - Reducir brillo (solo encendidas, leaf)
@@ -475,89 +465,89 @@ automation:
                 data: { duration: "{{ timeout }}" }
 
 # MOTION ON → ACTIVE  (revisada)
-  - alias: sala_auto - Motion ON → ACTIVE
-    id: sala_auto_motion_on_active
-    mode: restart
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.motion_sala
-        to: "on"
-    condition:
-      - condition: state
-        entity_id: input_boolean.sala_auto_bypass
-        state: "off"
-    variables:
-      prev_state: "{{ states('input_select.sala_auto_state') }}"
-    action:
-      - service: system_log.write
-        data:
-          message: >
-            [sala_auto] Motion detectado → ACTIVE. Estado previo={{ prev_state }}.
-          level: info
+  # - alias: sala_auto - Motion ON → ACTIVE
+  #   id: sala_auto_motion_on_active
+  #   mode: restart
+  #   trigger:
+  #     - platform: state
+  #       entity_id: binary_sensor.motion_sala
+  #       to: "on"
+  #   condition:
+  #     - condition: state
+  #       entity_id: input_boolean.sala_auto_bypass
+  #       state: "off"
+  #   variables:
+  #     prev_state: "{{ states('input_select.sala_auto_state') }}"
+  #   action:
+  #     - service: system_log.write
+  #       data:
+  #         message: >
+  #           [sala_auto] Motion detectado → ACTIVE. Estado previo={{ prev_state }}.
+  #         level: info
 
-      # Estado lógico
-      - service: input_select.select_option
-        target: { entity_id: input_select.sala_auto_state }
-        data: { option: ACTIVE }
+  #     # Estado lógico
+  #     - service: input_select.select_option
+  #       target: { entity_id: input_select.sala_auto_state }
+  #       data: { option: ACTIVE }
 
-      # Cancelar timers
-      - service: timer.cancel
-        target:
-          entity_id:
-            - timer.sala_auto_idle_timeout
-            - timer.sala_auto_dim_notice
-            - timer.sala_auto_restore_window
+  #     # Cancelar timers
+  #     - service: timer.cancel
+  #       target:
+  #         entity_id:
+  #           - timer.sala_auto_idle_timeout
+  #           - timer.sala_auto_dim_notice
+  #           - timer.sala_auto_restore_window
 
-      # Limpiar flags
-      - service: input_boolean.turn_off
-        target:
-          entity_id:
-            - input_boolean.sala_auto_restore_window_active
-            - input_boolean.sala_auto_dimmed
+  #     # Limpiar flags
+  #     - service: input_boolean.turn_off
+  #       target:
+  #         entity_id:
+  #           - input_boolean.sala_auto_restore_window_active
+  #           - input_boolean.sala_auto_dimmed
 
-      # (Opcional) matar script gradual si existe
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ states('script.sala_auto_gradual_lights') not in ['unknown','unavailable'] }}"
-            sequence:
-              - service: script.turn_off
-                target: { entity_id: script.sala_auto_gradual_lights }
+  #     # (Opcional) matar script gradual si existe
+  #     - choose:
+  #         - conditions:
+  #             - condition: template
+  #               value_template: "{{ states('script.sala_auto_gradual_lights') not in ['unknown','unavailable'] }}"
+  #           sequence:
+  #             - service: script.turn_off
+  #               target: { entity_id: script.sala_auto_gradual_lights }
 
-      # Decidir acción de luces según estado previo
-      - choose:
-          # 1) Veníamos de PRE_NOTICE o RESTORE_WINDOW → restaurar snapshot
-          - conditions:
-              - condition: template
-                value_template: "{{ prev_state in ['PRE_NOTICE','RESTORE_WINDOW'] }}"
-            sequence:
-              - event: sala_auto_debug
-                event_data:
-                  title: "Motion → Restaurar escena"
-                  message: "Restaurando snapshot previo."
-              - service: scene.turn_on
-                target: { entity_id: scene.sala_auto_snapshot }
+  #     # Decidir acción de luces según estado previo
+  #     - choose:
+  #         # 1) Veníamos de PRE_NOTICE o RESTORE_WINDOW → restaurar snapshot
+  #         - conditions:
+  #             - condition: template
+  #               value_template: "{{ prev_state in ['PRE_NOTICE','RESTORE_WINDOW'] }}"
+  #           sequence:
+  #             - event: sala_auto_debug
+  #               event_data:
+  #                 title: "Motion → Restaurar escena"
+  #                 message: "Restaurando snapshot previo."
+  #             - service: scene.turn_on
+  #               target: { entity_id: scene.sala_auto_snapshot }
 
-          # 2) Veníamos de WAITING_ARRIVAL → encendido por efecto/franja
-          - conditions:
-              - condition: template
-                value_template: "{{ prev_state == 'WAITING_ARRIVAL' }}"
-            sequence:
-              - event: sala_auto_debug
-                event_data:
-                  title: "Motion → Script de franja"
-                  message: "Ejecutando efecto por franja."
-              - service: script.turn_on
-                target: { entity_id: script.sala_auto_turn_on_lights }
-                data:
-                  variables: { use_scene: false }
+  #         # 2) Veníamos de WAITING_ARRIVAL → encendido por efecto/franja
+  #         - conditions:
+  #             - condition: template
+  #               value_template: "{{ prev_state == 'WAITING_ARRIVAL' }}"
+  #           sequence:
+  #             - event: sala_auto_debug
+  #               event_data:
+  #                 title: "Motion → Script de franja"
+  #                 message: "Ejecutando efecto por franja."
+  #             - service: script.turn_on
+  #               target: { entity_id: script.sala_auto_turn_on_lights }
+  #               data:
+  #                 variables: { use_scene: false }
 
-        # 3) Otros previos (IDLE_COUNTDOWN, ACTIVE, DISABLED, etc.) → no tocar luces
-        default:
-          - event: sala_auto_debug
-            event_data:
-              title: "Motion → Sin cambios en luces"
-              message: "Previo={{ prev_state }}."
+  #       # 3) Otros previos (IDLE_COUNTDOWN, ACTIVE, DISABLED, etc.) → no tocar luces
+  #       default:
+  #         - event: sala_auto_debug
+  #           event_data:
+  #             title: "Motion → Sin cambios en luces"
+  #             message: "Previo={{ prev_state }}."
 
     # MOTION OFF → IDLE_COUNTDOWN (arranca idle y programa preaviso - mata script gradual si existiese - revisada)
   - alias: sala_auto - Motion OFF → IDLE_COUNTDOWN
@@ -638,75 +628,75 @@ automation:
               - service: timer.cancel
                 target: { entity_id: timer.sala_auto_idle_timeout }
   # PRE_NOTICE START → set estado + snapshot + dim + (RESTORE paralelo = pre_notice + arribo)
-  - alias: sala_auto - PRE_NOTICE START
-    id: sala_auto_pre_notice_start
-    mode: single
-    trigger:
-      - platform: event
-        event_type: timer.started
-        event_data:
-          entity_id: timer.sala_auto_dim_notice
-    condition:
-      - condition: state
-        entity_id: input_boolean.sala_auto_bypass
-        state: "off"
-    variables:
-      pd: "{{ states('sensor.parte_del_dia') }}"
-      arribo_min: >
-        {% set map = {
-          'manana':'input_number.sala_auto_arribo_manana',
-          'mediodia':'input_number.sala_auto_arribo_mediodia',
-          'tarde':'input_number.sala_auto_arribo_tarde',
-          'noche':'input_number.sala_auto_arribo_noche',
-          'madrugada':'input_number.sala_auto_arribo_madrugada'
-        } %}
-        {{ states(map[pd])|int if pd in map else 15 }}
-      # Duración actual del PRE_NOTICE (por seguridad, vuelve a tomarla del timer)
-      pre_notice_sec: >-
-        {% set r = state_attr('timer.sala_auto_dim_notice','duration') %}
-        {% if r %}{% set t = strptime(r, '%H:%M:%S') %}{{ t.hour*3600 + t.minute*60 + t.second }}{% else %}120{% endif %}
-      restore_total: "{{ (pre_notice_sec | int) + (arribo_min | int) * 60 }}"
-    action:
-      - service: input_select.select_option
-        target: { entity_id: input_select.sala_auto_state }
-        data: { option: PRE_NOTICE }
-      - service: script.turn_on
-        target: { entity_id: script.sala_auto_save_scene }
-      - service: script.turn_on
-        target: { entity_id: script.sala_auto_reduce_brightness }
-      - service: input_boolean.turn_on
-        target: { entity_id: input_boolean.sala_auto_dimmed }
-      # Arranca RESTORE paralelo (pre_notice + arribo)
-      - service: timer.start
-        target: { entity_id: timer.sala_auto_restore_window }
-        data: { duration: "{{ restore_total }}" }
-      - service: input_boolean.turn_on
-        target: { entity_id: input_boolean.sala_auto_restore_window_active }
-      # Guardar ETA de fin de ventana
-      - service: input_datetime.set_datetime
-        target: { entity_id: input_datetime.sala_auto_restore_end_at }
-        data:
-          datetime: "{{ (now() + timedelta(seconds=restore_total|int)).strftime('%Y-%m-%d %H:%M:%S') }}"
+  # - alias: sala_auto - PRE_NOTICE START
+  #   id: sala_auto_pre_notice_start
+  #   mode: single
+  #   trigger:
+  #     - platform: event
+  #       event_type: timer.started
+  #       event_data:
+  #         entity_id: timer.sala_auto_dim_notice
+  #   condition:
+  #     - condition: state
+  #       entity_id: input_boolean.sala_auto_bypass
+  #       state: "off"
+  #   variables:
+  #     pd: "{{ states('sensor.parte_del_dia') }}"
+  #     arribo_min: >
+  #       {% set map = {
+  #         'manana':'input_number.sala_auto_arribo_manana',
+  #         'mediodia':'input_number.sala_auto_arribo_mediodia',
+  #         'tarde':'input_number.sala_auto_arribo_tarde',
+  #         'noche':'input_number.sala_auto_arribo_noche',
+  #         'madrugada':'input_number.sala_auto_arribo_madrugada'
+  #       } %}
+  #       {{ states(map[pd])|int if pd in map else 15 }}
+  #     # Duración actual del PRE_NOTICE (por seguridad, vuelve a tomarla del timer)
+  #     pre_notice_sec: >-
+  #       {% set r = state_attr('timer.sala_auto_dim_notice','duration') %}
+  #       {% if r %}{% set t = strptime(r, '%H:%M:%S') %}{{ t.hour*3600 + t.minute*60 + t.second }}{% else %}120{% endif %}
+  #     restore_total: "{{ (pre_notice_sec | int) + (arribo_min | int) * 60 }}"
+  #   action:
+  #     - service: input_select.select_option
+  #       target: { entity_id: input_select.sala_auto_state }
+  #       data: { option: PRE_NOTICE }
+  #     - service: script.turn_on
+  #       target: { entity_id: script.sala_auto_save_scene }
+  #     - service: script.turn_on
+  #       target: { entity_id: script.sala_auto_reduce_brightness }
+  #     - service: input_boolean.turn_on
+  #       target: { entity_id: input_boolean.sala_auto_dimmed }
+  #     # Arranca RESTORE paralelo (pre_notice + arribo)
+  #     - service: timer.start
+  #       target: { entity_id: timer.sala_auto_restore_window }
+  #       data: { duration: "{{ restore_total }}" }
+  #     - service: input_boolean.turn_on
+  #       target: { entity_id: input_boolean.sala_auto_restore_window_active }
+  #     # Guardar ETA de fin de ventana
+  #     - service: input_datetime.set_datetime
+  #       target: { entity_id: input_datetime.sala_auto_restore_end_at }
+  #       data:
+  #         datetime: "{{ (now() + timedelta(seconds=restore_total|int)).strftime('%Y-%m-%d %H:%M:%S') }}"
 
   # PRE_NOTICE FIN → apagar y pasar a RESTORE_WINDOW (timer ya venía corriendo)
-  - alias: sala_auto - PRE_NOTICE FIN
-    id: sala_auto_pre_notice_finish
-    mode: single
-    trigger:
-      - platform: event
-        event_type: timer.finished
-        event_data:
-          entity_id: timer.sala_auto_dim_notice
-    condition:
-      - condition: state
-        entity_id: input_boolean.sala_auto_bypass
-        state: "off"
-    action:
-      - service: script.turn_on
-        target: { entity_id: script.sala_auto_turn_off_lights }
-      - service: input_select.select_option
-        target: { entity_id: input_select.sala_auto_state }
-        data: { option: RESTORE_WINDOW }
+  # - alias: sala_auto - PRE_NOTICE FIN
+  #   id: sala_auto_pre_notice_finish
+  #   mode: single
+  #   trigger:
+  #     - platform: event
+  #       event_type: timer.finished
+  #       event_data:
+  #         entity_id: timer.sala_auto_dim_notice
+  #   condition:
+  #     - condition: state
+  #       entity_id: input_boolean.sala_auto_bypass
+  #       state: "off"
+  #   action:
+  #     - service: script.turn_on
+  #       target: { entity_id: script.sala_auto_turn_off_lights }
+  #     - service: input_select.select_option
+  #       target: { entity_id: input_select.sala_auto_state }
+  #       data: { option: RESTORE_WINDOW }
 
   # RESTORE FIN → limpiar flag y WAITING_ARRIVAL
   - alias: sala_auto - RESTORE FIN

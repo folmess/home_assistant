@@ -1,0 +1,311 @@
+# =========================================================
+# SALA AUTO - Fade opcional + restauración suave al snapshot
+# Requiere scripts externos:
+# - script.gradual_brightness_change (ya lo tenés en otro package)
+# - script.gradual_restore_from_snapshot (ahora integrado aca)
+# =========================================================
+
+input_boolean:
+  sala_auto_fade:
+    name: SALA AUTO - Usar fade en PRE_NOTICE
+    icon: mdi:transition
+    initial: off
+  sala_auto_fading_active:
+    name: SALA AUTO - Fading activo (flag)
+    icon: mdi:animation-play-outline
+    initial: off
+
+input_number:
+  sala_auto_fade_sec:
+    name: SALA AUTO - Fade duración (s)
+    min: 5
+    max: 600
+    step: 5
+    unit_of_measurement: s
+    icon: mdi:timer-sand
+    initial: 30
+  sala_auto_fade_reduce_pct:
+    name: SALA AUTO - Reducir en PRE_NOTICE (%)
+    min: 0
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    icon: mdi:brightness-4
+    initial: 60
+
+# input_text:
+#   sala_snapshot_targets:
+#     name: SALA - Targets por-luz para restore suave (JSON)
+#     max: 255
+#     mode: text
+
+# ---------------------------------------------------------
+# SCRIPTS (ajustes a los existentes)
+# ---------------------------------------------------------
+script:
+  # Guardar snapshot + volcar objetivos por-luz en JSON (pct)
+  sala_auto_save_scene:
+    alias: SALA AUTO - Guardar escena + targets JSON (leaf)
+    mode: parallel
+    sequence:
+      - variables:
+          leaf_lights: >
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
+          targets_map: >
+            {% set ns = namespace(d={}) %}
+            {% for e in expand(leaf_lights) %}
+              {% set bri = state_attr(e.entity_id,'brightness') | int(0) %}
+              {% set pct = (bri / 2.55) | round(0) | int %}
+              {% set tgt = pct if e.state == 'on' else 0 %}
+              {% set ns.d = ns.d | combine({ e.entity_id: tgt }) %}
+            {% endfor %}
+            {{ ns.d | to_json }}
+
+      - service: scene.create
+        data:
+          scene_id: sala_auto_snapshot
+          snapshot_entities: "{{ leaf_lights }}"
+      - service: var.set
+        data:
+          entity_id: var.sala_snapshot_targets
+          value: "{{ targets_map }}"
+          attributes:
+            snapshot_taken_at: "{{ now().isoformat() }}"
+
+# fade a brillos de un snapshot guardados en una variable
+  gradual_restore_from_snapshot:
+    alias: SALA AUTO - restore soft from snapshot
+    mode: restart
+    fields:
+      duration:
+        description: Duración total en segundos
+        default: 10
+      steps:
+        description: Número de pasos
+        default: 20
+      min_pct:
+        description: Piso mínimo de brillo (para luces que no aceptan menos)
+        default: 10
+    sequence:
+      - variables:
+          targets: >-
+            {{ states('var.sala_snapshot_targets') | default('{}', true) | from_json }}
+          luces: "{{ (targets.keys() if targets is mapping else []) | list }}"
+          steps_i: "{{ (steps | default(30)) | int }}"
+          duration_s: "{{ (duration | default(10)) | float }}"
+          intervalo_ms: >-
+            {{ (duration_s * 1000 / (steps_i if steps_i > 0 else 1)) | round(0) |
+            int }}
+          min_floor: "{{ (min_pct | default(10)) | int }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ luces | length == 0 or steps_i <= 0 }}"
+            sequence: []
+        default:
+          - repeat:
+              count: "{{ steps_i }}"
+              sequence:
+                - variables:
+                    idx: "{{ repeat.index }}"
+                    frac: "{{ (repeat.index | float) / (steps_i | float) }}"
+                - repeat:
+                    for_each: "{{ luces }}"
+                    sequence:
+                      - variables:
+                          e: "{{ repeat.item }}"
+                          objetivo: "{{ targets[e] | int }}"
+                          bri_cur_255: >-
+                            {{ state_attr(e,'brightness') | default(0, true) | int
+                            }}
+                          pct0: "{{ (bri_cur_255 / 2.55) | round(0) | int }}"
+                          start: |
+                            {% if objetivo > 0 %}
+                              {{ pct0 if pct0 > 0 else min_floor }}
+                            {% else %}
+                              {{ pct0 }}
+                            {% endif %}
+                          next_raw: >-
+                            {{ (start + (frac | float) * (objetivo - start)) |
+                            round(0) | int }}
+                          next_pct: |
+                            {% if objetivo > 0 %}
+                              {{ [ [ next_raw, 0 ] | max, min_floor ] | max | int }}
+                            {% else %}
+                              {{ [ next_raw, 0 ] | max | int }}
+                            {% endif %}
+                      - target:
+                          entity_id: "{{ e }}"
+                        data:
+                          brightness_pct: "{{ next_pct }}"
+                        action: light.turn_on
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ objetivo == 0 and idx == steps_i }}"
+                            sequence:
+                              - target:
+                                  entity_id: "{{ e }}"
+                                action: light.turn_off
+                                data: {}
+                - delay:
+                    milliseconds: "{{ intervalo_ms }}"
+
+# ---------------------------------------------------------
+# AUTOMATION: PRE_NOTICE start → snapshot + fade o reducción
+# Dispara cuando el timer de PRE_NOTICE pasa a 'active'
+# ---------------------------------------------------------
+automation:
+  - alias: sala_auto - PRE_NOTICE START
+    id: sala_auto_pre_notice_start
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: timer.sala_auto_dim_notice
+        to: "active"
+    variables:
+      reduce_pct: "{{ states('input_number.sala_auto_fade_reduce_pct') | int(60) }}"
+      fade_sec: "{{ states('input_number.sala_auto_fade_sec') | int(30) }}"
+      # Calcular target_pct_global "seguro" (no sube ninguna):
+      # Tomo el % mínimo de las luces encendidas y aplico la reducción.
+      leaf_lights: >
+        {% set ns = namespace(leaf=[]) %}
+        {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+          {% set m = state_attr(l,'entity_id') %}
+          {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+        {% endfor %}
+        {{ ns.leaf | unique | list }}
+      on_pcts: >
+        {% set vals = [] %}
+        {% for e in expand(leaf_lights) %}
+          {% if e.state == 'on' %}
+            {% set bri = state_attr(e.entity_id, 'brightness') | int(255) %}
+            {% set pct = (bri / 2.55) | round(0) | int %}
+            {% set vals = vals + [pct] %}
+          {% endif %}
+        {% endfor %}
+        {{ vals }}
+      min_pct_now: "{{ (on_pcts|min if (on_pcts|length > 0) else 100) | int }}"
+      target_pct_global: >
+        {{ ( (min_pct_now * (100 - reduce_pct) / 100.0) | round(0) | int ) }}
+    action:
+      # Estado lógico y snapshot + JSON de targets
+      - service: input_select.select_option
+        target: { entity_id: input_select.sala_auto_state }
+        data: { option: PRE_NOTICE }
+      - service: script.turn_on
+        target: { entity_id: script.sala_auto_save_scene }
+
+      # Elegir fade o reducción instantánea
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.sala_auto_fade
+                state: "on"
+            sequence:
+              - service: input_boolean.turn_on
+                target: { entity_id: input_boolean.sala_auto_fading_active }
+              - service: script.gradual_brightness_change
+                data:
+                  target:
+                    area_id: sala_de_estar
+                  target_brightness: "{{ [target_pct_global, 0] | max }}"
+                  transition_time: "{{ fade_sec }}"
+                  steps: "{{ fade_sec }}"
+                  queue_mode: parallel
+        default:
+          - service: script.turn_on
+            target: { entity_id: script.sala_auto_reduce_brightness }
+
+  # -------------------------------------------------------
+  # AUTOMATION: PRE_NOTICE finish → luces OFF (como antes)
+  # -------------------------------------------------------
+  - alias: sala_auto - PRE_NOTICE FIN → apagar
+    id: sala_auto_pre_notice_finish_off
+    mode: single
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.sala_auto_dim_notice
+    action:
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.sala_auto_fading_active }
+      - service: script.turn_on
+        target: { entity_id: script.sala_auto_turn_off_lights }
+      # El estado global pasará a RESTORE_WINDOW por tu flow existente
+
+  # -------------------------------------------------------
+  # AUTOMATION: Motion ON → ACTIVE (ajustada para V2)
+  # - Cancela fade si estaba activo
+  # - Si venías de PRE_NOTICE/RESTORE_WINDOW, restaura SUAVE al snapshot
+  #   usando script.gradual_restore_from_snapshot
+  # -------------------------------------------------------
+  - alias: sala_auto - Motion ON → ACTIVE (V2 restore suave)
+    id: sala_auto_motion_on_active_v2
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sala
+        to: "on"
+    variables:
+      prev_state: "{{ states('input_select.sala_auto_state') }}"
+      fade_sec: "{{ states('input_number.sala_auto_fade_sec') | int(30) }}"
+      steps: "{{ fade_sec }}"   # 1 paso/seg
+      min_pct_floor: 10
+    action:
+      # Estado lógico
+      - service: input_select.select_option
+        target: { entity_id: input_select.sala_auto_state }
+        data: { option: ACTIVE }
+
+      # Cancelar timers
+      - service: timer.cancel
+        target:
+          entity_id:
+            - timer.sala_auto_idle_timeout
+            - timer.sala_auto_dim_notice
+            - timer.sala_auto_restore_window
+
+      # Si había fade corriendo, cancelarlo
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ is_state('input_boolean.sala_auto_fading_active','on') }}"
+            sequence:
+              - service: script.turn_off
+                target: { entity_id: script.gradual_brightness_change }
+              - service: input_boolean.turn_off
+                target: { entity_id: input_boolean.sala_auto_fading_active }
+
+      # Decidir restauración según estado previo
+      - choose:
+          # Desde PRE_NOTICE o RESTORE_WINDOW → restauración suave (V2)
+          - conditions:
+              - condition: template
+                value_template: "{{ prev_state in ['PRE_NOTICE','RESTORE_WINDOW'] }}"
+            sequence:
+              - service: script.turn_on
+                target: { entity_id: script.gradual_restore_from_snapshot }
+                data:
+                  variables:
+                    duration: "{{ fade_sec }}"
+                    steps: "{{ steps }}"
+                    min_pct: "{{ min_pct_floor }}"
+          # Desde WAITING_ARRIVAL → encendido por efecto/franja (como acordamos)
+          - conditions:
+              - condition: template
+                value_template: "{{ prev_state == 'WAITING_ARRIVAL' }}"
+            sequence:
+              - service: script.turn_on
+                target: { entity_id: script.sala_auto_turn_on_lights }
+                data:
+                  variables:
+                    use_scene: false
+        # Otros previos (IDLE_COUNTDOWN, ACTIVE, DISABLED, etc.) → no tocar luces
+        default: []
