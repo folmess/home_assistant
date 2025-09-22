@@ -350,7 +350,7 @@
         id: cine_on
       sequence:
       - target:
-          entity_id: input_boolean.mantener_luces_sala
+          entity_id: input_boolean.sala_auto_bypass
         action: input_boolean.turn_on
         data: {}
       - action: light.turn_off
@@ -368,7 +368,7 @@
         id: cine_off
       sequence:
       - target:
-          entity_id: input_boolean.mantener_luces_sala
+          entity_id: input_boolean.sala_auto_bypass
         action: input_boolean.turn_off
         data: {}
       - action: light.turn_on
