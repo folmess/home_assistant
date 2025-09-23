@@ -5874,3 +5874,787 @@
       entity_only: true
     light.rgb:
       entity_only: true
+- id: '1758578474672'
+  name: sala - full azul
+  entities:
+    light.riel:
+      min_color_temp_kelvin: 2200
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 454
+      effect_list:
+      - Alarm
+      - Bedtime
+      - Candlelight
+      - Christmas
+      - Cool white
+      - Cozy
+      - Daylight
+      - Deep dive
+      - Diwali
+      - Fall
+      - Fireplace
+      - Focus
+      - Forest
+      - Golden white
+      - Halloween
+      - Jungle
+      - Mojito
+      - Music
+      - Night light
+      - Ocean
+      - Party
+      - Pastel colors
+      - Plantgrowth
+      - Pulse
+      - Relax
+      - Rhythm
+      - Romance
+      - Scene
+      - Spring
+      - Steampunk
+      - Summer
+      - Sunset
+      - TV time
+      - True colors
+      - Wake-up
+      - Warm white
+      - White
+      - 'off'
+      supported_color_modes:
+      - color_temp
+      - hs
+      - rgbw
+      effect: 'off'
+      color_mode: hs
+      brightness: 255
+      color_temp_kelvin:
+      color_temp:
+      hs_color:
+      - 243.882
+      - 100
+      rgb_color:
+      - 17
+      - 0
+      - 255
+      xy_color:
+      - 0.138
+      - 0.041
+      rgbw_color:
+      entity_id:
+      - light.riel1
+      - light.riel2
+      - light.riel3
+      - light.riel4
+      icon: mdi:lightbulb-group
+      friendly_name: Riel
+      supported_features: 4
+      state: 'on'
+    light.barra:
+      min_color_temp_kelvin: 2700
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 370
+      effect_list:
+      - Music
+      - Scene
+      - 'off'
+      supported_color_modes:
+      - color_temp
+      - hs
+      effect: 'off'
+      color_mode: hs
+      brightness: 255
+      color_temp_kelvin:
+      color_temp:
+      hs_color:
+      - 245
+      - 100
+      rgb_color:
+      - 21
+      - 0
+      - 255
+      xy_color:
+      - 0.139
+      - 0.041
+      entity_id:
+      - light.barra1
+      - light.barra2
+      icon: mdi:track-light
+      friendly_name: Barra
+      supported_features: 4
+      state: 'on'
+    light.rgb:
+      min_color_temp_kelvin: 2200
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 454
+      effect_list:
+      - Alarm
+      - Bedtime
+      - Candlelight
+      - Christmas
+      - Cozy
+      - Cool white
+      - Daylight
+      - Diwali
+      - Deep dive
+      - Fall
+      - Fireplace
+      - Forest
+      - Focus
+      - Golden white
+      - Halloween
+      - Jungle
+      - Mojito
+      - Night light
+      - Ocean
+      - Party
+      - Pulse
+      - Pastel colors
+      - Plantgrowth
+      - Romance
+      - Relax
+      - Sunset
+      - Spring
+      - Summer
+      - Steampunk
+      - True colors
+      - TV time
+      - White
+      - Wake-up
+      - Warm white
+      - Rhythm
+      supported_color_modes:
+      - color_temp
+      - rgbw
+      effect:
+      color_mode: rgbw
+      brightness: 255
+      color_temp_kelvin:
+      color_temp:
+      hs_color:
+      - 231.059
+      - 100
+      rgb_color:
+      - 0
+      - 38
+      - 255
+      xy_color:
+      - 0.136
+      - 0.05
+      rgbw_color:
+      - 0
+      - 38
+      - 255
+      - 0
+      icon: mdi:floor-lamp-torchiere
+      friendly_name: rgb
+      supported_features: 4
+      state: 'on'
+    light.luz_rack:
+      effect_list:
+      - flash_effect
+      - smooth_trans
+      - color:white
+      - color:orange
+      - color:red
+      - color:green
+      - color:blue
+      - color:lightorange
+      - color:yellow
+      - color:lima
+      - color:teal
+      - color:cyan
+      - color:realblue
+      - color:lightblue
+      - color:violeta1
+      - color:violeta2
+      - color:rosa
+      - color:magenta
+      supported_color_modes:
+      - onoff
+      effect: color:blue
+      color_mode: onoff
+      icon: mdi:led-strip-variant
+      friendly_name: Luz Rack
+      supported_features: 4
+      state: 'on'
+  metadata:
+    light.riel:
+      entity_only: true
+    light.barra:
+      entity_only: true
+    light.rgb:
+      entity_only: true
+    light.luz_rack:
+      entity_only: true
+- id: '1758578528810'
+  name: sala - full red
+  entities:
+    light.riel:
+      min_color_temp_kelvin: 2200
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 454
+      effect_list:
+      - Alarm
+      - Bedtime
+      - Candlelight
+      - Christmas
+      - Cool white
+      - Cozy
+      - Daylight
+      - Deep dive
+      - Diwali
+      - Fall
+      - Fireplace
+      - Focus
+      - Forest
+      - Golden white
+      - Halloween
+      - Jungle
+      - Mojito
+      - Music
+      - Night light
+      - Ocean
+      - Party
+      - Pastel colors
+      - Plantgrowth
+      - Pulse
+      - Relax
+      - Rhythm
+      - Romance
+      - Scene
+      - Spring
+      - Steampunk
+      - Summer
+      - Sunset
+      - TV time
+      - True colors
+      - Wake-up
+      - Warm white
+      - White
+      - 'off'
+      supported_color_modes:
+      - color_temp
+      - hs
+      - rgbw
+      effect: 'off'
+      color_mode: hs
+      brightness: 255
+      color_temp_kelvin:
+      color_temp:
+      hs_color:
+      - 1.941
+      - 100
+      rgb_color:
+      - 255
+      - 8
+      - 0
+      xy_color:
+      - 0.699
+      - 0.3
+      rgbw_color:
+      entity_id:
+      - light.riel1
+      - light.riel2
+      - light.riel3
+      - light.riel4
+      icon: mdi:lightbulb-group
+      friendly_name: Riel
+      supported_features: 4
+      state: 'on'
+    light.barra:
+      min_color_temp_kelvin: 2700
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 370
+      effect_list:
+      - Music
+      - Scene
+      - 'off'
+      supported_color_modes:
+      - color_temp
+      - hs
+      effect: 'off'
+      color_mode: hs
+      brightness: 255
+      color_temp_kelvin:
+      color_temp:
+      hs_color:
+      - 359
+      - 100
+      rgb_color:
+      - 255
+      - 0
+      - 4
+      xy_color:
+      - 0.7
+      - 0.299
+      entity_id:
+      - light.barra1
+      - light.barra2
+      icon: mdi:track-light
+      friendly_name: Barra
+      supported_features: 4
+      state: 'on'
+    light.rgb:
+      min_color_temp_kelvin: 2200
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 454
+      effect_list:
+      - Alarm
+      - Bedtime
+      - Candlelight
+      - Christmas
+      - Cozy
+      - Cool white
+      - Daylight
+      - Diwali
+      - Deep dive
+      - Fall
+      - Fireplace
+      - Forest
+      - Focus
+      - Golden white
+      - Halloween
+      - Jungle
+      - Mojito
+      - Night light
+      - Ocean
+      - Party
+      - Pulse
+      - Pastel colors
+      - Plantgrowth
+      - Romance
+      - Relax
+      - Sunset
+      - Spring
+      - Summer
+      - Steampunk
+      - True colors
+      - TV time
+      - White
+      - Wake-up
+      - Warm white
+      - Rhythm
+      supported_color_modes:
+      - color_temp
+      - rgbw
+      effect:
+      color_mode: rgbw
+      brightness: 240
+      color_temp_kelvin:
+      color_temp:
+      hs_color:
+      - 4.941
+      - 100
+      rgb_color:
+      - 255
+      - 21
+      - 0
+      xy_color:
+      - 0.697
+      - 0.302
+      rgbw_color:
+      - 255
+      - 21
+      - 0
+      - 0
+      icon: mdi:floor-lamp-torchiere
+      friendly_name: rgb
+      supported_features: 4
+      state: 'on'
+    light.luz_rack:
+      effect_list:
+      - flash_effect
+      - smooth_trans
+      - color:white
+      - color:orange
+      - color:red
+      - color:green
+      - color:blue
+      - color:lightorange
+      - color:yellow
+      - color:lima
+      - color:teal
+      - color:cyan
+      - color:realblue
+      - color:lightblue
+      - color:violeta1
+      - color:violeta2
+      - color:rosa
+      - color:magenta
+      supported_color_modes:
+      - onoff
+      effect: color:red
+      color_mode: onoff
+      icon: mdi:led-strip-variant
+      friendly_name: Luz Rack
+      supported_features: 4
+      state: 'on'
+  metadata:
+    light.riel:
+      entity_only: true
+    light.barra:
+      entity_only: true
+    light.rgb:
+      entity_only: true
+    light.luz_rack:
+      entity_only: true
+- id: '1758578744520'
+  name: sala - full redblue
+  entities:
+    light.barra:
+      min_color_temp_kelvin: 2700
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 370
+      effect_list:
+      - Music
+      - Scene
+      - 'off'
+      supported_color_modes:
+      - color_temp
+      - hs
+      effect: 'off'
+      color_mode: hs
+      brightness: 255
+      color_temp_kelvin:
+      color_temp:
+      hs_color:
+      - 237
+      - 100
+      rgb_color:
+      - 0
+      - 13
+      - 255
+      xy_color:
+      - 0.136
+      - 0.042
+      entity_id:
+      - light.barra1
+      - light.barra2
+      icon: mdi:track-light
+      friendly_name: Barra
+      supported_features: 4
+      state: 'on'
+    light.rgb:
+      min_color_temp_kelvin: 2200
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 454
+      effect_list:
+      - Alarm
+      - Bedtime
+      - Candlelight
+      - Christmas
+      - Cozy
+      - Cool white
+      - Daylight
+      - Diwali
+      - Deep dive
+      - Fall
+      - Fireplace
+      - Forest
+      - Focus
+      - Golden white
+      - Halloween
+      - Jungle
+      - Mojito
+      - Night light
+      - Ocean
+      - Party
+      - Pulse
+      - Pastel colors
+      - Plantgrowth
+      - Romance
+      - Relax
+      - Sunset
+      - Spring
+      - Summer
+      - Steampunk
+      - True colors
+      - TV time
+      - White
+      - Wake-up
+      - Warm white
+      - Rhythm
+      supported_color_modes:
+      - color_temp
+      - rgbw
+      effect:
+      color_mode: rgbw
+      brightness: 240
+      color_temp_kelvin:
+      color_temp:
+      hs_color:
+      - 2.824
+      - 100
+      rgb_color:
+      - 255
+      - 12
+      - 0
+      xy_color:
+      - 0.699
+      - 0.301
+      rgbw_color:
+      - 255
+      - 12
+      - 0
+      - 0
+      icon: mdi:floor-lamp-torchiere
+      friendly_name: rgb
+      supported_features: 4
+      state: 'on'
+    light.luz_rack:
+      effect_list:
+      - flash_effect
+      - smooth_trans
+      - color:white
+      - color:orange
+      - color:red
+      - color:green
+      - color:blue
+      - color:lightorange
+      - color:yellow
+      - color:lima
+      - color:teal
+      - color:cyan
+      - color:realblue
+      - color:lightblue
+      - color:violeta1
+      - color:violeta2
+      - color:rosa
+      - color:magenta
+      supported_color_modes:
+      - onoff
+      effect: color:blue
+      color_mode: onoff
+      icon: mdi:led-strip-variant
+      friendly_name: Luz Rack
+      supported_features: 4
+      state: 'on'
+    light.riel1:
+      min_color_temp_kelvin: 2700
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 370
+      effect_list:
+      - Music
+      - Scene
+      - 'off'
+      supported_color_modes:
+      - color_temp
+      - hs
+      effect: 'off'
+      color_mode: hs
+      brightness: 255
+      color_temp_kelvin:
+      color_temp:
+      hs_color:
+      - 2
+      - 100
+      rgb_color:
+      - 255
+      - 8
+      - 0
+      xy_color:
+      - 0.699
+      - 0.3
+      entity_id:
+      - light.tuyaspot2
+      icon: mdi:lightbulb-group
+      friendly_name: Riel1
+      supported_features: 4
+      state: 'on'
+    light.riel2:
+      min_color_temp_kelvin: 2200
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 454
+      effect_list:
+      - Alarm
+      - Bedtime
+      - Candlelight
+      - Christmas
+      - Cool white
+      - Cozy
+      - Daylight
+      - Deep dive
+      - Diwali
+      - Fall
+      - Fireplace
+      - Focus
+      - Forest
+      - Golden white
+      - Halloween
+      - Jungle
+      - Mojito
+      - Night light
+      - Ocean
+      - Party
+      - Pastel colors
+      - Plantgrowth
+      - Pulse
+      - Relax
+      - Rhythm
+      - Romance
+      - Spring
+      - Steampunk
+      - Summer
+      - Sunset
+      - TV time
+      - True colors
+      - Wake-up
+      - Warm white
+      - White
+      supported_color_modes:
+      - color_temp
+      - rgbw
+      effect:
+      color_mode: rgbw
+      brightness: 255
+      color_temp_kelvin:
+      color_temp:
+      hs_color:
+      - 4
+      - 100
+      rgb_color:
+      - 255
+      - 17
+      - 0
+      xy_color:
+      - 0.698
+      - 0.302
+      rgbw_color:
+      - 255
+      - 17
+      - 0
+      - 0
+      entity_id:
+      - light.spot_1
+      icon: mdi:lightbulb-group
+      friendly_name: Riel2
+      supported_features: 4
+      state: 'on'
+    light.riel3:
+      min_color_temp_kelvin: 2200
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 454
+      effect_list:
+      - Alarm
+      - Bedtime
+      - Candlelight
+      - Christmas
+      - Cool white
+      - Cozy
+      - Daylight
+      - Deep dive
+      - Diwali
+      - Fall
+      - Fireplace
+      - Focus
+      - Forest
+      - Golden white
+      - Halloween
+      - Jungle
+      - Mojito
+      - Night light
+      - Ocean
+      - Party
+      - Pastel colors
+      - Plantgrowth
+      - Pulse
+      - Relax
+      - Rhythm
+      - Romance
+      - Spring
+      - Steampunk
+      - Summer
+      - Sunset
+      - TV time
+      - True colors
+      - Wake-up
+      - Warm white
+      - White
+      supported_color_modes:
+      - color_temp
+      - rgbw
+      effect:
+      color_mode: rgbw
+      brightness: 255
+      color_temp_kelvin:
+      color_temp:
+      hs_color:
+      - 240.972
+      - 100
+      rgb_color:
+      - 4
+      - 0
+      - 247
+      xy_color:
+      - 0.136
+      - 0.04
+      rgbw_color:
+      - 4
+      - 0
+      - 247
+      - 0
+      entity_id:
+      - light.spot_3
+      icon: mdi:lightbulb-group
+      friendly_name: Riel3
+      supported_features: 4
+      state: 'on'
+    light.riel4:
+      min_color_temp_kelvin: 2700
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 370
+      effect_list:
+      - Music
+      - Scene
+      - 'off'
+      supported_color_modes:
+      - color_temp
+      - hs
+      effect: 'off'
+      color_mode: hs
+      brightness: 255
+      color_temp_kelvin:
+      color_temp:
+      hs_color:
+      - 248
+      - 100
+      rgb_color:
+      - 34
+      - 0
+      - 255
+      xy_color:
+      - 0.143
+      - 0.043
+      entity_id:
+      - light.tuyaspot4
+      icon: mdi:lightbulb-group
+      friendly_name: Riel4
+      supported_features: 4
+      state: 'on'
+  metadata:
+    light.barra:
+      entity_only: true
+    light.rgb:
+      entity_only: true
+    light.luz_rack:
+      entity_only: true
+    light.riel1:
+      entity_only: true
+    light.riel2:
+      entity_only: true
+    light.riel3:
+      entity_only: true
+    light.riel4:
+      entity_only: true

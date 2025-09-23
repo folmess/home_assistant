@@ -74,6 +74,22 @@
       discovery_id: 0xb4e3f9fffe14e641 action_4_double
 
     # --- HOLD ---
+    - id: b1_hold
+      platform: device
+      domain: mqtt
+      device_id: 6a1775371239157ec4543f3c5d7fb5b5
+      type: action
+      subtype: 1_hold
+      discovery_id: 0xb4e3f9fffe14e641 action_1_hold
+
+    - id: b2_hold
+      platform: device
+      domain: mqtt
+      device_id: 6a1775371239157ec4543f3c5d7fb5b5
+      type: action
+      subtype: 2_hold
+      discovery_id: 0xb4e3f9fffe14e641 action_2_hold
+
     - id: b3_hold
       platform: device
       domain: mqtt
@@ -97,69 +113,50 @@
         # ========= SINGLE =========
         - conditions: { condition: trigger, id: b1_single }
           sequence:
-            - service: scene.turn_on
-              target: { entity_id: scene.sala_de_estar_100_daylight }
+            - service: script.switch_sala_b1_single
 
         - conditions: { condition: trigger, id: b2_single }
           sequence:
-            - service: scene.turn_on
-              target: { entity_id: scene.sala_de_estar_100_warm }
+            - service: script.switch_sala_b2_single
 
         - conditions: { condition: trigger, id: b3_single }
           sequence:
-            - service: scene.turn_on
-              target: { entity_id: scene.sala_de_estar_warm_night }
+            - service: script.switch_sala_b3_single
 
         - conditions: { condition: trigger, id: b4_single }
           sequence:
-            - service: scene.turn_on
-              target: { entity_id: scene.sala_de_estar_cozy_ocean }
+            - service: script.switch_sala_b4_single
 
         # ========= DOUBLE =========
         - conditions: { condition: trigger, id: b1_double }
           sequence:
-            - service: climate.turn_on
-              target: { entity_id: climate.aire_living }
+            - service: script.switch_sala_b1_double
 
         - conditions: { condition: trigger, id: b2_double }
           sequence:
-            - service: climate.turn_off
-              target: { entity_id: climate.aire_living }
+            - service: script.switch_sala_b2_double
 
         - conditions: { condition: trigger, id: b3_double }
           sequence:
-            - service: scene.turn_on
-              target: { entity_id: scene.sala_de_estar_cozy_ocean }
+            - service: script.switch_sala_b3_double
 
         - conditions: { condition: trigger, id: b4_double }
           sequence:
-            - service: scene.turn_on
-              target: { entity_id: scene.sala_de_estar_cozy_ocean }
+            - service: script.switch_sala_b4_double
 
         # ========= HOLD =========
+        - conditions: { condition: trigger, id: b1_hold }
+          sequence:
+            - service: script.switch_sala_b1_hold
+
+        - conditions: { condition: trigger, id: b2_hold }
+          sequence:
+            - service: script.switch_sala_b2_hold
+
         - conditions: { condition: trigger, id: b3_hold }
           sequence:
-            # Toggle de mantener_luces_sala
-            - service: input_boolean.toggle
-              target:
-                entity_id: input_boolean.mantener_luces_sala
-            - service: light.turn_off
-              data:
-                target:
-                  area_id: sala_de_estar
+            - service: script.switch_sala_b3_hold
 
         - conditions: { condition: trigger, id: b4_hold }
           sequence:
-            - service: script.lights_fx_feedback_flash
-              data:
-                entity_id:
-                  - light.riel
-                repeats: 3
-                mode: kelvin
-                kelvin: 4949
-                restore: true
-            # Apagado de toda la sala
-            - service: light.turn_off
-              data:
-                target:
-                  area_id: sala_de_estar
+            - service: script.switch_sala_b4_hold

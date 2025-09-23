@@ -1,5 +1,6 @@
 # =========================
 # Script: Gradual Brightness Change
+# script: restore from snapshot with gradual brightness change
 # Allows gradual transition of one or more lights to a target brightness over a specified time
 # =========================
 
@@ -115,6 +116,7 @@ script:
                           steps: "{{ steps_int }}"
                           step_delay_ms: "{{ step_delay_ms }}"
               - stop: "Queue ramp done"
+
   gradual_brightness_worker:
     alias: Gradual Brightness Worker
     mode: parallel
@@ -188,3 +190,80 @@ script:
               - service: light.turn_off
                 target:
                   entity_id: "{{ light }}"
+
+
+  gradual_restore_from_snapshot:
+    alias: Sala - Encendido suave desde snapshot
+    description: Transición hacia los brillos guardados en var.sala_snapshot_targets
+    mode: restart
+    fields:
+      duration:
+        description: Duración total en segundos
+        default: 10
+      steps:
+        description: Número de pasos
+        default: 20
+      min_pct:
+        description: Piso mínimo de brillo (para luces que no aceptan menos)
+        default: 10
+    sequence:
+      - variables:
+          targets: >
+            {{ states('var.sala_snapshot_targets') | default('{}', true) | from_json }}
+          luces: "{{ (targets.keys() if targets is mapping else []) | list }}"
+          steps_i: "{{ (steps | default(30)) | int }}"
+          duration_s: "{{ (duration | default(10)) | float }}"
+          intervalo_ms: >
+            {{ (duration_s * 1000 / (steps_i if steps_i > 0 else 1)) | round(0) | int }}
+          min_floor: "{{ (min_pct | default(10)) | int }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ luces | length == 0 or steps_i <= 0 }}"
+            sequence: []
+        default:
+          - repeat:
+              count: "{{ steps_i }}"
+              sequence:
+                - variables:
+                    idx: "{{ repeat.index }}"
+                    frac: "{{ (repeat.index | float) / (steps_i | float) }}"
+                - repeat:
+                    for_each: "{{ luces }}"
+                    sequence:
+                      - variables:
+                          e: "{{ repeat.item }}"
+                          objetivo: "{{ targets[e] | int }}"
+                          bri_cur_255: >
+                            {{ state_attr(e,'brightness') | default(0, true) | int }}
+                          pct0: "{{ (bri_cur_255 / 2.55) | round(0) | int }}"
+                          start: |
+                            {% if objetivo > 0 %}
+                              {{ pct0 if pct0 > 0 else min_floor }}
+                            {% else %}
+                              {{ pct0 }}
+                            {% endif %}
+                          next_raw: >
+                            {{ (start + (frac | float) * (objetivo - start)) | round(0) | int }}
+                          next_pct: |
+                            {% if objetivo > 0 %}
+                              {{ [ [ next_raw, 0 ] | max, min_floor ] | max | int }}
+                            {% else %}
+                              {{ [ next_raw, 0 ] | max | int }}
+                            {% endif %}
+                      - target:
+                          entity_id: "{{ e }}"
+                        data:
+                          brightness_pct: "{{ next_pct }}"
+                        action: light.turn_on
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ objetivo == 0 and idx == steps_i }}"
+                            sequence:
+                              - target:
+                                  entity_id: "{{ e }}"
+                                action: light.turn_off
+                                data: {}
+                - delay:
+                    milliseconds: "{{ intervalo_ms }}"

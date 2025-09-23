@@ -1,7 +1,0 @@
-var:
-  sala_snapshot_targets:
-    initial_value: "{}"
-    restore: true
-    attributes:
-      friendly_name: "SALA - Targets por-luz (JSON)"
-      icon: mdi:code-json

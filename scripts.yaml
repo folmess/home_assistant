@@ -358,21 +358,6 @@ flash_sala:
       entity_id: scene.instantanea
   alias: Flash sala
   description: ''
-snapshot_saver:
-  sequence:
-  - action: input_text.set_value
-    metadata: {}
-    target:
-      entity_id: input_text.sala_snapshot_targets
-    data:
-      value: "{%- set luces = expand(area_entities('sala_de_estar'))\n      | selectattr('domain','eq','light')\n
-        \     | list -%}\n{%- set ns = namespace(obj={}) -%}\n{%- for e in luces -%}\n
-        \ {%- set id = e.entity_id -%}\n  {%- if e.state == 'on' -%}\n    {%- set
-        bri = (state_attr(id,'brightness') | int(255)) -%}\n    {%- set pct = (bri
-        / 2.55) | round(0) | int -%}\n    {%- set ns.obj = ns.obj | combine({ id:
-        pct }) -%}\n  {%- endif -%}\n{%- endfor -%}\n{{ ns.obj | tojson }}\n"
-  alias: Sala - Snapshot para Encendido suave
-  description: ''
 snapshot_gradual_restore:
   alias: Sala - Encendido suave desde snapshot
   description: Transición manual hacia los brillos guardados en sala_snapshot_targets
@@ -2625,3 +2610,109 @@ luces_madrugada:
       entity_id: scene.madrugada1
   alias: luces_madrugada
   description: ''
+switch_sala_b1_single:
+  alias: Switch sala - Boton 1 single
+  mode: single
+  sequence:
+  - service: scene.turn_on
+    target:
+      entity_id: scene.sala_de_estar_100_daylight
+switch_sala_b2_single:
+  alias: Switch sala - Boton 2 single
+  mode: single
+  sequence:
+  - service: scene.turn_on
+    target:
+      entity_id: scene.sala_de_estar_100_warm
+switch_sala_b3_single:
+  alias: Switch sala - Boton 3 single
+  mode: single
+  sequence:
+  - service: scene.turn_on
+    target:
+      entity_id: scene.sala_de_estar_warm_night
+switch_sala_b4_single:
+  alias: Switch sala - Boton 4 single
+  mode: single
+  sequence:
+  - service: scene.turn_on
+    target:
+      entity_id: scene.sala_de_estar_cozy_ocean
+switch_sala_b1_double:
+  alias: Switch sala - Boton 1 double
+  mode: single
+  sequence:
+  - action: scene.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: scene.sala_de_estar_cozy_club
+switch_sala_b2_double:
+  alias: Switch sala - Boton 2 double
+  mode: single
+  sequence:
+  - action: scene.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: scene.sala_full_azul
+switch_sala_b3_double:
+  alias: Switch sala - Boton 3 double
+  mode: single
+  sequence:
+  - service: scene.turn_on
+    target:
+      entity_id: scene.sala_de_estar_cozy_ocean
+switch_sala_b4_double:
+  alias: Switch sala - Boton 4 double
+  mode: single
+  sequence:
+  - target:
+      entity_id: scene.sala_de_estar_cozy_ocean
+    action: scene.turn_on
+    data: {}
+    enabled: false
+  - action: scene.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: scene.sala_full_redblue
+switch_sala_b3_hold:
+  alias: Switch sala - Boton 3 hold
+  mode: single
+  sequence:
+  - action: input_boolean.toggle
+    data: {}
+    target:
+      entity_id: input_boolean.sala_auto_bypass
+  description: ''
+switch_sala_b4_hold:
+  alias: Switch sala - Boton 4 hold
+  mode: single
+  sequence:
+  - service: script.lights_fx_feedback_flash
+    data:
+      entity_id:
+      - light.riel
+      repeats: 3
+      mode: kelvin
+      kelvin: 4949
+      restore: true
+  - service: light.turn_off
+    data:
+      target:
+        area_id: sala_de_estar
+switch_sala_b1_hold:
+  alias: Switch sala - Boton 1 hold
+  mode: single
+  sequence:
+  - service: light.turn_on
+    target:
+      area_id: sala_de_estar
+switch_sala_b2_hold:
+  alias: Switch sala - Boton 2 hold
+  mode: single
+  sequence:
+  - service: light.turn_on
+    target:
+      area_id: sala_de_estar
