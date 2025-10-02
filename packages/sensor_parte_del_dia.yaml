@@ -42,6 +42,34 @@ input_datetime:
     has_time: true
     initial: "20:00:00"
 
+
+####
+# automation para sync del sensor sun.sun y el inicio de noche
+####
+
+automation:
+  - alias: "Sync: input_datetime anochecer (sunset -10m)"
+    id: sync_input_datetime_anochecer
+    mode: single
+    trigger:
+      - platform: time
+        at: "00:05:00"
+      - platform: homeassistant
+        event: start
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.parte_noche_inicio
+        data:
+          time: >
+            {% set ns = state_attr('sun.sun','next_setting') %}
+            {% if ns %}
+              {% set t = as_datetime(ns) | as_local + timedelta(minutes=-10) %}
+              {{ t.strftime('%H:%M:%S') }}
+            {% else %}
+              {{ states('input_datetime.parte_noche_inicio') }}
+            {% endif %}
+
 ###############################################################################
 # SENSOR GLOBAL: Parte del día
 # Calcula en tiempo real usando los helpers y maneja correctamente la medianoche.
