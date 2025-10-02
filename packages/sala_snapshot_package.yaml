@@ -1,0 +1,168 @@
+# packages/sala_snapshot_popup.yaml
+# Requiere: Browser Mod y Bubble Card instalados
+
+input_text:
+  sala_snapshot_nombre:
+    name: Nombre escena Sala
+    max: 40
+    icon: mdi:content-save
+
+script:
+  # 1) Abre el popup con bubble-card y propone el siguiente nombre libre
+  sala_snapshot_abrir_popup:
+    alias: "Sala: Popup guardar escena"
+    mode: single
+    sequence:
+      - variables:
+          prefix: "escena_sala_"
+          next_free: >-
+            {% set existing = states.scene | map(attribute='entity_id')
+                 | map('regex_replace', '^scene\\.', '') | list %}
+            {% set ns = namespace(n=1) %}
+            {% for _ in range(1, 100) %}
+              {% set candidate = prefix ~ ('%02d' % ns.n) %}
+              {% if ('sala_' ~ candidate) not in existing and candidate not in existing %}
+                {{ candidate }}
+                {% break %}
+              {% endif %}
+              {% set ns.n = ns.n + 1 %}
+            {% endfor %}
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.sala_snapshot_nombre
+          value: "{{ next_free }}"
+      - service: browser_mod.popup
+        data:
+          dismissable: true
+          autoclose: false
+          title: "Guardar escena de Sala"
+          content:
+            type: vertical-stack
+            cards:
+              - type: custom:bubble-card
+                card_type: button
+                button_type: name
+                name: "Capturar estado actual de la Sala"
+                icon: mdi:content-save
+                show_icon: true
+                show_state: false
+                card_layout: large
+                styles:
+                  card:
+                    - padding: 12px
+              - type: custom:mushroom-text-input-card
+                entity: input_text.sala_snapshot_nombre
+                name: "Nombre de la escena"
+                placeholder: "ej: escena_sala_03"
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-template-card
+                    primary: "Cancelar"
+                    icon: mdi:close
+                    tap_action:
+                      action: call-service
+                      service: browser_mod.close_popup
+                  - type: custom:mushroom-template-card
+                    primary: "Guardar"
+                    icon: mdi:content-save-check
+                    tap_action:
+                      action: call-service
+                      service: script.sala_snapshot_guardar
+
+  # 2) Guarda la escena con nombre (auto-incrementa si ya existe)
+  sala_snapshot_guardar:
+    alias: "Sala: Guardar escena actual (auto-incremento)"
+    mode: single
+    sequence:
+      - variables:
+          base: "{{ states('input_text.sala_snapshot_nombre') | trim }}"
+          sane: "{{ (base if base else 'escena_sala_01') | slugify }}"
+          existentes: >-
+            {{ states.scene | map(attribute='entity_id')
+               | map('regex_replace', '^scene\\.', '') | list }}
+          elegido: >-
+            {% set prefix = sane %}
+            {% if sane in existentes or ('sala_' ~ sane) in existentes %}
+              {% set ns = namespace(n=1) %}
+              {% for _ in range(1,100) %}
+                {% set cand = prefix ~ '_' ~ ('%02d' % ns.n) %}
+                {% if cand not in existentes and ('sala_' ~ cand) not in existentes %}
+                  {{ cand }}
+                  {% break %}
+                {% endif %}
+                {% set ns.n = ns.n + 1 %}
+              {% endfor %}
+            {% else %}
+              {{ sane }}
+            {% endif %}
+          # 🔹 Calcular leaf lights del área sala_de_estar
+          _area_luces: >
+            {{ area_entities('sala_de_estar') | select('search','^light\\.') | list }}
+          _lvl1: >
+            {%- set out = [] -%}
+            {%- for e in _area_luces -%}
+              {%- set members = state_attr(e, 'entity_id') -%}
+              {%- if members is iterable and members|count > 0 -%}
+                {%- for m in members -%}
+                  {%- if m.startswith('light.') -%}{%- set out = out + [m] -%}{%- endif -%}
+                {%- endfor -%}
+              {%- else -%}
+                {%- set out = out + [e] -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{ out }}
+          _lvl2: >
+            {%- set out = [] -%}
+            {%- for e in _lvl1 -%}
+              {%- set members = state_attr(e, 'entity_id') -%}
+              {%- if members is iterable and members|count > 0 -%}
+                {%- for m in members -%}
+                  {%- if m.startswith('light.') -%}{%- set out = out + [m] -%}{%- endif -%}
+                {%- endfor -%}
+              {%- else -%}
+                {%- set out = out + [e] -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{ out }}
+          entidades: >
+            {%- set uniq = _lvl2 | unique | list -%}
+            {%- set leaves = [] -%}
+            {%- for e in uniq -%}
+              {%- if not (state_attr(e,'entity_id') is iterable) -%}
+                {%- set leaves = leaves + [e] -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{ leaves }}
+          scene_id: "sala_{{ elegido }}"
+      - choose:
+          - conditions: "{{ entidades | length == 0 }}"
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  title: "Snapshot Sala"
+                  message: "No hay luces en el Área 'sala_de_estar' o no se detectaron leaf lights."
+              - stop: "Sin entidades."
+      - service: scene.create
+        data:
+          scene_id: "{{ scene_id }}"
+          snapshot_entities: "{{ entidades }}"
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.sala_snapshot_nombre
+          value: "{{ elegido }}"
+      - service: persistent_notification.create
+        data:
+          title: "Snapshot Sala"
+          message: "Escena creada: scene.{{ scene_id }} ({{ entidades|length }} luces)"
+      - service: browser_mod.close_popup
+        data: {}
+
+# Ejemplo de botón en Lovelace
+# type: custom:bubble-card
+# card_type: button
+# button_type: name
+# name: "Guardar escena (Sala)"
+# icon: mdi:content-save
+# tap_action:
+#   action: call-service
+#   service: script.sala_snapshot_abrir_popup
