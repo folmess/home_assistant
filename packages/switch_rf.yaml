@@ -160,7 +160,12 @@ automation:
           # Botón3 - aire pieza (script)
           - conditions: "{{ code == 'A2ABE8' }}"
             sequence:
-              - service: script.aire_pieza_toogle
+              - service: light.toggle
+                target: { entity_id: light.pieza }
+                data:
+                  color_temp: 182
+                  brightness_pct: 100
+
 
         # Cualquier código no mapeado cae aquí
         default:
