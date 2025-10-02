@@ -1,0 +1,43 @@
+climate:
+  - platform: group
+    name: Aire Living
+    entities:
+      - climate.aire_acondicionado
+
+#####
+## Auto off
+######
+
+timer:
+      ac_auto_off:
+        name: Apagar AC en
+        duration: "00:00:00"   # se define al iniciar con el botón
+
+automation:
+
+  # Cuando termina el timer, apaga el aire
+  - alias: ac - auto off al finalizar timer
+    id: ac_auto_off_on_timer_finished
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.ac_auto_off
+    action:
+      - service: climate.turn_off
+        target:
+          entity_id: climate.aire_acondicionado
+    mode: single
+
+  # Si el AC se apaga antes, cancelá el timer (para que no quede colgado)
+  - alias: ac - cancelar timer si se apaga manualmente
+    id: ac_cancel_timer_if_ac_off
+    trigger:
+      - platform: state
+        entity_id: climate.aire_acondicionado
+        to: "off"
+    action:
+      - service: timer.cancel
+        target:
+          entity_id: timer.ac_auto_off
+    mode: restart
