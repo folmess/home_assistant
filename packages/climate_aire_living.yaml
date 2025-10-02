@@ -1,8 +1,8 @@
-climate:
-  - platform: group
-    name: Aire Living
-    entities:
-      - climate.aire_acondicionado
+# climate:
+#   - platform: group
+#     name: Aire Living
+#     entities:
+#       - climate.aire_acondicionado
 
 #####
 ## Auto off
