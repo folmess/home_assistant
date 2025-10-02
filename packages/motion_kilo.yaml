@@ -1,4 +1,4 @@
-# =========================
+﻿# =========================
 # Package: sala_auto (codename: motion_kilo)
 # Auto lights en Sala de Estar: escena, reducción/fade, restore desde snapshot, y waiting arrival
 # timers por franja y "leaf lights"
@@ -375,6 +375,91 @@ script:
             data: { brightness: "{{ brightness }}", transition: 1 }
 
 
+  sala_auto_start_idle_flow:
+    alias: SALA AUTO - Idle countdown flow
+    mode: restart
+    fields:
+      timeout_seconds:
+        name: Timeout override (seconds)
+        description: Optional override for idle countdown duration in seconds.
+        selector:
+          number:
+            min: 0
+            max: 7200
+            step: 1
+            unit_of_measurement: "s"
+    sequence:
+      - variables:
+          pd: "{{ states('sensor.parte_del_dia') }}"
+          timeout_map: >
+            {{ {
+              'manana':'input_number.sala_auto_timeout_manana',
+              'mediodia':'input_number.sala_auto_timeout_mediodia',
+              'tarde':'input_number.sala_auto_timeout_tarde',
+              'noche':'input_number.sala_auto_timeout_noche',
+              'madrugada':'input_number.sala_auto_timeout_madrugada'
+            } }}
+          timeout_minutes_default: "{{ states(timeout_map[pd])|int if pd in timeout_map else 10 }}"
+          timeout_override: "{{ timeout_seconds | default(none) }}"
+          timeout_sec: >-
+            {% set base = (timeout_minutes_default | int) * 60 %}
+            {% set override = timeout_override %}
+            {% if override is not none %}
+              {{ [override | int, 0] | max }}
+            {% else %}
+              {{ [base, 0] | max }}
+            {% endif %}
+          pre_notice_sec: "{{ 120 if timeout_sec|int >= 120 else timeout_sec|int }}"
+          wait_before_pre: "{{ max(timeout_sec|int - pre_notice_sec|int, 0) }}"
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.sala_auto_bypass
+                state: "off"
+              - condition: state
+                entity_id: binary_sensor.motion_sala
+                state: "off"
+            sequence:
+              - service: input_select.select_option
+                target: { entity_id: input_select.sala_auto_state }
+                data: { option: IDLE_COUNTDOWN }
+              - service: timer.cancel
+                target:
+                  entity_id:
+                    - timer.sala_auto_dim_notice
+                    - timer.sala_auto_restore_window
+              - service: input_boolean.turn_off
+                target:
+                  entity_id:
+                    - input_boolean.sala_auto_fading_active
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ timeout_sec|int > 0 }}"
+                    sequence:
+                      - service: timer.start
+                        target: { entity_id: timer.sala_auto_idle_timeout }
+                        data: { duration: "{{ timeout_sec }}" }
+                      - delay: "{{ wait_before_pre }}"
+                      - condition: state
+                        entity_id: binary_sensor.motion_sala
+                        state: "off"
+                      - condition: state
+                        entity_id: input_boolean.sala_auto_bypass
+                        state: "off"
+                      - condition: state
+                        entity_id: input_select.sala_auto_state
+                        state: IDLE_COUNTDOWN
+                      - condition: state
+                        entity_id: timer.sala_auto_idle_timeout
+                        state: "active"
+                      - service: timer.start
+                        target: { entity_id: timer.sala_auto_dim_notice }
+                        data: { duration: "{{ pre_notice_sec }}" }
+                      - service: timer.cancel
+                        target: { entity_id: timer.sala_auto_idle_timeout }
+        default: []
+
 ## ============================================
 ## Template sensor "dashboard-friendly"
 ## ============================================
@@ -500,28 +585,27 @@ automation:
                 entity_id: binary_sensor.motion_sala
                 state: "off"
             sequence:
-              - service: input_select.select_option
-                target: { entity_id: input_select.sala_auto_state }
-                data: { option: IDLE_COUNTDOWN }
-              - variables:
-                  pd: "{{ states('sensor.parte_del_dia') }}"
-                  timeout_min: >
-                    {% set map = {
-                      'manana':'input_number.sala_auto_timeout_manana',
-                      'mediodia':'input_number.sala_auto_timeout_mediodia',
-                      'tarde':'input_number.sala_auto_timeout_tarde',
-                      'noche':'input_number.sala_auto_timeout_noche',
-                      'madrugada':'input_number.sala_auto_timeout_madrugada'
-                    } %}
-                    {{ states(map[pd])|int if pd in map else 10 }}
-                  timeout: "{{ (timeout_min | int) * 60 }}"
-              - service: timer.start
-                target: { entity_id: timer.sala_auto_idle_timeout }
-                data: { duration: "{{ timeout }}" }
+              - service: script.turn_on
+                target: { entity_id: script.sala_auto_start_idle_flow }
 
 
-  # MOTION ON → ACTIVE (V2): cancela fade si estaba, y si venías de PRE_NOTICE/RESTORE → restore suave
-  - alias: sala_auto - Motion ON → ACTIVE (V2 restore suave)
+  # MOTION OFF -> IDLE_COUNTDOWN (inicia countdown, luego PRE_NOTICE si sigue off)
+  - alias: sala_auto - Motion OFF -> IDLE_COUNTDOWN
+    id: sala_auto_motion_off_idle
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sala
+        to: "off"
+    condition:
+      - condition: state
+        entity_id: input_boolean.sala_auto_bypass
+        state: "off"
+    action:
+      - service: script.turn_on
+        target: { entity_id: script.sala_auto_start_idle_flow }
+  # MOTION ON -> ACTIVE (V2): cancela fade si estaba, y si venías de PRE_NOTICE/RESTORE -> restore suave
+  - alias: sala_auto - Motion ON -> ACTIVE (V2 restore suave)
     id: sala_auto_motion_on_active_v2
     mode: restart
     trigger:
@@ -564,7 +648,7 @@ automation:
 
       # Restaurar según estado previo
       - choose:
-          # Desde PRE_NOTICE o RESTORE_WINDOW → restauración suave (usa VAR)
+          # Desde PRE_NOTICE o RESTORE_WINDOW -> restauración suave (usa VAR)
           - conditions:
               - condition: template
                 value_template: "{{ prev_state in ['PRE_NOTICE','RESTORE_WINDOW'] }}"
@@ -576,7 +660,7 @@ automation:
                     duration: "{{ fade_sec }}"
                     steps: "{{ steps }}"
                     min_pct: "{{ min_pct_floor }}"
-          # Desde WAITING_ARRIVAL → encendido por efecto/franja
+          # Desde WAITING_ARRIVAL -> encendido por efecto/franja
           - conditions:
               - condition: template
                 value_template: "{{ prev_state == 'WAITING_ARRIVAL' }}"
@@ -586,80 +670,6 @@ automation:
                 data:
                   variables: { use_scene: false }
         default: []
-
-  # MOTION OFF → IDLE_COUNTDOWN (inicia countdown, luego PRE_NOTICE si sigue off)
-  - alias: sala_auto - Motion OFF → IDLE_COUNTDOWN
-    id: sala_auto_motion_off_idle
-    mode: restart
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.motion_sala
-        to: "off"
-    condition:
-      - condition: state
-        entity_id: input_boolean.sala_auto_bypass
-        state: "off"
-    variables:
-      pd: "{{ states('sensor.parte_del_dia') }}"
-      timeout_min: >
-        {% set map = {
-          'manana':'input_number.sala_auto_timeout_manana',
-          'mediodia':'input_number.sala_auto_timeout_mediodia',
-          'tarde':'input_number.sala_auto_timeout_tarde',
-          'noche':'input_number.sala_auto_timeout_noche',
-          'madrugada':'input_number.sala_auto_timeout_madrugada'
-        } %}
-        {{ states(map[pd])|int if pd in map else 10 }}
-      timeout: "{{ (timeout_min | int) * 60 }}"
-      pre_notice: "{{ 120 if timeout|int >= 120 else timeout|int }}"
-      wait_before_pre: "{{ max(timeout|int - pre_notice|int, 0) }}"
-    action:
-      - service: input_select.select_option
-        target: { entity_id: input_select.sala_auto_state }
-        data: { option: IDLE_COUNTDOWN }
-
-      # Cancelar avisos/restore previos
-      - service: timer.cancel
-        target:
-          entity_id:
-            - timer.sala_auto_dim_notice
-            - timer.sala_auto_restore_window
-      - service: input_boolean.turn_off
-        target:
-          entity_id:
-            - input_boolean.sala_auto_fading_active
-
-      # Iniciar idle si corresponde
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ timeout|int > 0 }}"
-            sequence:
-              - service: timer.start
-                target: { entity_id: timer.sala_auto_idle_timeout }
-                data: { duration: "{{ timeout }}" }
-
-              # Esperar hasta PRE_NOTICE (si todo sigue aplicando)
-              - delay: "{{ wait_before_pre }}"
-              - condition: state
-                entity_id: binary_sensor.motion_sala
-                state: "off"
-              - condition: state
-                entity_id: input_boolean.sala_auto_bypass
-                state: "off"
-              - condition: state
-                entity_id: input_select.sala_auto_state
-                state: IDLE_COUNTDOWN
-              - condition: state
-                entity_id: timer.sala_auto_idle_timeout
-                state: "active"
-
-              # Iniciar PRE_NOTICE (el RESTORE_WINDOW arrancará al final del PRE_NOTICE)
-              - service: timer.start
-                target: { entity_id: timer.sala_auto_dim_notice }
-                data: { duration: "{{ pre_notice }}" }
-              - service: timer.cancel
-                target: { entity_id: timer.sala_auto_idle_timeout }
 
   # PRE_NOTICE START → set estado, snapshot + (fade o reducción instantánea)
   - alias: sala_auto - PRE_NOTICE START → snapshot + dim/fade + RESTORE WINDOW (parallel)
@@ -750,6 +760,8 @@ automation:
                     transition_time: "{{ fade_sec }}"
                     steps: "{{ fade_sec }}"
                     queue_mode: parallel
+                    include_off_lights: false
+                    flag_entity: input_boolean.sala_auto_fading_active
         default:
           - service: script.turn_on
             target: { entity_id: script.sala_auto_reduce_brightness }
@@ -800,3 +812,12 @@ automation:
       - service: input_select.select_option
         target: { entity_id: input_select.sala_auto_state }
         data: { option: WAITING_ARRIVAL }
+
+
+
+
+
+
+
+
+
