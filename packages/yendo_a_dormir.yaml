@@ -7,9 +7,12 @@
 # HELPERS
 ###############################################################
 input_boolean:
-  yendo_a_dormir:
-    name: Yendo a dormir
-    initial: off
+   yendo_a_dormir:
+     name: Yendo a dormir
+     initial: off
+   horario_de_dormir:
+     name: Horario de dormir
+     initial: off
 
 input_number:
   yendo_dormir_target_pct:
@@ -80,6 +83,35 @@ script:
       - service: light.turn_off
         target: { entity_id: "{{ leaf_lights }}" }
 
+  yendo_a_dormir_pre_off:
+    alias: "Dormir - Pre-off: apagar luces una por una, dejar 1 y activar escena madrugada"
+    mode: single
+    sequence:
+      - variables:
+          leaf_lights: >
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
+          on_lights: >
+            {{ expand(leaf_lights) | selectattr('state','equalto','on') | map(attribute='entity_id') | list }}
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ on_lights | length > 1 }}"
+            sequence:
+              - repeat:
+                  count: "{{ on_lights | length - 1 }}"
+                  sequence:
+                    - service: light.turn_off
+                      target: { entity_id: "{{ on_lights[repeat.index] }}" }
+                    - delay: 2
+        default: []
+      - service: scene.turn_on
+        target: { entity_id: scene.sala_madrugada1 }
+
 ###############################################################
 # AUTOMATIONS
 ###############################################################
@@ -120,6 +152,12 @@ automation:
       - service: script.turn_on
         target: { entity_id: script.yendo_dormir_save_scene }
 
+      # Iniciar countdown total (fade + espera)
+      - service: timer.start
+        target: { entity_id: timer.yendo_dormir_countdown }
+        data:
+          duration: "{{ total_s }}"
+
       # Fade gradual con script externo (1 paso/seg, paralelo)
       - service: script.gradual_brightness_change
         data:
@@ -129,12 +167,11 @@ automation:
           transition_time: "{{ fade_s }}"
           steps: "{{ fade_s }}"
           queue_mode: parallel
+      - delay: "{{ fade_s }}"
+      - service: script.turn_on
+        target: { entity_id: script.yendo_a_dormir_pre_off }
 
-      # Iniciar countdown total (fade + espera)
-      - service: timer.start
-        target: { entity_id: timer.yendo_dormir_countdown }
-        data:
-          duration: "{{ total_s }}"
+
 
   # FIN del countdown → apagar, forzar WAITING_ARRIVAL, delay 2s, bypass OFF, refuerzo WAITING_ARRIVAL, toggle OFF
   - alias: Dormir - FIN
@@ -166,6 +203,28 @@ automation:
       - service: input_select.select_option
         target: { entity_id: input_select.sala_auto_state }
         data: { option: WAITING_ARRIVAL }
+
+  # Horario dormir - ON at 22:00
+  - alias: Horario dormir - ON at 22:00
+    id: horario_dormir_on
+    mode: single
+    trigger:
+      - platform: time
+        at: "22:00:00"
+    action:
+      - service: input_boolean.turn_on
+        target: { entity_id: input_boolean.horario_de_dormir }
+
+  # Horario dormir - OFF at 02:00
+  - alias: Horario dormir - OFF at 02:00
+    id: horario_dormir_off
+    mode: single
+    trigger:
+      - platform: time
+        at: "02:00:00"
+    action:
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.horario_de_dormir }
 
       # Apagar el toggle maestro
       - service: input_boolean.turn_off
