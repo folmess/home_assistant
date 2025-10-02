@@ -1,4 +1,4 @@
-# =========================
+﻿# =========================
 # Script: Gradual Brightness Change
 # script: restore from snapshot with gradual brightness change
 # Allows gradual transition of one or more lights to a target brightness over a specified time
@@ -55,6 +55,18 @@ script:
                 value: parallel
               - label: En cola
                 value: queue
+      include_off_lights:
+        name: Incluir luces apagadas
+        description: Controla si se incluyen luces que están apagadas al iniciar la transición.
+        default: true
+        selector:
+          boolean:
+      flag_entity:
+        name: Run flag
+        description: Optional input_boolean that stays 'on' while the ramp should continue.
+        selector:
+          entity:
+            domain: input_boolean
     sequence:
       - variables:
           target_entities_raw: "{{ target.entity_id | default([]) }}"
@@ -63,10 +75,73 @@ script:
           target_entities: "{{ target_entities_raw if (target_entities_raw is iterable and target_entities_raw is not string) else [target_entities_raw] }}"
           target_devices: "{{ target_devices_raw if (target_devices_raw is iterable and target_devices_raw is not string) else [target_devices_raw] }}"
           target_areas: "{{ target_areas_raw if (target_areas_raw is iterable and target_areas_raw is not string) else [target_areas_raw] }}"
-          lights_from_devices: "{{ (target_devices | map('device_entities') | list) | sum(start=[]) | select('match', '^light\\.') | list }}"
-          lights_from_areas: "{{ (target_areas | map('area_entities') | list) | sum(start=[]) | select('match', '^light\\.') | list }}"
-          direct_lights: "{{ target_entities | select('match', '^light\\.') | list }}"
-          lights_list: "{{ (direct_lights + lights_from_devices + lights_from_areas) | unique | list }}"
+          lights_from_devices: >-
+            {{ (target_devices | map('device_entities') | list) | sum(start=[]) | select('match', '^light\..*') | list }}
+          lights_from_areas: >-
+            {{ (target_areas | map('area_entities') | list) | sum(start=[]) | select('match', '^light\..*') | list }}
+          direct_lights: >-
+            {{ target_entities | select('match', '^light\..*') | list }}
+          lights_candidates: >-
+            {{ (direct_lights + lights_from_devices + lights_from_areas) | unique | list }}
+          lights_list: >-
+            {{ expand(lights_candidates) | selectattr('attributes.entity_id', 'undefined') | map(attribute='entity_id') | select('match', '^light\..*') | unique | list }}
+          classification: >-
+            {% set ns = namespace(dimmable=[], dimmable_on=[], dimmable_off=[], non_dimmable=[], non_dimmable_on=[], non_dimmable_off=[]) %}
+            {% for entity_id in lights_list %}
+              {% set modes = state_attr(entity_id, 'supported_color_modes') %}
+              {% if modes is string %}
+                {% set modes_list = [modes | lower] %}
+              {% elif modes is iterable %}
+                {% set modes_list = modes | map('lower') | list %}
+              {% else %}
+                {% set modes_list = [] %}
+              {% endif %}
+              {% set features = state_attr(entity_id, 'supported_features') | int(0) %}
+              {% set supports_brightness = (
+                'brightness' in modes_list
+                or 'hs' in modes_list
+                or 'rgb' in modes_list
+                or 'rgbw' in modes_list
+                or 'rgbww' in modes_list
+                or 'color_temp' in modes_list
+                or 'white' in modes_list
+                or 'xy' in modes_list
+                or (((features | int(0)) | bitwise_and(1)) > 0)
+              ) %}
+              {% if supports_brightness %}
+                {% set ns.dimmable = ns.dimmable + [entity_id] %}
+                {% if states(entity_id) == 'on' %}
+                  {% set ns.dimmable_on = ns.dimmable_on + [entity_id] %}
+                {% else %}
+                  {% set ns.dimmable_off = ns.dimmable_off + [entity_id] %}
+                {% endif %}
+              {% else %}
+                {% set ns.non_dimmable = ns.non_dimmable + [entity_id] %}
+                {% if states(entity_id) == 'on' %}
+                  {% set ns.non_dimmable_on = ns.non_dimmable_on + [entity_id] %}
+                {% else %}
+                  {% set ns.non_dimmable_off = ns.non_dimmable_off + [entity_id] %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ {
+              'dimmable': ns.dimmable,
+              'dimmable_on': ns.dimmable_on,
+              'dimmable_off': ns.dimmable_off,
+              'non_dimmable': ns.non_dimmable,
+              'non_dimmable_on': ns.non_dimmable_on,
+              'non_dimmable_off': ns.non_dimmable_off
+            } }}
+          include_off: "{{ include_off_lights | default(true) }}"
+          dimmable_lights_all: "{{ classification.dimmable }}"
+          dimmable_on: "{{ classification.dimmable_on }}"
+          dimmable_off: "{{ classification.dimmable_off }}"
+          non_dimmable_lights: "{{ classification.non_dimmable }}"
+          non_dimmable_on: "{{ classification.non_dimmable_on }}"
+          non_dimmable_off_all: "{{ classification.non_dimmable_off }}"
+          dimmable_lights: "{{ dimmable_lights_all if include_off else dimmable_on }}"
+          non_dimmable_off: "{{ non_dimmable_off_all if include_off else [] }}"
+          flag_entity_id: "{{ flag_entity | default('') }}"
       - choose:
           - conditions:
               - condition: template
@@ -84,9 +159,23 @@ script:
               - variables:
                   steps_int: "{{ steps | int }}"
                   step_delay_ms: "{{ (((transition_time | float) / (steps | float)) * 1000) | int }}"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ (target_brightness | float(0)) <= 0 and (non_dimmable_on | length) > 0 and (flag_entity_id == '' or states(flag_entity_id) == 'on') }}"
+                    sequence:
+                      - service: light.turn_off
+                        target:
+                          entity_id: "{{ non_dimmable_on | join(', ') }}"
               - repeat:
-                  for_each: "{{ lights_list }}"
+                  for_each: "{{ dimmable_lights }}"
                   sequence:
+                    - choose:
+                        - conditions:
+                            - condition: template
+                              value_template: "{{ flag_entity_id != '' and states(flag_entity_id) != 'on' }}"
+                          sequence:
+                            - stop: "Flag inactive"
                     - service: script.turn_on
                       target:
                         entity_id: script.gradual_brightness_worker
@@ -96,6 +185,22 @@ script:
                           target_brightness: "{{ target_brightness }}"
                           steps: "{{ steps_int }}"
                           step_delay_ms: "{{ step_delay_ms }}"
+                          flag_entity: "{{ flag_entity_id }}"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ (target_brightness | float(0)) > 0 and (non_dimmable_off | length) > 0 and (flag_entity_id == '' or states(flag_entity_id) == 'on') }}"
+                    sequence:
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ (transition_time | float(0)) > 0 }}"
+                            sequence:
+                              - delay:
+                                  seconds: "{{ transition_time | float(0) }}"
+                      - service: light.turn_on
+                        target:
+                          entity_id: "{{ non_dimmable_off | join(', ') }}"
               - stop: "Parallel ramp dispatched"
       - choose:
           - conditions:
@@ -105,9 +210,23 @@ script:
               - variables:
                   steps_int: "{{ steps | int }}"
                   step_delay_ms: "{{ (((transition_time | float) / (steps | float)) * 1000) | int }}"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ (target_brightness | float(0)) <= 0 and (non_dimmable_on | length) > 0 and (flag_entity_id == '' or states(flag_entity_id) == 'on') }}"
+                    sequence:
+                      - service: light.turn_off
+                        target:
+                          entity_id: "{{ non_dimmable_on | join(', ') }}"
               - repeat:
-                  for_each: "{{ lights_list }}"
+                  for_each: "{{ dimmable_lights }}"
                   sequence:
+                    - choose:
+                        - conditions:
+                            - condition: template
+                              value_template: "{{ flag_entity_id != '' and states(flag_entity_id) != 'on' }}"
+                          sequence:
+                            - stop: "Flag inactive"
                     - service: script.gradual_brightness_worker
                       data:
                         variables:
@@ -115,6 +234,15 @@ script:
                           target_brightness: "{{ target_brightness }}"
                           steps: "{{ steps_int }}"
                           step_delay_ms: "{{ step_delay_ms }}"
+                          flag_entity: "{{ flag_entity_id }}"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ (target_brightness | float(0)) > 0 and (non_dimmable_off | length) > 0 and (flag_entity_id == '' or states(flag_entity_id) == 'on') }}"
+                    sequence:
+                      - service: light.turn_on
+                        target:
+                          entity_id: "{{ non_dimmable_off | join(', ') }}"
               - stop: "Queue ramp done"
 
   gradual_brightness_worker:
@@ -147,14 +275,27 @@ script:
             min: 0
             max: 5000
             step: 10
+      flag_entity:
+        name: Run flag entity
+        description: Optional input_boolean that remains 'on' while this worker should keep running.
+        selector:
+          entity:
+            domain: input_boolean
     sequence:
       - variables:
           is_off: "{{ states(light) == 'off' }}"
+          run_flag: "{{ flag_entity | default('') }}"
           start_bri: "{{ state_attr(light, 'brightness') | int(0) }}"
           start_pct: "{{ (10 if is_off else (start_bri / 255 * 100)) | float }}"
           target_pct: "{{ target_brightness | float }}"
           delta: "{{ target_pct - start_pct }}"
           step_size: "{{ (delta | float) / (steps | float) }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ run_flag != '' and states(run_flag) != 'on' }}"
+            sequence:
+              - stop: "Flag inactive before start"
       - if:
           - condition: template
             value_template: "{{ is_off and (delta | float) > 0 }}"
@@ -172,6 +313,12 @@ script:
           - repeat:
               count: "{{ steps | int }}"
               sequence:
+                - choose:
+                    - conditions:
+                        - condition: template
+                          value_template: "{{ run_flag != '' and states(run_flag) != 'on' }}"
+                      sequence:
+                        - stop: "Flag inactive during run"
                 - variables:
                     new_pct: "{{ (start_pct | float) + ((repeat.index | float) * (step_size | float)) }}"
                     new_pct_clamped: "{{ ([new_pct | float, 1.0] | max) if (target_pct | float) <= 0 else ([new_pct | float, 100.0] | min) }}"
@@ -190,8 +337,6 @@ script:
               - service: light.turn_off
                 target:
                   entity_id: "{{ light }}"
-
-
   gradual_restore_from_snapshot:
     alias: Sala - Encendido suave desde snapshot
     description: Transición hacia los brillos guardados en var.sala_snapshot_targets
@@ -267,3 +412,18 @@ script:
                                 data: {}
                 - delay:
                     milliseconds: "{{ intervalo_ms }}"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
