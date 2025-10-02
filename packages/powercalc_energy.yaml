@@ -7,10 +7,14 @@
 powercalc:
   sensors:
 
+
+
+
     # ---------------------------
-    # WiZ GU10
+    # Grupo TOTAL
+    # => genera sensor.luces_total_power / _energy
     # ---------------------------
-    - create_group: luces_gu10
+    - create_group: luces_total
       entities:
         - entity_id: light.riel2
           standby_power: 0.2
@@ -48,12 +52,6 @@ powercalc:
               - "102 -> 2"
               - "128 -> 3"
               - "255 -> 5"
-
-    # ---------------------------
-    # WiZ E27
-    # ---------------------------
-    - create_group: luces_e27_wiz
-      entities:
         - entity_id: light.rgb
           standby_power: 0.5
           linear:
@@ -74,12 +72,6 @@ powercalc:
               - "128 -> 5"
               - "179 -> 6"
               - "255 -> 9"
-
-    # ---------------------------
-    # Tuya 7W (genérico)
-    # ---------------------------
-    - create_group: luces_tuya_7w
-      entities:
         - entity_id: light.barra1
           standby_power: 0.3
           linear:
@@ -125,16 +117,6 @@ powercalc:
               - "128 -> 3.5"
               - "179 -> 5"
               - "255 -> 7"
-
-    # ---------------------------
-    # Grupo TOTAL
-    # => genera sensor.luces_total_power / _energy
-    # ---------------------------
-    - create_group: luces_total
-      entities:
-        - create_group: luces_gu10
-        - create_group: luces_e27_wiz
-        - create_group: luces_tuya_7w
 
     # ---------------------------
     # Grupos por ÁREA
@@ -169,13 +151,6 @@ powercalc:
 # ============================================================
 template:
   - sensor:
-      - name: "luces_total_energy_src"
-        unique_id: luces_total_energy_src
-        device_class: energy
-        state_class: total_increasing
-        unit_of_measurement: kWh
-        state: "{{ states('sensor.luces_total_energy') | float(0) }}"
-
       - name: "area_sala_de_estar_energy_src"
         unique_id: area_sala_de_estar_energy_src
         device_class: energy

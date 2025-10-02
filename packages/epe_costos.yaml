@@ -137,7 +137,7 @@ template:
       - name: "EPE Consumo mensual (kWh)"
         unique_id: epe_consumo_mensual_kwh
         device_class: energy
-        state_class: measurement
+        state_class: total_increasing
         unit_of_measurement: kWh
         state: "{{ states('sensor.luces_total_monthly') | float(0) }}"
 
@@ -167,7 +167,7 @@ template:
         state: >
           {% set c = states('sensor.luces_total_monthly')|float(0) %}
           {% set l2 = states('input_number.epe_tier2_limit_kwh')|float(300) %}
-          {{ (c - l2) | max(0) | round(3) }}
+          {{ max(c - l2, 0) | round(3) }}
 
         # Precio marginal actual (según el tramo donde vas en el mes)
       - name: "EPE Precio marginal ($/kWh)"
