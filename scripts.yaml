@@ -2484,8 +2484,7 @@ luces_tarde:
   - action: light.turn_on
     metadata: {}
     data:
-      color_temp_kelvin: 2000
-      brightness_pct: 65
+      brightness_pct: 8
     target:
       entity_id: light.barra1
   - delay:
@@ -2497,7 +2496,7 @@ luces_tarde:
     metadata: {}
     data:
       color_temp_kelvin: 2000
-      brightness_pct: 65
+      brightness_pct: 8
     target:
       entity_id: light.barra2
   - delay:
@@ -2509,7 +2508,7 @@ luces_tarde:
     metadata: {}
     data:
       color_temp_kelvin: 2000
-      brightness_pct: 50
+      brightness_pct: 15
     target:
       entity_id: light.riel1
   - delay:
@@ -2521,7 +2520,7 @@ luces_tarde:
     metadata: {}
     data:
       color_temp_kelvin: 2000
-      brightness_pct: 50
+      brightness_pct: 20
     target:
       entity_id:
       - light.riel2
@@ -2534,7 +2533,7 @@ luces_tarde:
     metadata: {}
     data:
       color_temp_kelvin: 2000
-      brightness_pct: 50
+      brightness_pct: 15
     target:
       entity_id:
       - light.riel3
@@ -2547,7 +2546,7 @@ luces_tarde:
     metadata: {}
     data:
       color_temp_kelvin: 2133
-      brightness_pct: 50
+      brightness_pct: 10
     target:
       entity_id: light.riel4
   - delay:
@@ -2559,14 +2558,15 @@ luces_tarde:
     metadata: {}
     data:
       color_temp_kelvin: 3891
-      brightness_pct: 30
+      brightness_pct: 7
     target:
       entity_id: light.riel
+    enabled: false
   - action: light.turn_on
     metadata: {}
     data:
       color_temp_kelvin: 2000
-      brightness_pct: 35
+      brightness_pct: 10
     target:
       entity_id: light.rgb
   - delay:
@@ -2716,3 +2716,57 @@ switch_sala_b2_hold:
   - service: light.turn_on
     target:
       area_id: sala_de_estar
+luz_barra_feedback_brillo_5x:
+  sequence:
+  - action: scene.create
+    metadata: {}
+    data:
+      scene_id: barra_previous_state
+      snapshot_entities:
+      - light.barra1
+      - light.barra2
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 0
+      milliseconds: 500
+  - repeat:
+      count: 5
+      sequence:
+      - data:
+          color_temp: 291
+          brightness_pct: 10
+        target:
+          entity_id:
+          - light.barra
+        action: light.turn_on
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 800
+      - data:
+          color_temp: 291
+          brightness_pct: 90
+        target:
+          entity_id:
+          - light.barra
+        action: light.turn_on
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 800
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 0
+      milliseconds: 500
+  - action: scene.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: scene.barra_previous_state
+  alias: Luz Barra - feedback brillo 5x
+  mode: single
+  description: ''

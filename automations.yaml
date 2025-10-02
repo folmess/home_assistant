@@ -64,7 +64,7 @@
   - target:
       entity_id: media_player.nest_mini
     data:
-      media_content_id: http://192.168.0.128:8123/local/Crosswalk.ogg
+      media_content_id: media-source://media_source/local/Notifications/Crosswalk.ogg
       media_content_type: music
     action: media_player.play_media
   - data:
@@ -335,11 +335,11 @@
     to: 'off'
     trigger: state
   - id: pause
-    entity_id: media_player.googletv_living
+    entity_id: media_player.sala_de_estar
     to: paused
     trigger: state
   - id: unpause
-    entity_id: media_player.googletv_living
+    entity_id: media_player.sala_de_estar
     to: playing
     trigger: state
   conditions: []
@@ -462,4 +462,21 @@
       data:
         tag: Wakeupoffice
     action: notify.hernan
+  mode: single
+- id: '1758760105750'
+  alias: Lavadora - feedback finalizado
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.lavadora_estado_del_trabajo
+    to: finish
+  conditions: []
+  actions:
+  - action: script.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id:
+      - script.luz_barra_feedback_brillo_5x
   mode: single

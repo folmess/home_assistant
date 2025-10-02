@@ -2235,7 +2235,7 @@
       - hs
       effect: 'off'
       color_mode: color_temp
-      brightness: 130
+      brightness: 3
       color_temp_kelvin: 2700
       color_temp: 370
       hs_color:
@@ -2370,21 +2370,25 @@
       - color_temp
       - rgbw
       effect:
-      color_mode: color_temp
-      brightness: 125
-      color_temp_kelvin: 2202
-      color_temp: 454
+      color_mode: rgbw
+      brightness: 76
+      color_temp_kelvin:
+      color_temp:
       hs_color:
-      - 29.79
-      - 84.553
+      - 9.123
+      - 67.059
       rgb_color:
       - 255
-      - 146
-      - 39
+      - 110
+      - 84
       xy_color:
-      - 0.579
-      - 0.388
+      - 0.589
+      - 0.329
       rgbw_color:
+      - 255
+      - 39
+      - 0
+      - 125
       entity_id:
       - light.spot_1
       icon: mdi:lightbulb-group
@@ -2436,25 +2440,21 @@
       - color_temp
       - rgbw
       effect:
-      color_mode: rgbw
-      brightness: 26
-      color_temp_kelvin:
-      color_temp:
+      color_mode: color_temp
+      brightness: 66
+      color_temp_kelvin: 2200
+      color_temp: 454
       hs_color:
-      - 355.837
-      - 96.078
+      - 29.797
+      - 84.644
       rgb_color:
       - 255
-      - 10
-      - 27
+      - 146
+      - 39
       xy_color:
-      - 0.691
-      - 0.297
+      - 0.579
+      - 0.388
       rgbw_color:
-      - 255
-      - 0
-      - 18
-      - 10
       entity_id:
       - light.spot_3
       icon: mdi:lightbulb-group
@@ -2506,21 +2506,25 @@
       - color_temp
       - rgbw
       effect:
-      color_mode: color_temp
-      brightness: 122
-      color_temp_kelvin: 2202
-      color_temp: 454
+      color_mode: rgbw
+      brightness: 255
+      color_temp_kelvin:
+      color_temp:
       hs_color:
-      - 29.79
-      - 84.553
+      - 22.824
+      - 100
       rgb_color:
       - 255
-      - 146
-      - 39
+      - 97
+      - 0
       xy_color:
-      - 0.579
-      - 0.388
+      - 0.647
+      - 0.345
       rgbw_color:
+      - 255
+      - 97
+      - 0
+      - 0
       icon: mdi:floor-lamp-torchiere
       friendly_name: rgb
       supported_features: 4
@@ -2565,10 +2569,27 @@
       supported_color_modes:
       - color_temp
       - hs
+      effect: 'off'
+      color_mode: color_temp
+      brightness: 38
+      color_temp_kelvin: 3961.6
+      color_temp: 252
+      hs_color:
+      - 26.83
+      - 35.57
+      rgb_color:
+      - 255
+      - 205
+      - 164
+      xy_color:
+      - 0.422
+      - 0.366
+      entity_id:
+      - light.tuyaspot2
       icon: mdi:lightbulb-group
       friendly_name: Riel1
       supported_features: 4
-      state: unavailable
+      state: 'on'
     light.riel4:
       min_color_temp_kelvin: 2700
       max_color_temp_kelvin: 6500
@@ -2581,20 +2602,61 @@
       supported_color_modes:
       - color_temp
       - hs
-      effect:
-      color_mode:
-      brightness:
+      effect: 'off'
+      color_mode: hs
+      brightness: 3
       color_temp_kelvin:
       color_temp:
       hs_color:
+      - 17
+      - 100
       rgb_color:
+      - 255
+      - 72
+      - 0
       xy_color:
+      - 0.67
+      - 0.325
       entity_id:
       - light.tuyaspot4
       icon: mdi:lightbulb-group
       friendly_name: Riel4
       supported_features: 4
-      state: 'off'
+      state: 'on'
+    light.barra:
+      min_color_temp_kelvin: 2700
+      max_color_temp_kelvin: 6500
+      min_mireds: 153
+      max_mireds: 370
+      effect_list:
+      - Music
+      - Scene
+      - 'off'
+      supported_color_modes:
+      - color_temp
+      - hs
+      effect: 'off'
+      color_mode: color_temp
+      brightness: 5
+      color_temp_kelvin: 3965
+      color_temp: 252
+      hs_color:
+      - 26.829
+      - 35.508
+      rgb_color:
+      - 255
+      - 205
+      - 164
+      xy_color:
+      - 0.422
+      - 0.366
+      entity_id:
+      - light.barra1
+      - light.barra2
+      icon: mdi:track-light
+      friendly_name: Barra
+      supported_features: 4
+      state: 'on'
   icon: mdi:heat-wave
   metadata:
     light.riel3:
@@ -2604,6 +2666,8 @@
     light.riel1:
       entity_only: true
     light.riel4:
+      entity_only: true
+    light.barra:
       entity_only: true
 - id: '1673660325936'
   name: Watching tv - white
@@ -4293,20 +4357,27 @@
       supported_color_modes:
       - color_temp
       - hs
-      effect:
-      color_mode:
-      brightness:
+      effect: 'off'
+      color_mode: hs
+      brightness: 8
       color_temp_kelvin:
       color_temp:
       hs_color:
+      - 17
+      - 91
       rgb_color:
+      - 255
+      - 89
+      - 23
       xy_color:
+      - 0.65
+      - 0.335
       entity_id:
       - light.tuyaspot2
       icon: mdi:lightbulb-group
       friendly_name: Riel1
       supported_features: 4
-      state: 'off'
+      state: 'on'
     light.riel2:
       min_color_temp_kelvin: 2200
       max_color_temp_kelvin: 6500
@@ -4412,7 +4483,7 @@
       - rgbw
       effect:
       color_mode: rgbw
-      brightness: 117
+      brightness: 64
       color_temp_kelvin:
       color_temp:
       hs_color:
@@ -4561,19 +4632,19 @@
       - hs
       effect: 'off'
       color_mode: hs
-      brightness: 26
+      brightness: 3
       color_temp_kelvin:
       color_temp:
       hs_color:
-      - 20
-      - 100
+      - 51
+      - 96
       rgb_color:
       - 255
-      - 85
-      - 0
+      - 218
+      - 10
       xy_color:
-      - 0.659
-      - 0.335
+      - 0.489
+      - 0.476
       entity_id:
       - light.tuyaspot1
       icon: mdi:lightbulb-group
