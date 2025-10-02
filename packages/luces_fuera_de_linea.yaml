@@ -9,56 +9,6 @@ group:
       - light.sonoffwf1
       # - light.luz_ejemplo_2
 
-##############################################################################
-#esto estaba en config, quizas duplicado o deprecated
-# template de luces desconocidas
-# - trigger:
-#     - platform: homeassistant
-#       event: start
-#     - platform: time_pattern
-#       minutes: "/2"
-#     - platform: event
-#       event_type: state_changed
-#   binary_sensor:
-#     - name: "Luces fuera de línea"
-#       unique_id: luces_fuera_de_linea
-#       state: >-
-#         {% set areas = ['sala_de_estar', 'baño', 'cocina', 'dormitorio'] %}
-#         {% set lights = areas | map('area_entities') | sum(start=[])
-#            | map('expand') | sum(start=[])
-#            | selectattr('domain','eq','light')
-#            | selectattr('state','in',['unavailable','unknown'])
-#            | map(attribute='entity_id') | list %}
-#         {{ lights | length > 0 }}
-#       attributes:
-#         cantidad: >-
-#           {% set areas = ['sala_de_estar', 'baño', 'cocina', 'dormitorio'] %}
-#           {% set lights = areas | map('area_entities') | sum(start=[])
-#              | map('expand') | sum(start=[])
-#              | selectattr('domain','eq','light')
-#              | selectattr('state','in',['unavailable','unknown']) | list %}
-#           {{ lights | length }}
-#         lista: >-
-#           {% set areas = ['sala_de_estar', 'baño', 'cocina', 'dormitorio'] %}
-#           {% set lights = areas | map('area_entities') | sum(start=[])
-#              | map('expand') | sum(start=[])
-#              | selectattr('domain','eq','light')
-#              | selectattr('state','in',['unavailable','unknown'])
-#              | map(attribute='entity_id') | list %}
-#           {{ lights }}
-#
-#   sensor:
-#     - name: "Luces fuera de línea (lista legible)"
-#       unique_id: luces_fuera_de_linea_lista
-#       state: >-
-#         {% set areas = ['sala_de_estar', 'baño', 'cocina', 'dormitorio'] %}
-#         {% set names = areas | map('area_entities') | sum(start=[])
-#            | map('expand') | sum(start=[])
-#            | selectattr('domain','eq','light')
-#            | selectattr('state','in',['unavailable','unknown'])
-#            | map(attribute='name') | list %}
-#         {{ names | join(', ') if names else 'Ninguna' }}
-#
 ###############################################################################
 # SENSORES (filtrados)
 ###############################################################################
