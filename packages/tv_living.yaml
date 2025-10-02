@@ -1,0 +1,64 @@
+
+media_player:
+  - platform: universal
+    name: televisor living
+    unique_id: tvliving663
+    children:
+      - media_player.chromecast_sala
+      - media_player.sala_de_estar
+    state_template: >-
+      {% set s = states('media_player.sala_de_estar') %}
+      {{ 'off' if s == 'standby' else s }}
+    commands:
+      turn_on:
+        service: media_player.turn_on
+        target:
+          entity_id: media_player.sala_de_estar
+      turn_off:
+        service: media_player.turn_off
+        target:
+          entity_id: media_player.sala_de_estar
+      volume_up:
+        service: media_player.volume_up
+        target:
+          entity_id: media_player.sala_de_estar
+      volume_down:
+        service: media_player.volume_down
+        target:
+          entity_id: media_player.sala_de_estar
+      volume_mute:
+        service: media_player.volume_mute
+        data:
+          is_volume_muted: true
+        target:
+          entity_id: media_player.sala_de_estar
+      select_source:
+        service: media_player.select_source
+        target:
+          entity_id: media_player.sala_de_estar
+        data:
+          source: "{{ source }}"
+      media_play:
+        service: media_player.media_play
+        target:
+          entity_id: media_player.sala_de_estar
+      media_pause:
+        service: media_player.media_pause
+        target:
+          entity_id: media_player.sala_de_estar
+      media_stop:
+        service: media_player.media_stop
+        target:
+          entity_id: media_player.sala_de_estar
+      volume_set:
+        service: media_player.volume_set
+        target:
+          entity_id: media_player.chromecast_sala
+        data:
+          volume_level: "{{ volume_level }}"
+    attributes:
+      source: media_player.sala_de_estar|source
+      source_list: media_player.sala_de_estar|source_list
+      is_volume_muted: media_player.sala_de_estar|is_volume_muted
+      volume_level: media_player.sala_de_estar|volume_level
+    device_class: tv

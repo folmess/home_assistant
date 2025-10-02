@@ -1,0 +1,14 @@
+# sensor de sys
+sensor:
+  - platform: time_date
+    display_options:
+      - "time"
+      - "date"
+
+# medir temperatura
+command_line:
+  - sensor:
+      name: CPU Temp
+      command: "cat /sys/class/thermal/thermal_zone0/temp"
+      unit_of_measurement: "°C"
+      value_template: "{{ value | multiply(0.001) | round(0) }}"
