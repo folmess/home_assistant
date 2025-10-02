@@ -1,0 +1,42 @@
+# packages/bienvenida_tts.yaml
+
+input_text:
+  nombre_bienvenida:
+    name: Nombre de bienvenida
+    icon: mdi:account-voice
+    max: 40
+    pattern: '.*'   # permite cualquier texto
+
+script:
+  bienvenida_tts:
+    alias: "Bienvenida TTS"
+    description: "Dice: 'Hola, (nombre). Bienvenido a casa' usando Nabu Casa TTS."
+    fields:
+      speaker:
+        name: Reproductor
+        description: Media player donde se reproducirá el audio
+        selector:
+          entity:
+            domain: media_player
+      nombre_helper:
+        name: Helper del nombre
+        description: Input_text desde donde se lee el nombre
+        default: input_text.nombre_bienvenida
+        selector:
+          entity:
+            domain: input_text
+    sequence:
+      - variables:
+          _speaker: "{{ speaker }}"
+          _nombre: "{{ states(nombre_helper) | trim }}"
+      - service: tts.cloud_say
+        target:
+          entity_id: "{{ _speaker }}"
+        data:
+          message: "Hola, {{ _nombre if _nombre else 'invitado' }}. Bienvenido a casa."
+          cache: true
+          language: es-ES
+          # Opcional: descomenta y ajusta la voz si querés
+          # options:
+          #   voice: Lucia
+    mode: restart
