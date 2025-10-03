@@ -523,10 +523,15 @@ template:
 
           # Remaining bruto (HH:MM:SS) del timer mapeado
           remaining: >-
-            {% set t = this.attributes.timer_entity if this.attributes is defined else 'none' %}
-            {% if t not in [none, 'none'] %}
-              {{ state_attr(t, 'remaining') or '' }}
-            {% else %}{% endif %}
+            {% set s = states('input_select.sala_auto_state') %}
+            {% set timer =
+              'timer.sala_auto_idle_timeout' if s == 'IDLE_COUNTDOWN'
+              else 'timer.sala_auto_dim_notice' if s == 'PRE_NOTICE'
+              else 'timer.sala_auto_restore_window' if s == 'RESTORE_WINDOW'
+              else none %}
+            {% if timer not in [none, 'none'] %}
+              {{ state_attr(timer, 'remaining') or '' }}
+            {% endif %}
 
           # Remaining lindo (mm:ss) si hay valor
           remaining_pretty: >-
@@ -812,6 +817,8 @@ automation:
       - service: input_select.select_option
         target: { entity_id: input_select.sala_auto_state }
         data: { option: WAITING_ARRIVAL }
+
+
 
 
 
