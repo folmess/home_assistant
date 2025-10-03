@@ -107,10 +107,10 @@ script:
                   sequence:
                     - service: light.turn_off
                       target: { entity_id: "{{ on_lights[repeat.index] }}" }
-                    - delay: 2
+                    - delay: 4
         default: []
       - service: scene.turn_on
-        target: { entity_id: scene.sala_madrugada1 }
+        target: { entity_id: scene.luces_madrugada }
 
 ###############################################################
 # AUTOMATIONS
@@ -230,6 +230,24 @@ automation:
       - service: input_boolean.turn_off
         target: { entity_id: input_boolean.yendo_a_dormir }
 
+  # Horario dormir - Sync al reiniciar HA
+  - alias: Horario dormir - Sync al reiniciar HA
+    id: horario_dormir_sync_on_start
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ now().hour >= 22 or now().hour < 2 }}"
+            sequence:
+              - service: input_boolean.turn_on
+                target: { entity_id: input_boolean.horario_de_dormir }
+        default:
+          - service: input_boolean.turn_off
+            target: { entity_id: input_boolean.horario_de_dormir }
   # OFF manual antes de terminar → cancelar y restaurar escena, luego misma salida con delay 2s
   - alias: Dormir - OFF cancel + restore
     id: yendo_dormir_off_cancel
