@@ -1,43 +1,185 @@
-# climate:
-#   - platform: group
-#     name: Aire Living
-#     entities:
-#       - climate.aire_acondicionado
-
 #####
-## Auto off
+## Package para gestionar el apagado automático del aire acondicionado
+## mediante un temporizador.
 ######
 
 timer:
-      ac_auto_off:
-        name: Apagar AC en
-        duration: "00:00:00"   # se define al iniciar con el botón
+  ac_auto_off:
+    name: Apagar AC en
+    duration: "00:00:00"
 
+input_text:
+  ac_notify_target:
+    name: Canal notify
+    initial: notify.hernan
+template:
+  - sensor:
+      - name: ac_auto_off_status_line
+        unique_id: ac_auto_off_status_line
+        state: >-
+          {% set t = states.timer.ac_auto_off %}
+          {% set ac = states.climate.aire_acondicionado %}
+          {% set running = t is not none and t.state == 'active' %}
+          {% set rem = state_attr('timer.ac_auto_off','remaining') or
+                        state_attr('timer.ac_auto_off','duration') %}
+          {% set ac_state = ac.state if ac is not none else 'unknown' %}
+          {% if running %}
+            Se apaga en {{ rem }}
+          {% else %}
+            Sin temporizador
+          {% endif %}
+          {% if ac_state == 'off' %} • AC apagado{% endif %}
+        icon: >-
+          {% set t = states.timer.ac_auto_off %}
+          {% if t and t.state == 'active' %}mdi:brightness-5{% else %}mdi:brightness-4{% endif %}
+
+      - name: ac_auto_off_progress_pct
+        unique_id: ac_auto_off_progress_pct
+        unit_of_measurement: "%"
+        device_class: battery
+        state: >-
+          {# Calcula porcentaje restante (0-100). Si no está activo => 0 #}
+          {% set rem = state_attr('timer.ac_auto_off','remaining') %}
+          {% set dur = state_attr('timer.ac_auto_off','duration') %}
+          {% if states('timer.ac_auto_off') == 'active' and rem and dur %}
+            {% set r = rem.split(':') %}
+            {% set d = dur.split(':') %}
+            {% set r_s = (r[0]|int)*3600 + (r[1]|int)*60 + (r[2]|int) %}
+            {% set d_s = (d[0]|int)*3600 + (d[1]|int)*60 + (d[2]|int) %}
+            {% if d_s > 0 %}
+              {{ ((r_s / d_s) * 100) | round(0) }}
+            {% else %} 0 {% endif %}
+          {% else %} 0 {% endif %}
+
+script:
+  ac_timer_add_15m:
+    alias: AC - sumar 15m al timer
+    mode: restart
+    sequence:
+      - variables:
+          remain_str: "{{ state_attr('timer.ac_auto_off','remaining') or '00:00:00' }}"
+          parts: "{{ remain_str.split(':') }}"
+          total_sec: "{{ (parts[0]|int)*3600 + (parts[1]|int)*60 + (parts[2]|int) + 900 }}"
+          hh: "{{ (total_sec // 3600) | int }}"
+          mm: "{{ ((total_sec % 3600) // 60) | int }}"
+          ss: "{{ (total_sec % 60) | int }}"
+          new_dur: "{{ '%02d:%02d:%02d' % (hh, mm, ss) }}"
+      - service: timer.start
+        target: { entity_id: timer.ac_auto_off }
+        data: { duration: "{{ new_dur }}" }
+
+  ac_timer_start_15m:
+    alias: AC - arrancar 15m (enciende si está off)
+    mode: single
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: climate.aire_acondicionado
+                state: "off"
+            sequence:
+              - service: climate.turn_on
+                target: { entity_id: climate.aire_acondicionado }
+      - service: timer.start
+        target: { entity_id: timer.ac_auto_off }
+        data: { duration: "00:15:00" }
+
+  ac_timer_start_30m:
+    alias: AC - arrancar 30m (enciende si está off)
+    mode: single
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: climate.aire_acondicionado
+                state: "off"
+            sequence:
+              - service: climate.turn_on
+                target: { entity_id: climate.aire_acondicionado }
+      - service: timer.start
+        target: { entity_id: timer.ac_auto_off }
+        data: { duration: "00:30:00" }
+
+  ac_timer_start_1h:
+    alias: AC - arrancar 1h (enciende si está off)
+    mode: single
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: climate.aire_acondicionado
+                state: "off"
+            sequence:
+              - service: climate.turn_on
+                target: { entity_id: climate.aire_acondicionado }
+      - service: timer.start
+        target: { entity_id: timer.ac_auto_off }
+        data: { duration: "01:00:00" }
+        
 automation:
 
-  # Cuando termina el timer, apaga el aire
-  - alias: ac - auto off al finalizar timer
-    id: ac_auto_off_on_timer_finished
+  - alias: ac - aviso al programar auto-off
+    id: ac_auto_off_notice_on_start
     trigger:
       - platform: event
-        event_type: timer.finished
-        event_data:
-          entity_id: timer.ac_auto_off
+        event_type: timer.started
+        event_data: { entity_id: timer.ac_auto_off }
     action:
-      - service: climate.turn_off
-        target:
-          entity_id: climate.aire_acondicionado
-    mode: single
+      - variables:
+          remaining: "{{ state_attr('timer.ac_auto_off','duration') or state_attr('timer.ac_auto_off','remaining') }}"
+          notify_service: "{{ states('input_text.ac_notify_target') }}"
+      - service: persistent_notification.create
+        data:
+          title: "AC: auto-off programado"
+          message: "Se apagará en {{ remaining | default('n/a') }}."
+      - service: "{{ notify_service if notify_service else 'persistent_notification.create' }}"
+        data:
+          title: "Home"
+          message: "AC: auto-off programado. Se apagará en {{ remaining | default('n/a') }}."
 
-  # Si el AC se apaga antes, cancelá el timer (para que no quede colgado)
-  - alias: ac - cancelar timer si se apaga manualmente
-    id: ac_cancel_timer_if_ac_off
+  - alias: ac - cancelar timer si ac se apaga
+    id: ac_auto_off_cancel_if_ac_off
     trigger:
       - platform: state
         entity_id: climate.aire_acondicionado
         to: "off"
     action:
       - service: timer.cancel
-        target:
-          entity_id: timer.ac_auto_off
-    mode: restart
+        target: { entity_id: timer.ac_auto_off }
+
+  - alias: ac - auto off al finalizar timer
+    id: ac_auto_off_on_timer_finished
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data: { entity_id: timer.ac_auto_off }
+    action:
+      - choose:
+          - conditions:
+              - condition: not
+                conditions:
+                  - condition: state
+                    entity_id: climate.aire_acondicionado
+                    state: "off"
+            sequence:
+              - service: climate.turn_off
+                target: { entity_id: climate.aire_acondicionado }
+      - variables:
+          notify_service: "{{ states('input_text.ac_notify_target') }}"
+      - service: persistent_notification.create
+        data:
+          title: "AC: auto-off ejecutado"
+          message: "El aire se apagó por temporizador."
+      - service: "{{ notify_service if notify_service else 'persistent_notification.create' }}"
+        data:
+          title: "Home"
+          message: "AC apagado (auto-off)."
+
+
+## customizacion y cambio de nombre
+## hace falta climate_group o script para grupo normal
+# climate:
+#   - platform: group
+#     name: Aire Living
+#     entities:
+#       - climate.aire_acondicionado
