@@ -1,0 +1,46 @@
+
+title: Rutinas
+views:
+  - title: Ahora
+    icon: mdi:clock-outline
+    cards:
+      - type: custom:mushroom-chips-card
+        chips:
+          - type: action
+            icon: mdi:plus
+            tap_action: navigate
+            navigation_path: /lovelace/rutinas?nueva
+            content_info: none
+          - type: entity
+            entity: input_boolean.rutinas_pause_all
+            name: Pausar 2h
+          - type: entity
+            entity: input_boolean.no_molestar
+            name: Silencio
+          - type: entity
+            entity: input_datetime.rutinas_silencio_hasta
+            name: Hasta
+      - type: custom:mushroom-title-card
+        title: Rutinas activas (próx {{ states('var.ui_panel_ahora_horizonte_min') }} min)
+      - type: custom:mushroom-template-card
+        primary: "Placeholder de lista de rutinas activas"
+        secondary: "Se llenará con sensores/blueprint en v0.2"
+        icon: mdi:check-circle
+  - title: Hoy / Semana
+    icon: mdi:calendar-week
+    cards:
+      - type: custom:mushroom-title-card
+        title: Estado general
+      - type: custom:mushroom-template-card
+        primary: "Pendientes / Hechas / Omitidas"
+        secondary: "Indicadores y gráficos en v0.2"
+        icon: mdi:chart-donut
+  - title: Streaks
+    icon: mdi:fire
+    cards:
+      - type: custom:mushroom-template-card
+        primary: "Rachas y % cumplimiento"
+        secondary: "Se calcularán en v0.2"
+        icon: mdi:trending-up
+
+

@@ -1,0 +1,478 @@
+# ============================================================
+# PACKAGE: rutinas_grocy
+# MVP con: configuración central (VAR), No Molestar maestro,
+# notificaciones Android accionables, escalado multicanal
+# (luces + media), posponer corto/largo, cierre diario, y
+# ganchos para Grocy (chores/tasks) como fuente de verdad.
+# 
+# NOTA:
+# - Este MVP prioriza la orquestación en HA y las acciones del
+#   usuario. Los servicios exactos de Grocy pueden variar según
+#   la versión de la integración. Donde dice TODO:GROCY, 
+#   mapeá al servicio correcto (p.ej., grocy.execute_chore,
+#   grocy.execute_task, etc.).
+# - Sensor de parte del día: sensor.parte_del_dia (override por
+#   tag de momento desactivado en este MVP).
+# - Estilo dashboard: Mushroom. Se incluye vista base.
+# ============================================================
+
+# ------------------------------------------------------------
+# 1) INPUTS / FLAGS
+# ------------------------------------------------------------
+input_boolean:
+  no_molestar:
+    name: No Molestar (Rutinas)
+    icon: mdi:do-not-disturb
+  rutinas_pause_all:
+    name: Pausar todas las rutinas (2h)
+    icon: mdi:pause-octagon
+
+# Silencio hasta (se gestiona vía timestamp)
+input_datetime:
+  rutinas_silencio_hasta:
+    name: Silencio hasta
+    has_date: true
+    has_time: true
+
+# Persistimos ventana de replay post-llegada (última llegada)
+  rutinas_ultima_llegada:
+    name: Ultima llegada a casa (interno)
+    has_date: true
+    has_time: true
+
+# ------------------------------------------------------------
+# 2) VAR – CONFIGURACIÓN CENTRALIZADA
+# (Requiere integración VAR. Cada variable es persistente.)
+# ------------------------------------------------------------
+var:
+  alerts_mediaplayer:
+    initial_value: "media_player.nes_mini"
+    restore: true
+    icon: mdi:speaker-message
+  alerts_luces_primary:
+    initial_value: "light.barra"
+    restore: true
+    icon: mdi:lightbulb-on
+  alerts_luces_escalado:
+    initial_value: "light.barra,light.riel"  # CSV
+    restore: true
+    icon: mdi:lightbulb-group
+  alerts_android_target:
+    initial_value: "notify.hernan"
+    restore: true
+    icon: mdi:cellphone-information
+
+  alerts_volumen_manana:
+    initial_value: 0.35
+    restore: true
+  alerts_volumen_tarde:
+    initial_value: 0.55
+    restore: true
+  alerts_volumen_noche:
+    initial_value: 0.25
+    restore: true
+
+  alerts_chime_base:
+    initial_value: "ding_01"
+    restore: true
+  alerts_chime_escalado:
+    initial_value: "ding_03"
+    restore: true
+
+  alerts_tts_base:
+    initial_value: "Es hora de {rutina}"
+    restore: true
+  alerts_tts_motivacional_extra:
+    initial_value: "¡Vamos, lo resolvés en 5 minutos!"
+    restore: true
+  alerts_tts_neutro_extra:
+    initial_value: ""
+    restore: true
+
+  policy_snooze_default:
+    initial_value: "30m"
+    restore: true
+  policy_snooze_opciones_cortas:
+    initial_value: "30m,1h"  # CSV
+    restore: true
+  policy_snooze_opciones_largas:
+    initial_value: "1d,2d"    # CSV
+    restore: true
+
+  policy_retry_max_intentos_por_dia:
+    initial_value: 3
+    restore: true
+  policy_retry_intervalo_escalado_1:
+    initial_value: "10m"
+    restore: true
+  policy_retry_intervalo_escalado_2:
+    initial_value: "20m"
+    restore: true
+
+  policy_omitidas_cerrar_al_final_del_dia:
+    initial_value: true
+    restore: true
+
+  policy_dnd_master_entity:
+    initial_value: "input_boolean.no_molestar"
+    restore: true
+  policy_dnd_ignore_if_priority_tag:
+    initial_value: "alta"
+    restore: true
+
+  context_parte_del_dia_sensor:
+    initial_value: "sensor.parte_del_dia"
+    restore: true
+  context_presencia_persona:
+    initial_value: "person.hernan"
+    restore: true
+  context_zona_hogar:
+    initial_value: "home"
+    restore: true
+  context_respetar_dnd_android:
+    initial_value: true
+    restore: true
+
+  policy_replay_enabled:
+    initial_value: true
+    restore: true
+  policy_replay_hours_back:
+    initial_value: 4
+    restore: true
+  policy_replay_window_min:
+    initial_value: 3
+    restore: true
+
+  ui_panel_ahora_horizonte_min:
+    initial_value: 60
+    restore: true
+  ui_panel_semana_incluir_omitidas:
+    initial_value: true
+    restore: true
+
+# ------------------------------------------------------------
+# 3) SENSORES AUXILIARES (templated, livianos)
+# ------------------------------------------------------------
+template:
+  - sensor:
+      - name: "rutinas_contexto_volumen_actual"
+        unique_id: rutinas_contexto_volumen_actual
+        state: >-
+          {% set parte = states(var.context_parte_del_dia_sensor|default('sensor.parte_del_dia')) %}
+          {% if parte in ['mañana','manana'] %}
+            {{ states('var.alerts_volumen_manana') }}
+          {% elif parte in ['tarde'] %}
+            {{ states('var.alerts_volumen_tarde') }}
+          {% else %}
+            {{ states('var.alerts_volumen_noche') }}
+          {% endif %}
+
+      - name: "rutinas_dnd_activo"
+        unique_id: rutinas_dnd_activo
+        state: >-
+          {% set dnd_ent = states('var.policy_dnd_master_entity') %}
+          {% if dnd_ent and states(dnd_ent) == 'on' %}
+            on
+          {% else %}
+            off
+          {% endif %}
+
+      - name: "rutinas_pausadas"
+        unique_id: rutinas_pausadas
+        state: >-
+          {{ iif(is_state('input_boolean.rutinas_pause_all','on'), 'on', 'off') }}
+
+      - name: "rutinas_silencio_activo"
+        unique_id: rutinas_silencio_activo
+        state: >-
+          {% set hasta = states('input_datetime.rutinas_silencio_hasta') %}
+          {% if hasta in ['unknown','unavailable',''] %}off{% else %}
+          {% set ts = as_timestamp(hasta) %}
+          {% if now().timestamp() < ts %}on{% else %}off{% endif %}{% endif %}
+
+      - name: "rutinas_arrival_replay_habilitado"
+        unique_id: rutinas_arrival_replay_habilitado
+        state: >-
+          {{ iif(states('var.policy_replay_enabled') in ['true','on','1','True'], 'on','off') }}
+
+# ------------------------------------------------------------
+# 4) SCRIPTS – CORE DE NOTIFICACIONES Y ESCALADO
+# ------------------------------------------------------------
+script:
+  rutinas__enviar_notificacion:
+    alias: Rutinas · Enviar notificación Android (intento)
+    mode: parallel
+    description: >-
+      Envía notificación con acciones para una rutina. 
+      Campos de entrada:
+      rutina_name, rutina_id, prioridad_tag, estilo_tag, canales_csv, intento (1/2/3)
+      payload_extra (opcional para TTS extendido).
+    fields:
+      rutina_name: { description: Nombre legible, example: "Skincare" }
+      rutina_id: { description: ID Grocy o clave única, example: "chore_42" }
+      prioridad_tag: { description: Tag prioridad (alta/media/baja) }
+      estilo_tag: { description: Tag estilo (motivacional/neutro) }
+      canales_csv: { description: CSV de canales Alert-app,Alert-light,Alert-sound }
+      intento: { description: Número de intento (1..3) }
+      payload_extra: { description: Texto extra opcional }
+    sequence:
+      - variables:
+          _android: "{{ states('var.alerts_android_target') }}"
+          _tts_base: "{{ states('var.alerts_tts_base') }}"
+          _tts_extra: >-
+            {% if estilo_tag == 'motivacional' %}{{ states('var.alerts_tts_motivacional_extra') }}
+            {% else %}{{ states('var.alerts_tts_neutro_extra') }}{% endif %}
+          _vol: "{{ states('sensor.rutinas_contexto_volumen_actual') | float(0.3) }}"
+          _mp: "{{ states('var.alerts_mediaplayer') }}"
+          _luces_primary: "{{ states('var.alerts_luces_primary') }}"
+          _luces_escalado: "{{ states('var.alerts_luces_escalado') }}"  # CSV
+          _chime_base: "{{ states('var.alerts_chime_base') }}"
+          _chime_esc: "{{ states('var.alerts_chime_escalado') }}"
+          _mensaje: >-
+            {% set base = _tts_base.replace('{rutina}', rutina_name) %}
+            {% set extra = (payload_extra if payload_extra|default('') else _tts_extra) %}
+            {{ (base ~ (' ' ~ extra if extra) ) | trim }}
+          _tag: "rutina:{{ rutina_id }}"
+
+      # Android (si corresponde)
+      - choose:
+          - conditions: "{{ 'Alert-app' in canales_csv }}"
+            sequence:
+              - service: "{{ _android }}"
+                data:
+                  title: "Rutina"
+                  message: "{{ _mensaje }}"
+                  data:
+                    ttl: 0
+                    priority: high
+                    tag: "{{ _tag }}"
+                    actions:
+                      - action: "RUTINA_DONE"
+                        title: "Hecha!"
+                      - action: "RUTINA_SNOOZE_30"
+                        title: "+30m"
+                      - action: "RUTINA_SNOOZE_60"
+                        title: "+1h"
+                      - action: "RUTINA_OMIT"
+                        title: "Omitir"
+                    clickAction: "/lovelace/rutinas"
+
+      # Luces + Sonido (según intento/canales)
+      - variables:
+          _usar_luz: "{{ 'Alert-light' in canales_csv }}"
+          _usar_sonido: "{{ 'Alert-sound' in canales_csv }}"
+
+      - choose:
+          - conditions: "{{ intento|int >= 2 and _usar_luz == True }}"
+            sequence:
+              - service: scene.create
+                data:
+                  scene_id: "snap_rutinas_{{ rutina_id }}"
+                  snapshot_entities: "{{ _luces_escalado if intento|int == 3 else _luces_primary }}"
+              - service: light.turn_on
+                data:
+                  entity_id: "{{ _luces_primary if intento|int == 2 else _luces_escalado.split(',') }}"
+                  brightness_pct: "{{ 30 if intento|int == 2 else 60 }}"
+                  flash: short
+              - delay: "00:00:03"
+              - service: scene.turn_on
+                target:
+                  entity_id: "scene.snap_rutinas_{{ rutina_id }}"
+
+      - choose:
+          - conditions: "{{ intento|int >= 2 and _usar_sonido == True }}"
+            sequence:
+              - service: media_player.volume_set
+                data:
+                  entity_id: "{{ _mp }}"
+                  volume_level: "{{ _vol }}"
+              - service: media_player.play_media
+                data:
+                  entity_id: "{{ _mp }}"
+                  media_content_id: >-
+                    {% if intento|int == 3 %}{{ _chime_esc }}{% else %}{{ _chime_base }}{% endif %}
+                  media_content_type: "sound"
+              - delay: "00:00:01"
+              - service: tts.google_translate_say
+                data:
+                  entity_id: "{{ _mp }}"
+                  message: "{{ _mensaje }}"
+
+  rutinas__marcar_hecha:
+    alias: Rutinas · Marcar hecha en Grocy
+    mode: queued
+    fields:
+      rutina_id: { description: ID Grocy o clave única }
+      rutina_tipo: { description: chore|task }
+    sequence:
+      - choose:
+          - conditions: "{{ rutina_tipo == 'chore' }}"
+            sequence:
+              # TODO:GROCY — Ajustar al servicio correcto de tu integración
+              - service: grocy.execute_chore
+                data:
+                  chore_id: "{{ rutina_id }}"
+          - conditions: "{{ rutina_tipo == 'task' }}"
+            sequence:
+              # TODO:GROCY — Ajustar al servicio correcto (completar task)
+              - service: grocy.complete_task
+                data:
+                  task_id: "{{ rutina_id }}"
+
+  rutinas__posponer_corto:
+    alias: Rutinas · Posponer (corto) 30m/1h (local)
+    mode: queued
+    fields:
+      rutina_id: {}
+      minutos: {}
+      meta_payload: { description: JSON con nombre, tags, etc. }
+    sequence:
+      - event: rutinas_snooze_programado
+        event_data:
+          rutina_id: "{{ rutina_id }}"
+          minutos: "{{ minutos }}"
+          meta: "{{ meta_payload }}"
+
+  rutinas__posponer_largo:
+    alias: Rutinas · Posponer (largo) +1d/+2d (actualiza Grocy)
+    mode: queued
+    fields:
+      rutina_id: {}
+      dias: {}
+      rutina_tipo: {}
+    sequence:
+      # TODO:GROCY — mover próxima ejecución según días
+      - service: grocy.update_chore_next_execution_time
+        data:
+          chore_id: "{{ rutina_id }}"
+          days: "{{ dias }}"
+
+# ------------------------------------------------------------
+# 5) AUTOMATIZACIONES – ACCIONES DE LA NOTIFICACIÓN
+# ------------------------------------------------------------
+automation:
+  - id: rutinas_mobile_accion_done
+    alias: Rutinas · Accion móvil · Hecha
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: RUTINA_DONE
+    action:
+      - variables:
+          rid: "{{ trigger.event.data.tag | replace('rutina:','') }}"
+      - service: script.rutinas__marcar_hecha
+        data:
+          rutina_id: "{{ rid }}"
+          rutina_tipo: chore  # o task (si corresponde)
+
+  - id: rutinas_mobile_accion_snooze_30
+    alias: Rutinas · Accion móvil · +30m
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: RUTINA_SNOOZE_30
+    action:
+      - variables:
+          rid: "{{ trigger.event.data.tag | replace('rutina:','') }}"
+          meta: "{{ trigger.event.data }}"
+      - service: script.rutinas__posponer_corto
+        data:
+          rutina_id: "{{ rid }}"
+          minutos: 30
+          meta_payload: "{{ meta }}"
+
+  - id: rutinas_mobile_accion_snooze_60
+    alias: Rutinas · Accion móvil · +1h
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: RUTINA_SNOOZE_60
+    action:
+      - variables:
+          rid: "{{ trigger.event.data.tag | replace('rutina:','') }}"
+          meta: "{{ trigger.event.data }}"
+      - service: script.rutinas__posponer_corto
+        data:
+          rutina_id: "{{ rid }}"
+          minutos: 60
+          meta_payload: "{{ meta }}"
+
+  - id: rutinas_mobile_accion_omit
+    alias: Rutinas · Accion móvil · Omitir
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: RUTINA_OMIT
+    action:
+      - variables:
+          rid: "{{ trigger.event.data.tag | replace('rutina:','') }}"
+      - event: rutinas_omitida
+        event_data:
+          rutina_id: "{{ rid }}"
+
+# ------------------------------------------------------------
+# 6) AUTOMATIZACIÓN – REPLAY AL LLEGAR A CASA (GANCHO)
+# ------------------------------------------------------------
+  - id: rutinas_replay_al_llegar
+    alias: Rutinas · Replay al llegar a casa (últimas X horas)
+    trigger:
+      - platform: state
+        entity_id: "{{ states('var.context_presencia_persona') }}"
+        to: "{{ states('var.context_zona_hogar') }}"
+    condition:
+      - condition: template
+        value_template: "{{ states('var.policy_replay_enabled') in ['true','on','1','True'] }}"
+    action:
+      - service: input_datetime.set_datetime
+        data:
+          entity_id: input_datetime.rutinas_ultima_llegada
+          datetime: "{{ now().isoformat() }}"
+      - delay:
+          minutes: "{{ states('var.policy_replay_window_min') | int(3) }}"
+      - event: rutinas_replay_disparar
+        event_data:
+          hours_back: "{{ states('var.policy_replay_hours_back') | int(4) }}"
+
+# ------------------------------------------------------------
+# 7) CIERRE DIARIO (OMITIDAS) – GANCHO
+# ------------------------------------------------------------
+  - id: rutinas_cierre_diario
+    alias: Rutinas · Cierre diario (marcar omitidas)
+    trigger:
+      - platform: time
+        at: "23:59:30"
+    condition:
+      - condition: template
+        value_template: "{{ states('var.policy_omitidas_cerrar_al_final_del_dia') in ['true','on','1','True'] }}"
+    action:
+      - event: rutinas_cierre_dia
+
+# ------------------------------------------------------------
+# 8) DASHBOARD – VISTA BASE LOVELACE (MUSHROOM)
+# (Cárgalo en UI: YAML mode o copia en un dashboard yaml.)
+# ------------------------------------------------------------
+lovelace:
+  dashboards:
+    rutinas:
+      mode: yaml
+      filename: lovelace-rutinas.yaml
+      title: Rutinas
+      icon: mdi:calendar-check
+
+# ------------------------------------------------------------
+# 9) NOTAS DE INTEGRACIÓN GROCY (para v0.2)
+# ------------------------------------------------------------
+# - Leer lista de chores/tasks y sus tags/frecuencias desde las entidades
+#   que exponga tu integración Grocy (sensor o calendar). 
+# - Identificar rutinas "en ventana" según horario/fecha y tags.
+# - Generar una notificación inicial (script.rutinas__enviar_notificacion
+#   con intento=1). Si no hay respuesta, programar escalado según VAR.
+# - Para posponer largo, usar el servicio correspondiente para mover la
+#   próxima ejecución en Grocy (placeholder agregado).
+# - Para marcar hecha/omitida, llamar a los servicios correctos de Grocy.
+
+# FIN DEL PACKAGE v0.1
