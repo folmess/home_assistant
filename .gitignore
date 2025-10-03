@@ -40,3 +40,4 @@ addons_config/fireflyiii/APP_KEY_BACKUP.txt
 addons_config/fireflyiii/database/database.sqlite
 addons_config/fireflyiii/config.yaml
 addons_autoscripts/fireflyiii.sh
+.ha_run.lock
