@@ -473,19 +473,19 @@ template:
           next_action: >-
             {% set s = states('input_select.sala_auto_state') %}
             {% if s == 'DISABLED' %}
-              Automático desactivado (bypass).
+              Luces configuradas manualmente, bypass activo.
             {% elif s == 'ACTIVE' %}
-              Movimiento en sala; luces gestionadas. Timers reiniciados.
+              Hay movimiento en sala.
             {% elif s == 'IDLE_COUNTDOWN' %}
-              Sin movimiento: contando para preaviso.
+              Sin movimiento en sala; pronto se reducirá el brillo.
             {% elif s == 'PRE_NOTICE' %}
-              Preaviso: reduciendo brillo; pronto se apagarán.
+              Reduciendo brillo; pronto se apagarán las luces.
             {% elif s == 'RESTORE_WINDOW' %}
-              Ventana de restauración: esperando tu vuelta para restaurar la escena.
+              Esperando movimiento para volver a prender las luces.
             {% elif s == 'WAITING_ARRIVAL' %}
-              Esperando arribo: al volver, se encenderá según efecto/franja.
+              Esperando arribo a casa para prender las luces automáticamente.
             {% else %}
-              Estado desconocido.
+              Algo salió mal. Estado desconocido.
             {% endif %}
 
           # Icono MDI sugerido para cada estado
