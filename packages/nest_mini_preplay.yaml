@@ -111,3 +111,42 @@ script:
           entity_id: "{{ media_player }}"
           message: "{{ message }}"
           language: "{{ _lang }}"
+
+input_boolean:
+ nest_mini_playing:
+   name: Nest Mini Playing
+   icon: mdi:music
+
+automation:
+ - alias: Nest Mini Playing Monitor
+   mode: parallel
+   trigger:
+     - platform: state
+       entity_id: media_player.nest_mini
+       to: ['playing', 'paused']
+     - platform: state
+       entity_id: media_player.nest_mini
+       to: ['off', 'idle']
+   condition: []
+   action:
+     - choose:
+         - conditions:
+             - condition: state
+               entity_id: media_player.nest_mini
+               state: ['playing', 'paused']
+           sequence:
+             - delay: '00:00:10'
+             - condition: state
+               entity_id: media_player.nest_mini
+               state: ['playing', 'paused']
+             - service: input_boolean.turn_on
+               target:
+                 entity_id: input_boolean.nest_mini_playing
+         - conditions:
+             - condition: state
+               entity_id: media_player.nest_mini
+               state: ['off', 'idle']
+           sequence:
+             - service: input_boolean.turn_off
+               target:
+                 entity_id: input_boolean.nest_mini_playing
