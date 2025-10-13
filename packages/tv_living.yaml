@@ -8,7 +8,7 @@ media_player:
       - media_player.sala_de_estar
     state_template: >-
       {% set s = states('media_player.sala_de_estar') %}
-      {{ 'off' if s == 'standby' else s }}
+      {{ 'off' if s == 'idle' else s }}
     commands:
       turn_on:
         service: media_player.turn_on
