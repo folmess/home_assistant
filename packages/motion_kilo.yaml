@@ -535,8 +535,8 @@ template:
 
           # Remaining lindo (mm:ss) si hay valor
           remaining_pretty: >-
-            {% set raw = this.attributes.remaining if this.attributes is defined else '' %}
-            {% if raw %}
+            {% set raw = this.attributes.get('remaining', '') if this.attributes is defined else '' %}
+            {% if raw and raw != '' %}
               {% set p = strptime(raw, '%H:%M:%S') %}
               {{ '%02d:%02d' | format(p.hour*60 + p.minute, p.second) }}
             {% else %}{{ '' }}{% endif %}
