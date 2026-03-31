@@ -1,0 +1,64 @@
+# packages/graph_time_markers.yaml
+################################################################################
+## Marcadores para usar como eje secundario en mini-graph-card
+################################################################################
+
+input_number:
+  graph_time_marker:
+    name: Graph Time Marker
+    min: 0
+    max: 3
+    step: 1
+    icon: mdi:chart-timeline-variant
+
+template:
+  - sensor:
+      - name: "Graph Time Marker"
+        unique_id: graph_time_marker_sensor
+        unit_of_measurement: "marker"
+        state: "{{ states('input_number.graph_time_marker') | int(0) }}"
+
+automation:
+  # Pulso horario (valor 1 durante 1 minuto, excepto cuando toca el de 12 h)
+  - alias: graph_marker_hourly_pulse
+    id: graph_marker_hourly_pulse
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: 0
+    condition:
+      - condition: template
+        value_template: "{{ (now().hour % 12) != 0 }}"
+    action:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.graph_time_marker
+        data:
+          value: 1
+      - delay: "00:01:00"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.graph_time_marker
+        data:
+          value: 0
+
+  # Pulso cada 12 horas (valor 2 durante 1 minuto)
+  - alias: graph_marker_halfday_pulse
+    id: graph_marker_halfday_pulse
+    mode: single
+    trigger:
+      - platform: time_pattern
+        hours: "/12"
+        minutes: 0
+    action:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.graph_time_marker
+        data:
+          value: 2
+      - delay: "00:01:00"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.graph_time_marker
+        data:
+          value: 0

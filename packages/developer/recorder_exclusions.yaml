@@ -1,0 +1,44 @@
+# ============================================
+# Recorder Exclusions Package
+# ============================================
+# Excluye entidades del recorder para mejorar
+# el rendimiento de la base de datos y reduzir
+# escrituras en disco (SD Card friendly).
+# ============================================
+
+recorder:
+  # Escribir a disco cada 15s (default 1s) para bajar IOPS
+  commit_interval: 15
+  # Mantener solo 10 días de historial (ajustar según necesidad)
+  purge_keep_days: 7
+  
+  exclude:
+    domains:
+      - sun           # Cambia cada minuto (azimuth/elevation)
+      - weather       # Atributos grandes y frecuentes
+      - update        # Genera spam si hay muchos addons
+      - camera        # No suele ser útil el historial de estado
+#      - group         # Redundante si ya grabas las entidades
+    
+    entity_globs:
+      # Sensores técnicos ruidosos (Zigbee/Wifi)
+      - sensor.*_ssid
+      - sensor.*_linkquality
+      - sensor.*_lqi
+      - sensor.*_rssi
+      - sensor.*_signal_strength
+      
+      # Contadores y timestamps
+      - sensor.*_uptime
+      - sensor.*_last_seen
+      
+      # Redundancia solar
+      - sensor.sun*
+
+    entities:
+      # Bubble Card Modules - Atributos exceden 16KB
+      - sensor.bubble_card_modules
+      
+      # Sensores de tiempo que cambian cada minuto
+      - sensor.time
+      - sensor.date

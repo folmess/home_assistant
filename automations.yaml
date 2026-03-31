@@ -350,26 +350,21 @@
         id: cine_on
       sequence:
       - target:
-          entity_id: input_boolean.sala_auto_bypass
-        action: input_boolean.turn_on
+          entity_id: input_boolean.smart_lights_sala
+        action: input_boolean.turn_off
         data: {}
-      - action: light.turn_off
+      - action: scene.turn_on
         metadata: {}
-        data: {}
         target:
-          area_id: sala_de_estar
-      - action: light.turn_on
-        metadata: {}
+          entity_id: scene.cine1
         data: {}
-        target:
-          entity_id: light.luz_rack
     - conditions:
       - condition: trigger
         id: cine_off
       sequence:
       - target:
           entity_id: input_boolean.sala_auto_bypass
-        action: input_boolean.turn_off
+        action: input_boolean.turn_on
         data: {}
       - action: light.turn_on
         metadata: {}
@@ -390,10 +385,14 @@
         data:
           scene_id: cine_custom
           snapshot_entities:
-          - light.riel
+          - light.riel1
+          - light.riel2
+          - light.riel3
+          - light.riel4
           - light.luz_rack
           - light.rgb
-          - light.barra
+          - light.barra1
+          - light.barra2
           - light.cocina
       - action: light.turn_on
         metadata: {}
@@ -480,3 +479,294 @@
       entity_id:
       - script.luz_barra_feedback_brillo_5x
   mode: single
+- id: '1759524313690'
+  alias: Turn off luz cama
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - light.luz_cama
+    to: 'on'
+    from: 'off'
+  conditions: []
+  actions:
+  - delay:
+      hours: 0
+      minutes: 15
+      seconds: 0
+      milliseconds: 0
+  - action: light.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: light.luz_noche
+  mode: single
+- id: '1760412297662'
+  alias: 'Notificacion puerta - alguien entró '
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_boolean.flag_acceso_entro
+    to:
+    - 'on'
+  conditions: []
+  actions:
+  - action: media_player.volume_set
+    metadata: {}
+    data:
+      volume_level: 0.65
+    target:
+      entity_id: media_player.nest_mini
+  - action: media_player.play_media
+    metadata: {}
+    data:
+      media:
+        media_content_id: media-source://media_source/local/Notifications/notification_pointy_decay.mp3
+        media_content_type: audio/mpeg
+        metadata:
+          title: notification_pointy_decay.mp3
+          thumbnail:
+          media_class: music
+          children_media_class:
+          navigateIds:
+          - {}
+          - media_content_type: app
+            media_content_id: media-source://media_source
+          - media_content_type: ''
+            media_content_id: media-source://media_source/local/Notifications
+          browse_entity_id: media_player.nest_mini
+    target:
+      entity_id: media_player.nest_mini
+  mode: single
+- id: '1760412584807'
+  alias: Notificacion sound yendo a dormir
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_boolean.dormir_activo
+    to: 'on'
+  conditions: []
+  actions:
+  - action: media_player.play_media
+    metadata: {}
+    data:
+      media:
+        media_content_id: media-source://media_source/local/Notifications/ES_Error,
+          Notification 18 - Epidemic Sound.mp3
+        media_content_type: audio/mpeg
+        metadata:
+          title: ES_Error, Notification 18 - Epidemic Sound.mp3
+          thumbnail:
+          media_class: music
+          children_media_class:
+          navigateIds:
+          - {}
+          - media_content_type: app
+            media_content_id: media-source://media_source
+          - media_content_type: ''
+            media_content_id: media-source://media_source/local/Notifications
+          browse_entity_id: media_player.nest_mini
+    target:
+      entity_id: media_player.nest_mini
+  mode: single
+- id: '1760719214838'
+  alias: Televisor - Apagar al llegar a oficina
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - person.hernan
+    to: Oficina
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+  conditions:
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: media_player.televisor_living
+      state:
+      - 'off'
+  actions:
+  - action: media_player.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: media_player.televisor_living
+  mode: single
+- id: '1760746646516'
+  alias: Notificacion programada - dormir
+  description: ''
+  use_blueprint:
+    path: codex/notification_programada.yaml
+    input:
+      notification_name: Hora de dormir
+      post_sound_delay: 0.5
+      notification_message: Es hora de dormir!
+      sound_path:
+        entity_id: media_player.nest_mini
+        media_content_id: media-source://media_source/local/Notifications/ES_Notification,
+          Attention, Short Phrase, Positive Achievement, Win, Video Game 01 - Epidemic
+          Sound.mp3
+        media_content_type: audio/mpeg
+        metadata:
+          title: ES_Notification, Attention, Short Phrase, Positive Achievement, Win,
+            Video Game 01 - Epidemic Sound.mp3
+          thumbnail:
+          media_class: music
+          children_media_class:
+          navigateIds:
+          - {}
+          - media_content_type: app
+            media_content_id: media-source://media_source
+          - media_content_type: ''
+            media_content_id: media-source://media_source/local/Notifications
+      light_flashes: 3
+      light_on_duration: 0.7
+      light_off_duration: 0.7
+      light_brightness_pct: 50
+      light_title: luz de dormir
+      active_days:
+      - mon
+      - tue
+      - thu
+      - fri
+      - wed
+      schedule_time: '23:45:00'
+- id: '1760746753496'
+  alias: Notificacion programada - cenar
+  description: ''
+  use_blueprint:
+    path: codex/notification_programada.yaml
+    input:
+      sound_path:
+        entity_id: media_player.nest_mini
+        media_content_id: media-source://media_source/local/Notifications/mixkit-click-error-1110.wav
+        media_content_type: audio/x-wav
+        metadata:
+          title: mixkit-click-error-1110.wav
+          thumbnail:
+          media_class: music
+          children_media_class:
+          navigateIds:
+          - {}
+          - media_content_type: app
+            media_content_id: media-source://media_source
+          - media_content_type: ''
+            media_content_id: media-source://media_source/local/Notifications
+      light_brightness_pct: 25
+      light_flashes: 2
+      light_on_duration: 0.4
+      light_off_duration: 0.4
+      light_title: '1'
+      active_days:
+      - mon
+      - tue
+      - thu
+      - wed
+      - fri
+      - sat
+- id: '1760746909272'
+  alias: Notificacion programada - ejercicio
+  description: ''
+  use_blueprint:
+    path: codex/notification_programada.yaml
+    input:
+      notification_name: hora de hacer ejercicio
+      notification_message: horario de ejercitar
+      sound_path:
+        entity_id: media_player.nest_mini
+        media_content_id: media-source://media_source/local/Notifications/Bienvenida.ogg
+        media_content_type: audio/ogg
+        metadata:
+          title: Bienvenida.ogg
+          thumbnail:
+          media_class: music
+          children_media_class:
+          navigateIds:
+          - {}
+          - media_content_type: app
+            media_content_id: media-source://media_source
+          - media_content_type: ''
+            media_content_id: media-source://media_source/local/Notifications
+      light_brightness_pct: 70
+      use_mobile: true
+      use_light: false
+      mobile_title: Recordatorio
+      active_days:
+      - mon
+      - tue
+      - thu
+      - wed
+      - fri
+      schedule_time: '18:30:00'
+- id: '1763272369742'
+  alias: Notificacion puerta - alguien salio
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_boolean.flag_acceso_salio
+    to:
+    - 'on'
+  conditions: []
+  actions:
+  - action: media_player.volume_set
+    metadata: {}
+    data:
+      volume_level: 0.65
+    target:
+      entity_id: media_player.nest_mini
+  - action: media_player.play_media
+    metadata: {}
+    data:
+      media:
+        media_content_id: media-source://media_source/local/Notifications/level_up3.mp3
+        media_content_type: audio/mpeg
+        metadata:
+          title: level_up3.mp3
+          thumbnail:
+          media_class: music
+          children_media_class:
+          navigateIds:
+          - {}
+          - media_content_type: app
+            media_content_id: media-source://media_source
+          - media_content_type: ''
+            media_content_id: media-source://media_source/local/Notifications
+          browse_entity_id: media_player.nest_mini
+    target:
+      entity_id: media_player.nest_mini
+  mode: single
+- id: '1764458927480'
+  alias: Clima - apagar ventilador por ausencia
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - person.hernan
+    to:
+    - not_home
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  conditions: []
+  actions:
+  - action: fan.turn_off
+    metadata: {}
+    target:
+      entity_id: fan.ventilador
+    data: {}
+  mode: single
+- id: '1766256405506'
+  alias: Disable vacuum camera update when docked
+  description: ''
+  use_blueprint:
+    path: PiotrMachowski/disable_vacuum_camera_update_when_docked.yaml
+    input:
+      vacuum: vacuum.xiaomi_us_1171669205_e101gb
+      camera: camera.xiaomi_cloud_map_extractor

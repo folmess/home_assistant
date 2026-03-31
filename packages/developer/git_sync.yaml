@@ -1,0 +1,49 @@
+# Paquete: Git Sync para Home Assistant
+# Usa scripts externos para push/pull con SSH
+# Evita problemas de host key o entorno limitado de shell_command
+
+shell_command:
+  git_push_config: "/config/git_push.sh"
+  git_pull_config: "/config/git_pull.sh"
+  git_pull_config_force: "/config/git_pull_force.sh"
+  git_push_debug: "/config/git_push_debug.sh"
+
+automation:
+  - alias: Git Push diario
+    trigger:
+      - platform: time
+        at: "03:00:00"
+    action:
+      - service: shell_command.git_push_config
+
+  - alias: Git Push al reiniciar HA
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      - service: shell_command.git_push_config
+
+script:
+  git_push:
+    alias: Git Push a GitHub
+    sequence:
+      - service: shell_command.git_push_config
+    mode: single
+
+  git_pull:
+    alias: Git Pull de GitHub
+    sequence:
+      - service: shell_command.git_pull_config
+    mode: single
+
+  git_pull_force:
+    alias: Git Pull Forzado de GitHub
+    sequence:
+      - service: shell_command.git_pull_config_force
+    mode: single
+
+  git_push_debug:
+    alias: Git Push Debug
+    sequence:
+      - service: shell_command.git_push_debug
+    mode: single

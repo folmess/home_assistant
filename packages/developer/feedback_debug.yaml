@@ -1,0 +1,80 @@
+###############################################################################
+# PACKAGE: feedback_debug
+# - Enciende feedback_debug => arranca un loop
+# - Loop: espera un tiempo aleatorio 5-15 min, ejecuta script, repite
+# - Si se apaga feedback_debug => el loop corta en el próximo chequeo
+###############################################################################
+
+#input_boolean:
+#  feedback_debug:
+#    name: Feedback Debug
+#    icon: mdi:bug
+
+# Script "wrapper" para setear el script real en un solo lugar
+# Cambiás SOLO esta línea: target.entity_id
+script:
+  feedback_debug_target:
+    alias: feedback_debug_target
+    description: "Script objetivo: cambiá acá cuál querés ejecutar."
+    mode: queued
+    sequence:
+      - service: script.turn_on
+        target:
+          entity_id: script.luz_barra_feedback_brillo_5x
+
+  feedback_debug_loop:
+    alias: feedback_debug_loop
+    description: "Loop: mientras feedback_debug esté ON, espera 5-15min random y ejecuta el target."
+    mode: restart
+    sequence:
+      - repeat:
+          while:
+            - condition: state
+              entity_id: input_boolean.feedback_debug
+              state: "on"
+
+          sequence:
+            # Elegimos delay aleatorio entre 5 y 15 minutos (300..900s)
+            - variables:
+                delay_seconds: "{{ range(300, 901) | random }}"
+
+            - delay:
+                seconds: "{{ delay_seconds }}"
+
+            # Re-chequeo: si lo apagaste durante el delay, no ejecuta
+            - condition: state
+              entity_id: input_boolean.feedback_debug
+              state: "on"
+
+            # Ejecuta el script "objetivo" (definido en un solo lugar)
+            - service: script.turn_on
+              target:
+                entity_id: script.feedback_debug_target
+
+
+automation:
+  - id: feedback_debug_start_loop
+    alias: feedback_debug_start_loop
+    description: "Al prender feedback_debug, arranca el loop."
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.feedback_debug
+        to: "on"
+    action:
+      - service: script.turn_on
+        target:
+          entity_id: script.feedback_debug_loop
+
+  - id: feedback_debug_stop_loop
+    alias: feedback_debug_stop_loop
+    description: "Al apagar feedback_debug, frena el loop."
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.feedback_debug
+        to: "off"
+    action:
+      - service: script.turn_off
+        target:
+          entity_id: script.feedback_debug_loop

@@ -1,0 +1,86 @@
+################################################################################
+# 📦 Package: sala_de_estar_random_glow.yaml
+# Autor: Hernán + ChatGPT
+# Descripción:
+#   Hace parpadear las luces del área sala_de_estar durante 8 segundos.
+#   Usa una lista guardada en var.luces_sala_de_estar.
+#   Participan todas las luces (encendidas o apagadas).
+#   Elige 1 o 2 luces al azar, cambia su brillo a un valor aleatorio (10–100%),
+#   espera 550ms, repite hasta cumplir 8s, y luego restaura el snapshot original.
+################################################################################
+
+###############################################################################
+# 🔸 Variable persistente (requiere integración "var" instalada desde HACS)
+###############################################################################
+var:
+  luces_sala_de_estar:
+    friendly_name: "Luces leaf - Sala de estar"
+    icon: mdi:lightbulb-group
+    initial_value: >
+      ["light.riel1","light.riel2","light.riel3","light.riel4",
+       "light.barra1","light.barra2","light.rgb"]
+
+###############################################################################
+# 🔸 Script principal
+###############################################################################
+script:
+  sala_de_estar_random_glow_var:
+    alias: Sala de estar - Random Glow (desde var)
+    description: >
+      Efecto caótico de 8 segundos sobre las luces guardadas en var.luces_sala_de_estar.
+      Participan luces encendidas o apagadas. Restaura snapshot al finalizar.
+    mode: restart
+    sequence:
+      # 1️⃣ Cargar lista desde variable
+      - variables:
+          leaf_lights: >
+            {{ state_attr('var.luces_sala_de_estar', 'value')
+               if state_attr('var.luces_sala_de_estar', 'value') is not none
+               else [] }}
+      - condition: template
+        value_template: "{{ leaf_lights | count > 0 }}"
+
+      # 2️⃣ Snapshot de todas las luces seleccionadas
+      - service: scene.create
+        data:
+          scene_id: snap_sala_leaf
+          snapshot_entities: "{{ leaf_lights }}"
+      - delay: "00:00:0.50"
+
+      # 3️⃣ Bucle aleatorio por 8 segundos
+      - variables:
+          start_ts: "{{ now().timestamp() }}"
+          duration: 8
+      - repeat:
+          while: >
+            {{ (now().timestamp() - start_ts) < duration }}
+          sequence:
+            - variables:
+                brillo_pct: "{{ range(10, 100) | random }}"
+                do_two: "{{ [true, false] | random }}"
+                l1: "{{ leaf_lights | random }}"
+                l2: "{{ leaf_lights | random }}"
+            # Luz 1
+            - service: light.turn_on
+              target:
+                entity_id: "{{ l1 }}"
+              data:
+                brightness_pct: "{{ brillo_pct }}"
+            # Luz 2 opcional
+            - choose:
+                - conditions: "{{ do_two }}"
+                  sequence:
+                    - service: light.turn_on
+                      target:
+                        entity_id: "{{ l2 }}"
+                      data:
+                        brightness_pct: "{{ brillo_pct }}"
+            - delay: "00:00:0.55"
+
+      # 4️⃣ Espera final y restore
+      - delay: "00:00:0.50"
+      - service: scene.turn_on
+        target:
+          entity_id: scene.snap_sala_leaf
+        data:
+          transition: 0

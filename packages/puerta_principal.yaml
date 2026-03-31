@@ -1,0 +1,197 @@
+##############################################
+# ACCESO SALA - Entradas, Salidas, Doble toque y Puerta abierta
+# Entidades base:
+#  - binary_sensor.puerta_entrada   (ON = abierta)
+#  - binary_sensor.motion_sala_1_occupancy    (ON = hay movimiento)
+##############################################
+
+homeassistant:
+  customize:
+    # ---- Flags ----
+    input_boolean.flag_acceso_entro:
+      friendly_name: "Flag: Alguien entró (últimos 10m)"
+      icon: mdi:login
+    input_boolean.flag_acceso_salio:
+      friendly_name: "Flag: Alguien salió (últimos 10m)"
+      icon: mdi:logout
+    input_boolean.flag_puerta_abierta_x_min:
+      friendly_name: "Flag: Puerta abierta demasiado tiempo"
+      icon: mdi:door-open
+    # ---- Configurable ----
+    input_number.puerta_abierta_minutos:
+      friendly_name: "Minutos para considerar 'puerta abierta'"
+      icon: mdi:timer-outline
+      unit_of_measurement: "min"
+    # ---- Automations ----
+    automation.acceso_flag_entro_10m:
+      friendly_name: "Acceso · Detectar entrada"
+      description: "Se activa si se abre la puerta y no hubo movimiento en los últimos 60s. Previene falsos positivos al salir y volver a entrar rápido."
+    automation.acceso_flag_salio_10m:
+      friendly_name: "Acceso · Detectar salida"
+      description: "Se activa si hay movimiento y se abre la puerta. Representa una salida del ambiente."
+    automation.acceso_puerta_abierta_x_min:
+      friendly_name: "Acceso · Puerta abierta mucho tiempo"
+      description: "Si la puerta permanece abierta más de X minutos, levanta flag y envía notificación."
+    automation.acceso_puerta_cerrada_resetea_flag:
+      friendly_name: "Acceso · Resetear flag al cerrar"
+      description: "Cuando se cierra la puerta, se apaga la flag de puerta abierta."
+    automation.acceso_double_open_puerta:
+      friendly_name: "Acceso · Doble apertura rápida"
+      description: "Detecta dos aperturas consecutivas en menos de 2 s. Ideal para acciones rápidas como activar alarma."
+
+##############################################
+# Helpers
+##############################################
+input_boolean:
+  flag_acceso_entro:
+  flag_acceso_salio:
+  flag_puerta_abierta_x_min:
+
+input_number:
+  puerta_abierta_minutos:
+    min: 1
+    max: 60
+    step: 1
+    mode: box
+    initial: 5   # valor por defecto
+
+##############################################
+# Sensores binarios “de evento” (auto-off 10m)
+##############################################
+template:
+  - trigger:
+      - platform: state
+        entity_id: binary_sensor.puerta_entrada
+        to: "on"
+    binary_sensor:
+      - name: "evento_acceso_entro"
+        unique_id: evento_acceso_entro
+        state: >
+          {{ is_state('binary_sensor.puerta_entrada','on')
+             and is_state('binary_sensor.motion_sala_1_occupancy','off') }}
+        icon: mdi:login
+        auto_off: "00:10:00"
+      - name: "evento_acceso_salio"
+        unique_id: evento_acceso_salio
+        state: >
+          {{ is_state('binary_sensor.puerta_entrada','on')
+             and is_state('binary_sensor.motion_sala_1_occupancy','on') }}
+        icon: mdi:logout
+        auto_off: "00:10:00"
+
+##############################################
+# Automations
+##############################################
+automation:
+
+  # --- ENTRÓ ---
+  - id: acceso_flag_entro_10m
+    alias: acceso_flag_entro_10m
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.puerta_entrada
+        to: "on"
+    # Evita detectar "entrada" si hubo movimiento hace < 60s (salida reciente)
+    condition:
+      - condition: template
+        value_template: >
+          {{ (as_timestamp(now()) - as_timestamp(states.binary_sensor.motion_sala_1_occupancy.last_changed)) > 60 }}
+      - condition: state
+        entity_id: binary_sensor.motion_sala_1_occupancy
+        state: "off"
+    action:
+      - service: input_boolean.turn_on
+        target: { entity_id: input_boolean.flag_acceso_entro }
+      - delay: "00:10:00"
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.flag_acceso_entro }
+
+  # --- SALIÓ ---
+  - id: acceso_flag_salio_10m
+    alias: acceso_flag_salio_10m
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.puerta_entrada
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: binary_sensor.motion_sala_1_occupancy
+        state: "on"
+    action:
+      - service: input_boolean.turn_on
+        target: { entity_id: input_boolean.flag_acceso_salio }
+      - delay: "00:10:00"
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.flag_acceso_salio }
+
+  # --- PUERTA ABIERTA X MINUTOS ---
+  - id: acceso_puerta_abierta_x_min
+    alias: acceso_puerta_abierta_x_min
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.puerta_entrada
+        to: "on"
+    variables:
+      minutos: "{{ states('input_number.puerta_abierta_minutos')|int(5) }}"
+    action:
+      - wait_for_trigger:
+          - platform: state
+            entity_id: binary_sensor.puerta_entrada
+            to: "off"
+        timeout:
+          minutes: "{{ minutos }}"
+        continue_on_timeout: true
+      - choose:
+          - conditions: "{{ wait.completed is false and is_state('binary_sensor.puerta_entrada','on') }}"
+            sequence:
+              - service: input_boolean.turn_on
+                target: { entity_id: input_boolean.flag_puerta_abierta_x_min }
+              - service: notify.hernan  # <— Cambiar por tu notify
+                data:
+                  title: "Puerta abierta {{ minutos }} min"
+                  message: "La puerta de entrada quedó abierta por {{ minutos }} min."
+                  data:
+                    channel: "security"
+                    tag: "puerta_abierta"
+                    sticky: true
+                    importance: high
+
+  # --- RESET FLAG AL CERRAR ---
+  - id: acceso_puerta_cerrada_resetea_flag
+    alias: acceso_puerta_cerrada_resetea_flag
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.puerta_entrada
+        to: "off"
+    action:
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.flag_puerta_abierta_x_min }
+
+  # --- DOBLE APERTURA / CIERRE ---
+  - id: acceso_double_open_puerta
+    alias: acceso_double_open_puerta
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.puerta_entrada
+        to: 
+          - "on"
+          - "off"
+    condition: []
+    action:
+      - wait_for_trigger:
+          - platform: state
+            entity_id: binary_sensor.puerta_entrada
+            to: "{{ trigger.to_state.state }}"
+        timeout:
+          seconds: 2
+        continue_on_timeout: false
+      - service: notify.hernan
+        data:
+          title: "Doble accion detectada"
+          message: "Se detectó doble {{ 'apertura' if trigger.to_state.state == 'on' else 'cierre' }} rápida. Activando alarma."
+

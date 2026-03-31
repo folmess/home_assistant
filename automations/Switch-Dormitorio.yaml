@@ -116,7 +116,7 @@
               target: { entity_id: light.pieza }
               data:
                 brightness_pct: 100
-                color_temp: 228
+                color_temp_kelvin: 5000
             - service: light.turn_on # feedback blink
               target: { entity_id: "{{ feedback_light }}" }
               data: { flash: short }

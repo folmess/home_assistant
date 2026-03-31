@@ -175,11 +175,22 @@ tv_living_abrir_flow_app_en_canal_12:
 luz_mesa_feedback_brillo_3x:
   alias: Luz Barra - feedback brillo 3x
   sequence:
+  - action: scene.create
+    metadata: {}
+    data:
+      snapshot_entities:
+      - light.riel1
+      - light.riel2
+      - light.riel3
+      - light.riel4
+      - light.barra1
+      - light.barra2
+      scene_id: feedbackglobal
   - repeat:
       count: 2
       sequence:
       - data:
-          color_temp: 291
+          color_temp_kelvin: 3436
           brightness_pct: 10
         target:
           entity_id:
@@ -191,7 +202,7 @@ luz_mesa_feedback_brillo_3x:
           seconds: 0
           milliseconds: 610
       - data:
-          color_temp: 291
+          color_temp_kelvin: 3436
           brightness_pct: 100
         target:
           entity_id:
@@ -202,6 +213,11 @@ luz_mesa_feedback_brillo_3x:
           minutes: 0
           seconds: 0
           milliseconds: 800
+  - action: scene.turn_on
+    metadata: {}
+    target:
+      entity_id: scene.feedbackglobal
+    data: {}
   mode: single
   description: ''
 scene_toggle_sala_colours:
@@ -2362,6 +2378,7 @@ luces_manana:
       message: se ejecutó el script de movimiento.
     target:
       entity_id: tts.home_assistant_cloud
+    enabled: false
   - action: light.turn_on
     metadata: {}
     data:
@@ -2616,7 +2633,7 @@ switch_sala_b1_single:
   sequence:
   - service: scene.turn_on
     target:
-      entity_id: scene.sala_de_estar_100_daylight
+      entity_id: scene.daylight_100
 switch_sala_b2_single:
   alias: Switch sala - Boton 2 single
   mode: single
@@ -2637,7 +2654,7 @@ switch_sala_b4_single:
   sequence:
   - service: scene.turn_on
     target:
-      entity_id: scene.sala_de_estar_cozy_ocean
+      entity_id: scene.cozy_ocean
 switch_sala_b1_double:
   alias: Switch sala - Boton 1 double
   mode: single
@@ -2646,7 +2663,7 @@ switch_sala_b1_double:
     metadata: {}
     data: {}
     target:
-      entity_id: scene.sala_de_estar_cozy_club
+      entity_id: scene.cozy_club
 switch_sala_b2_double:
   alias: Switch sala - Boton 2 double
   mode: single
@@ -2662,13 +2679,13 @@ switch_sala_b3_double:
   sequence:
   - service: scene.turn_on
     target:
-      entity_id: scene.sala_de_estar_cozy_ocean
+      entity_id: scene.cozy_ocean
 switch_sala_b4_double:
   alias: Switch sala - Boton 4 double
   mode: single
   sequence:
   - target:
-      entity_id: scene.sala_de_estar_cozy_ocean
+      entity_id: scene.cozy_ocean
     action: scene.turn_on
     data: {}
     enabled: false
@@ -2684,31 +2701,24 @@ switch_sala_b3_hold:
   - action: input_boolean.toggle
     data: {}
     target:
-      entity_id: input_boolean.sala_auto_bypass
+      entity_id: input_boolean.smart_lights_sala
   description: ''
 switch_sala_b4_hold:
   alias: Switch sala - Boton 4 hold
   mode: single
   sequence:
-  - service: script.lights_fx_feedback_flash
-    data:
-      entity_id:
-      - light.riel
-      repeats: 3
-      mode: kelvin
-      kelvin: 4949
-      restore: true
-  - service: light.turn_off
-    data:
-      target:
-        area_id: sala_de_estar
+  - action: input_boolean.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_boolean.dormir_activo
 switch_sala_b1_hold:
   alias: Switch sala - Boton 1 hold
   mode: single
   sequence:
-  - service: light.turn_on
-    target:
-      area_id: sala_de_estar
+  - action: script.sala_cozy_noisy
+    metadata: {}
+    data: {}
 switch_sala_b2_hold:
   alias: Switch sala - Boton 2 hold
   mode: single
@@ -2734,7 +2744,7 @@ luz_barra_feedback_brillo_5x:
       count: 5
       sequence:
       - data:
-          color_temp: 291
+          color_temp_kelvin: 291
           brightness_pct: 10
         target:
           entity_id:
@@ -2746,7 +2756,7 @@ luz_barra_feedback_brillo_5x:
           seconds: 0
           milliseconds: 800
       - data:
-          color_temp: 291
+          color_temp_kelvin: 291
           brightness_pct: 90
         target:
           entity_id:
@@ -2769,4 +2779,740 @@ luz_barra_feedback_brillo_5x:
       entity_id: scene.barra_previous_state
   alias: Luz Barra - feedback brillo 5x
   mode: single
+  description: ''
+flash_riel:
+  sequence:
+  - action: scene.create
+    metadata: {}
+    data:
+      snapshot_entities:
+      - light.riel1
+      - light.riel2
+      - light.riel3
+      - light.riel4
+      scene_id: snapshot_riel_leaf
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 0
+      milliseconds: 600
+    enabled: true
+  - repeat:
+      count: 1
+      sequence:
+      - action: light.turn_on
+        metadata: {}
+        data:
+          color_temp_kelvin: 4427
+          brightness_step_pct: 31
+        target:
+          entity_id: light.riel
+      - action: light.turn_on
+        metadata: {}
+        data:
+          color_temp_kelvin: 4427
+          brightness_step_pct: -31
+        target:
+          entity_id: light.riel
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 200
+        enabled: false
+      - action: scene.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: scene.snapshot_riel_leaf
+  alias: Flash riel
+  description: ''
+dormir_03_final:
+  sequence:
+  - if:
+    - condition: not
+      conditions:
+      - condition: state
+        entity_id: media_player.televisor_living
+        state:
+        - 'off'
+    then:
+    - action: media_player.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: media_player.sala_de_estar
+  - if:
+    - condition: not
+      conditions:
+      - condition: state
+        entity_id: climate.aire_acondicionado
+        state:
+        - 'off'
+    then:
+    - action: climate.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: climate.aire_acondicionado
+  alias: dormir 03 final
+  description: ''
+dormir_01_inicio:
+  sequence:
+  - action: scene.create
+    metadata: {}
+    data:
+      scene_id: snapshot_riel4
+      snapshot_entities:
+      - light.riel4
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2891
+      brightness_pct: 10
+    target:
+      entity_id: light.riel4
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 0
+      milliseconds: 600
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 4601
+      brightness_step_pct: 100
+    target:
+      entity_id: light.riel4
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 0
+      milliseconds: 600
+  - action: scene.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: scene.snapshot_riel4
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2022
+      brightness_pct: 24
+    target:
+      entity_id: light.pieza2
+  - action: light.turn_on
+    metadata: {}
+    target:
+      entity_id: light.luz_noche
+  - action: media_player.play_media
+    metadata: {}
+    data:
+      media:
+        media_content_id: media-source://media_source/local/Notifications/start_up_itemadd.mp3
+        media_content_type: audio/mpeg
+        metadata:
+          title: start_up_itemadd.mp3
+          thumbnail:
+          media_class: music
+          children_media_class:
+          navigateIds:
+          - {}
+          - media_content_type: app
+            media_content_id: media-source://media_source
+          - media_content_type: ''
+            media_content_id: media-source://media_source/local/Notifications
+          browse_entity_id: media_player.nest_mini
+    target:
+      entity_id: media_player.nest_mini
+  - action: climate.turn_off
+    metadata: {}
+    target:
+      entity_id: climate.aire_acondicionado
+    data: {}
+  alias: dormir_01_inicio
+  description: ''
+aire_toggle_24:
+  sequence:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: climate.aire_acondicionado
+        state:
+        - 'off'
+      sequence:
+      - action: climate.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: climate.aire_acondicionado
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 1
+          milliseconds: 0
+      - action: climate.set_temperature
+        metadata: {}
+        data:
+          temperature: 24
+          hvac_mode: cool
+        target:
+          entity_id: climate.aire_acondicionado
+    - conditions:
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: climate.aire_acondicionado
+          state:
+          - 'off'
+      sequence:
+      - action: climate.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: climate.aire_acondicionado
+  alias: Aire - toggle 24
+  description: ''
+'1762475465697':
+  sequence:
+  - action: light.turn_on
+    metadata: {}
+    data:
+      brightness_step_pct: -5
+    target:
+      area_id: sala_de_estar
+  alias: Luces sala - reducir
+  description: ''
+luces_sala_aumentar:
+  sequence:
+  - action: light.turn_on
+    metadata: {}
+    data:
+      brightness_step_pct: 5
+    target:
+      area_id: sala_de_estar
+  alias: Luces sala - aumentar
+  description: ''
+dormir_secuencia:
+  sequence:
+  - action: timer.start
+    metadata: {}
+    target:
+      entity_id: timer.dormir_countdown
+    data:
+      duration: 00:03:00
+  - action: script.turn_on
+    metadata: {}
+    target:
+      entity_id: script.lights_fx_feedback_flash
+    data: {}
+  - action: media_player.turn_off
+    metadata: {}
+    target:
+      entity_id: media_player.televisor_living
+    data: {}
+  - action: climate.turn_off
+    metadata: {}
+    target:
+      entity_id: climate.aire_acondicionado
+    data: {}
+  alias: dormir_secuencia
+  description: ''
+luces_cocina_noche:
+  sequence:
+  - if:
+    - condition: or
+      conditions:
+      - condition: state
+        entity_id: input_boolean.modo_cena
+        state:
+        - 'on'
+      - condition: time
+        after: '22:00:00'
+        before: '23:59:00'
+    then:
+    - action: light.turn_on
+      metadata: {}
+      data:
+        brightness_pct: 100
+        color_temp_kelvin: 6446
+      target:
+        entity_id:
+        - light.cocina
+    - action: light.turn_on
+      metadata: {}
+      target:
+        entity_id: light.mesada
+      data: {}
+    else:
+    - action: light.turn_on
+      metadata: {}
+      data:
+        brightness_pct: 63
+        color_temp_kelvin: 4285
+      target:
+        entity_id:
+        - light.cocina
+  alias: luces_cocina_noche
+  description: ''
+luces_cocina_madrugada:
+  sequence:
+  - action: light.turn_on
+    metadata: {}
+    data:
+      brightness_pct: 10
+      color_temp_kelvin: 2000
+    target:
+      entity_id:
+      - light.cocina
+  alias: luces_cocina_madrugada
+  description: ''
+luces_cocina_manana:
+  sequence:
+  - action: light.turn_on
+    metadata: {}
+    data:
+      brightness_pct: 50
+      color_temp_kelvin: 4835
+    target:
+      entity_id:
+      - light.cocina
+  alias: luces_cocina_manana
+  description: ''
+luces_cocina_mediodia:
+  sequence:
+  - action: light.turn_on
+    metadata: {}
+    data:
+      brightness_pct: 50
+      color_temp_kelvin: 6500
+    target:
+      entity_id:
+      - light.cocina
+  alias: luces_cocina_mediodia
+  description: ''
+luces_cocina_tarde:
+  sequence:
+  - action: light.turn_on
+    metadata: {}
+    data:
+      brightness_pct: 40
+      color_temp_kelvin: 3404
+    target:
+      entity_id:
+      - light.cocina
+  alias: luces_cocina_tarde
+  description: ''
+feedback_global:
+  sequence:
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 16
+      milliseconds: 0
+    enabled: true
+  - action: scene.create
+    metadata: {}
+    data:
+      snapshot_entities:
+      - light.riel1
+      - light.riel2
+      - light.riel3
+      - light.riel4
+      - light.barra1
+      - light.barra2
+      scene_id: feedbackglobal
+  - repeat:
+      count: 3
+      sequence:
+      - data:
+          color_temp_kelvin: 291
+          brightness_pct: 10
+        target:
+          entity_id:
+          - light.barra
+          - light.riel
+        action: light.turn_on
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 610
+      - data:
+          color_temp_kelvin: 291
+          brightness_pct: 100
+        target:
+          entity_id:
+          - light.barra
+          - light.riel
+        action: light.turn_on
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 800
+  - action: scene.turn_on
+    metadata: {}
+    target:
+      entity_id: scene.feedbackglobal
+    data: {}
+  alias: Feedback global
+  mode: single
+  description: ''
+fader_repeater:
+  sequence:
+  - action: light.turn_on
+    metadata: {}
+    target:
+      entity_id: light.riel
+    data:
+      brightness_pct: 10
+      color_temp_kelvin: 2000
+  - repeat:
+      until:
+      - condition: numeric_state
+        entity_id: light.riel
+        attribute: brightness
+        above: 254
+      sequence:
+      - action: light.turn_on
+        metadata: {}
+        target:
+          entity_id: light.riel
+        data:
+          brightness_step_pct: 3
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 300
+        enabled: false
+  alias: Fader repeater
+  description: ''
+aire_full_freeze_auto:
+  sequence:
+  - action: climate.turn_on
+    metadata: {}
+    target:
+      entity_id: climate.aire_acondicionado
+    data: {}
+  - action: climate.set_temperature
+    metadata: {}
+    target:
+      entity_id: climate.aire_acondicionado
+    data:
+      temperature: 18
+      hvac_mode: cool
+  - action: climate.set_fan_mode
+    metadata: {}
+    target:
+      entity_id: climate.aire_acondicionado
+    data:
+      fan_mode: high
+  - action: timer.start
+    metadata: {}
+    target:
+      entity_id: timer.aire_preset_full_20
+    data: {}
+  alias: Aire_full_freeze_auto
+  description: ''
+switch_rf_b6_riel:
+  alias: Switch RF - B6 Riel
+  mode: single
+  sequence:
+  - service: light.toggle
+    target:
+      entity_id: light.riel
+switch_rf_b4_comedor:
+  alias: Switch RF - B4 Comedor
+  mode: single
+  sequence:
+  - service: light.toggle
+    target:
+      entity_id: light.comedor
+switch_rf_b5_mesa:
+  alias: Switch RF - B5 Mesa
+  mode: single
+  sequence:
+  - service: light.toggle
+    target:
+      entity_id: light.mesa
+switch_rf_b1_sala_off:
+  alias: Switch RF - B1 Sala Off
+  mode: single
+  sequence:
+  - service: light.turn_off
+    target:
+      area_id: sala_de_estar
+switch_rf_b3_preset_sala:
+  alias: Switch RF - B3 Preset Sala
+  mode: single
+  sequence:
+  - service: light.turn_on
+    target:
+      entity_id:
+      - light.riel
+      - light.luz_rack
+    data:
+      color_temp_kelvin: 327
+      brightness_pct: 80
+switch_rf_b2_deco_sala:
+  alias: Switch RF - B2 Deco Sala
+  mode: single
+  sequence:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: light.luces_deco_sala
+        state: 'off'
+      sequence:
+      - service: light.turn_on
+        target:
+          entity_id: light.luces_deco_sala
+    default:
+    - service: light.turn_off
+      target:
+        entity_id: light.luces_deco_sala
+switch_rf_cocina:
+  alias: Switch RF - Cocina
+  mode: single
+  sequence:
+  - service: light.toggle
+    target:
+      entity_id: light.cocina
+switch_rf_estudio:
+  alias: Switch RF - Estudio
+  mode: single
+  sequence:
+  - service: light.toggle
+    target:
+      entity_id: light.estudio
+switch_rf_pasillo:
+  alias: Switch RF - Pasillo
+  mode: single
+  sequence:
+  - service: light.toggle
+    target:
+      entity_id: light.wiz130
+switch_rf_bano:
+  alias: Switch RF - Baño
+  mode: single
+  sequence:
+  - service: light.toggle
+    target:
+      entity_id: light.bano
+    data:
+      color_temp_kelvin: 200
+      brightness_pct: 100
+switch_rf_pieza_cama:
+  alias: Switch RF - Pieza Cama
+  mode: single
+  sequence:
+  - service: light.toggle
+    target:
+      entity_id: light.luz_cama
+    data:
+      color_temp_kelvin: 251
+      brightness_pct: 100
+switch_rf_pieza_techo:
+  alias: Switch RF - Pieza Techo
+  mode: single
+  sequence:
+  - service: light.toggle
+    target:
+      entity_id: light.pieza
+    data:
+      color_temp_kelvin: 316
+      brightness_pct: 100
+switch_rf_pieza_lucecitas:
+  alias: Switch RF - Pieza Lucecitas
+  mode: single
+  sequence:
+  - service: light.toggle
+    target:
+      entity_id: light.pieza
+    data:
+      color_temp_kelvin: 265
+      brightness_pct: 100
+switch_rf_nightstand_1:
+  alias: Switch RF - Nightstand 1 (Pieza)
+  mode: single
+  sequence:
+  - service: light.toggle
+    target:
+      entity_id: light.pieza
+    data:
+      color_temp_kelvin: 182
+      brightness_pct: 100
+switch_rf_nightstand_2:
+  alias: Switch RF - Nightstand 2 (Cama)
+  mode: single
+  sequence:
+  - service: light.toggle
+    target:
+      entity_id: light.luz_cama
+switch_rf_nightstand_3:
+  alias: Switch RF - Nightstand 3 (Ventilador)
+  mode: single
+  sequence:
+  - service: fan.toggle
+    target:
+      entity_id: fan.ventilador
+00_showoff:
+  sequence:
+  - action: media_player.turn_on
+    metadata: {}
+    target:
+      entity_id: media_player.televisor_living
+    data: {}
+  - action: climate.turn_on
+    metadata: {}
+    target:
+      entity_id: climate.aire_acondicionado
+    data: {}
+  - action: media_player.play_media
+    metadata: {}
+    target:
+      entity_id: media_player.nest_mini
+    data:
+      media:
+        media_content_id: media-source://media_source/local/Music/Trauma (Worakls
+          Remix) (152kbit_Opus).ogg
+        media_content_type: audio/ogg
+        metadata:
+          title: Trauma (Worakls Remix) (152kbit_Opus).ogg
+          thumbnail:
+          media_class: music
+          children_media_class:
+          navigateIds:
+          - {}
+          - media_content_type: app
+            media_content_id: media-source://media_source
+          - media_content_type: ''
+            media_content_id: media-source://media_source/local/Music
+          browse_entity_id: media_player.nest_mini
+  - action: scene.turn_on
+    metadata: {}
+    target:
+      entity_id: scene.daylight_100
+    data: {}
+  - action: vacuum.start
+    metadata: {}
+    target:
+      entity_id: vacuum.xiaomi_us_1171669205_e101gb
+    data: {}
+  alias: 00 showoff
+  description: ''
+riel_secuencia_x3:
+  alias: Riel - Secuencia 1x1 (x3)
+  description: Enciende una luz por vez (1→2→3→4), 2s entre pasos, repite 3 veces.
+  mode: single
+  sequence:
+  - repeat:
+      count: 3
+      sequence:
+      - action: light.turn_on
+        target:
+          entity_id: light.riel1
+      - action: light.turn_off
+        target:
+          entity_id:
+          - light.riel2
+          - light.riel3
+          - light.riel4
+      - delay: 00:00:02
+      - action: light.turn_on
+        target:
+          entity_id: light.riel2
+      - action: light.turn_off
+        target:
+          entity_id:
+          - light.riel1
+          - light.riel3
+          - light.riel4
+      - delay: 00:00:02
+      - action: light.turn_on
+        target:
+          entity_id: light.riel3
+      - action: light.turn_off
+        target:
+          entity_id:
+          - light.riel1
+          - light.riel2
+          - light.riel4
+      - delay: 00:00:02
+      - action: light.turn_on
+        target:
+          entity_id: light.riel4
+      - action: light.turn_off
+        target:
+          entity_id:
+          - light.riel1
+          - light.riel2
+          - light.riel3
+      - delay: 00:00:02
+sala_cozy_noisy:
+  sequence:
+  - action: input_boolean.turn_off
+    metadata: {}
+    target:
+      entity_id: input_boolean.smart_lights_sala
+    data: {}
+  - action: scene.turn_on
+    metadata: {}
+    target:
+      entity_id: scene.cozy_club
+    data: {}
+  - action: light.turn_off
+    metadata: {}
+    target:
+      entity_id:
+      - light.bano
+      - light.mesada
+      - light.cocina
+      - light.barra
+      - light.luz_rack
+      - light.rgb
+    data: {}
+  - action: media_player.turn_off
+    metadata: {}
+    target:
+      entity_id: media_player.televisor_living
+    data: {}
+  - action: script.ashley_s_light_fader
+    metadata: {}
+    data:
+      lampBrightnessScale: zeroToOneHundred
+      easingTypeInput: easeInOutSine
+      endBrightnessPercent: 0
+      endBrightnessEntityScale: zeroToOneHundred
+      autoCancelThreshold: 10
+      shouldStopIfTheLampIsTurnedOffDuringTheFade: false
+      shouldResetTheStopEntityToOffAtStart: false
+      shouldInvertTheValueOfTheStopEntity: false
+      minimumStepDelayInMilliseconds: 200
+      shouldTryToUseNativeLampTransitionsToo: false
+      isDebugMode: false
+      light: light.riel
+      transitionTime:
+        hours: 0
+        minutes: 0
+        seconds: 20
+  - action: light.turn_on
+    metadata: {}
+    target:
+      entity_id:
+      - light.barra1
+    data:
+      brightness_pct: 1
+      rgb_color:
+      - 255
+      - 51
+      - 0
+  - action: scene.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: scene.pieza_red_spot
+  alias: sala_cozy_noisy
   description: ''

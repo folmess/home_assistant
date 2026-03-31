@@ -1,0 +1,748 @@
+# =========================
+# Package: smart_light_cocina (codename: motion_kilo adapted)
+# Auto lights en Cocina: escena, reducciÃ³n/fade, restore desde snapshot, y waiting arrival
+# timers por franja y "leaf lights" (hardcoded to 2 lights)
+#
+# Requiere:
+# - script.gradual_brightness_change  (externo)
+# - script.gradual_restore_from_snapshot (externo)
+# =========================
+
+# ------------------------- 
+# HELPERS (estados / flags)
+# -------------------------
+input_select:
+  smart_light_cocina_state:
+    name: SMART LIGHT COCINA - Estado logico
+    options:
+      - ACTIVE
+      - IDLE_COUNTDOWN
+      - PRE_NOTICE
+      - RESTORE_WINDOW
+      - WAITING_ARRIVAL
+      - DISABLED
+    initial: ACTIVE
+
+input_boolean:
+  smart_light_cocina_fade:
+    name: SMART LIGHT COCINA - Usar fade en PRE_NOTICE
+    icon: mdi:transition
+    initial: on
+  smart_light_cocina_fading_active:
+    name: SMART LIGHT COCINA - Fading activo
+    icon: mdi:animation-play-outline
+  smart_lights_cocina:
+    name: Smart Lights Cocina
+    initial: on
+
+# -------------------------
+# HELPERS (tiempos y niveles)
+# -------------------------
+input_number:
+  # Timeouts (min) por franja
+  smart_light_cocina_timeout_manana:
+    name: Timeout - Manana
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: minutes
+    initial: 5
+  smart_light_cocina_timeout_mediodia:
+    name: Timeout - Mediodia
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: minutes
+    initial: 5
+  smart_light_cocina_timeout_tarde:
+    name: Timeout - Tarde
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: minutes
+    initial: 5
+  smart_light_cocina_timeout_noche:
+    name: Timeout - Noche
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: minutes
+    initial: 5
+  smart_light_cocina_timeout_madrugada:
+    name: Timeout - Madrugada
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: minutes
+    initial: 3
+
+  # Arribo (ventana de restore, min) por franja
+  smart_light_cocina_arribo_manana:
+    name: Arribo - MaÃ±ana
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: minutes
+    initial: 4
+  smart_light_cocina_arribo_mediodia:
+    name: Arribo - MediodÃ±ia
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: minutes
+    initial: 4
+  smart_light_cocina_arribo_tarde:
+    name: Arribo - Tarde
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: minutes
+    initial: 4
+  smart_light_cocina_arribo_noche:
+    name: Arribo - Noche
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: minutes
+    initial: 4
+  smart_light_cocina_arribo_madrugada:
+    name: Arribo - Madrugada
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: minutes
+    initial: 2
+
+  # Reduccion instantanea (cuando fade OFF)
+  smart_light_cocina_reduction_percentage:
+    name: Reduccion en PRE_NOTICE (%)
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    initial: 50
+
+  # Parametros de fade
+  smart_light_cocina_fade_sec:
+    name: Fade duracion (s)
+    min: 5
+    max: 600
+    step: 5
+    unit_of_measurement: s
+    initial: 20
+  smart_light_cocina_fade_reduce_pct:
+    name: Fade - Reducir (% sobre % MIN actual)
+    min: 0
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    initial: 50
+
+# -------------------------
+# Efectos por franja (nombres de scripts)
+# -------------------------
+input_text:
+  smart_light_cocina_effect_script_name:
+    name: Effect Script - Global
+    initial: cocina_arribo_global
+  smart_light_cocina_effect_script_manana:
+    name: Effect Script - Mañana
+
+  smart_light_cocina_effect_script_mediodia:
+    name: Effect Script - Mediodia
+
+  smart_light_cocina_effect_script_tarde:
+    name: Effect Script - Tarde
+
+  smart_light_cocina_effect_script_noche:
+    name: Effect Script - Noche
+
+  smart_light_cocina_effect_script_madrugada:
+    name: Effect Script - Madrugada
+
+
+# -------------------------
+# TIMERS
+# -------------------------
+timer:
+  smart_light_cocina_idle_timeout:
+    name: Idle countdown
+    restore: true
+  smart_light_cocina_dim_notice:
+    name: Pre-Notice
+    restore: true
+  smart_light_cocina_restore_window:
+    name: Restore Window
+    restore: true
+
+# -------------------------
+# SCRIPTS
+# -------------------------
+script:
+
+  # Guardar escena
+  smart_light_cocina_save_scene:
+    alias: SMART LIGHT COCINA - Guardar escena
+    mode: parallel
+    sequence:
+      - service: scene.create
+        data:
+          scene_id: smart_light_cocina_snapshot
+          snapshot_entities: ['light.cocina', 'light.mesada']
+
+  # Reducir brillo instantaneamente (cuando fade OFF)
+  smart_light_cocina_reduce_brightness:
+    alias: SMART LIGHT COCINA - Reducir brillo instantaneo (leaf)
+    mode: parallel
+    sequence:
+      - variables:
+          pd: "{{ states('sensor.parte_del_dia') }}"
+          base: 200  # hardcoded default
+          red: "{{ states('input_number.smart_light_cocina_reduction_percentage')|int }}"
+          target_bri: "{{ (base * (100 - red) / 100) | int }}"
+          on_lights: >
+            {{ expand(['light.cocina', 'light.mesada']) | selectattr('state','equalto','on') | map(attribute='entity_id') | list }}
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ on_lights | length > 0 }}"
+            sequence:
+              - service: light.turn_on
+                target: { entity_id: "{{ on_lights }}" }
+                data: { brightness: "{{ target_bri }}", transition: 1 }
+
+  # Apagar todas las luces del area
+  smart_light_cocina_turn_off_lights:
+    alias: SMART LIGHT COCINA - Apagar luces (leaf)
+    mode: parallel
+    sequence:
+      - service: light.turn_off
+        target: { area_id: cocina }
+
+  # Encendido (escena/efecto por franja o fallback simple)
+  smart_light_cocina_turn_on_lights:
+    alias: SMART LIGHT COCINA - Encender (escena/efecto por franja, leaf)
+    mode: parallel
+    sequence:
+      - variables:
+          use_scene_var: >
+            {{ (use_scene | default(false)) | bool }}
+          pd: "{{ states('sensor.parte_del_dia') }}"
+          map_fx: >
+            {{ {
+              'manana':'input_text.smart_light_cocina_effect_script_manana',
+              'mediodia':'input_text.smart_light_cocina_effect_script_mediodia',
+              'tarde':'input_text.smart_light_cocina_effect_script_tarde',
+              'noche':'input_text.smart_light_cocina_effect_script_noche',
+              'madrugada':'input_text.smart_light_cocina_effect_script_madrugada'
+            } }}
+          brightness: 200  # hardcoded default
+          per_slot_fx: "{{ states(map_fx[pd]) if pd in map_fx else '' }}"
+          global_fx: "{{ states('input_text.smart_light_cocina_effect_script_name') }}"
+          effect_name: >
+            {% set pick = (per_slot_fx | trim) if (per_slot_fx | trim) != '' else (global_fx | trim) %}
+            {{ pick }}
+          effect_entity: >
+            {{ ('script.' ~ effect_name) if (effect_name|length > 0) else '' }}
+          leaf_lights: ['light.cocina', 'light.mesada']
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ use_scene_var and
+                     (state_attr('scene.smart_light_cocina_snapshot','entity_id') | default([]) | count > 0) }}
+            sequence:
+              - service: scene.turn_on
+                target: { entity_id: scene.smart_light_cocina_snapshot }
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ (not use_scene_var)
+                     and (effect_entity|length > 0)
+                     and (states(effect_entity) != 'unknown') }}
+            sequence:
+              - service: script.turn_on
+                target: { entity_id: "{{ effect_entity }}" }
+        default:
+          - service: light.turn_on
+            target: { entity_id: "{{ leaf_lights }}" }
+            data: { brightness: "{{ brightness }}", transition: 1 }
+
+
+  smart_light_cocina_start_idle_flow:
+    alias: SMART LIGHT COCINA - Idle countdown flow
+    mode: restart
+    fields:
+      timeout_seconds:
+        name: Timeout override (seconds)
+        description: Optional override for idle countdown duration in seconds.
+        selector:
+          number:
+            min: 0
+            max: 7200
+            step: 1
+            unit_of_measurement: "s"
+    sequence:
+      - variables:
+          pd: "{{ states('sensor.parte_del_dia') }}"
+          timeout_suffix_map: >
+            {{ {
+              'manana':'manana',
+              'mediodia':'mediodia',
+              'tarde':'tarde',
+              'noche':'noche',
+              'madrugada':'madrugada'
+            } }}
+          timeout_entity: >
+            {% set suffix = timeout_suffix_map.get(pd) %}
+            {{ ('input_number.smart_light_cocina_timeout_' ~ suffix) if suffix else none }}
+          timeout_minutes_default: "{{ states(timeout_entity)|int if timeout_entity else 10 }}"
+          timeout_override: "{{ timeout_seconds | default(none) }}"
+          timeout_sec: >-
+            {% set base = (timeout_minutes_default | int) * 60 %}
+            {% set override = timeout_override %}
+            {% if override is not none %}
+              {{ [override | int, 0] | max }}
+            {% else %}
+              {{ [base, 0] | max }}
+            {% endif %}
+          pre_notice_sec: "{{ 120 if timeout_sec|int >= 120 else timeout_sec|int }}"
+          wait_before_pre: "{{ max(timeout_sec|int - pre_notice_sec|int, 0) }}"
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.smart_lights_cocina
+                state: "on"
+              - condition: state
+                entity_id: binary_sensor.motion_cocina
+                state: "off"
+            sequence:
+              - service: input_select.select_option
+                target: { entity_id: input_select.smart_light_cocina_state }
+                data: { option: IDLE_COUNTDOWN }
+              - service: timer.cancel
+                target:
+                  entity_id:
+                    - timer.smart_light_cocina_dim_notice
+                    - timer.smart_light_cocina_restore_window
+              - service: input_boolean.turn_off
+                target:
+                  entity_id:
+                    - input_boolean.smart_light_cocina_fading_active
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ timeout_sec|int > 0 }}"
+                    sequence:
+                      - service: timer.start
+                        target: { entity_id: timer.smart_light_cocina_idle_timeout }
+                        data: { duration: "{{ timeout_sec }}" }
+                      - wait_for_trigger:
+                          - platform: state
+                            entity_id: binary_sensor.motion_cocina
+                            to: "on"
+                          - platform: state
+                            entity_id: input_boolean.smart_lights_cocina
+                            to: "off"
+                        timeout: "{{ wait_before_pre }}"
+                        continue_on_timeout: true
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ not wait.completed }}"
+                              - condition: state
+                                entity_id: binary_sensor.motion_cocina
+                                state: "off"
+                              - condition: state
+                                entity_id: input_boolean.smart_lights_cocina
+                                state: "on"
+                              - condition: state
+                                entity_id: input_select.smart_light_cocina_state
+                                state: IDLE_COUNTDOWN
+                              - condition: state
+                                entity_id: timer.smart_light_cocina_idle_timeout
+                                state: "active"
+                            sequence:
+                              - service: timer.start
+                                target: { entity_id: timer.smart_light_cocina_dim_notice }
+                                data: { duration: "{{ pre_notice_sec }}" }
+                              - service: timer.cancel
+                                target: { entity_id: timer.smart_light_cocina_idle_timeout }
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ wait.completed }}"
+                              - condition: state
+                                entity_id: timer.smart_light_cocina_idle_timeout
+                                state: "active"
+                            sequence:
+                              - service: timer.cancel
+                                target: { entity_id: timer.smart_light_cocina_idle_timeout }
+        default: []
+
+  smart_light_cocina_toggle_smart_lights:
+    alias: SMART LIGHT COCINA - Toggle Smart Lights flag
+    mode: single
+    sequence:
+      - service: input_boolean.toggle
+        target: { entity_id: input_boolean.smart_lights_cocina }
+
+## ============================================
+## Template sensor "dashboard-friendly"
+## ============================================
+template:
+  - sensor:
+      - name: "Smart Light Cocina State"
+        unique_id: smart_light_cocina_state_sensor
+        state: "{{ states('input_select.smart_light_cocina_state') }}"
+        attributes:
+          # Mensaje "humano"
+          next_action: >-
+            {% set s = states('input_select.smart_light_cocina_state') %}
+            {% if s == 'DISABLED' %}
+              Luces configuradas manualmente, Smart Lights Cocina apagado.
+            {% elif s == 'ACTIVE' %}
+              Hay movimiento en cocina.
+            {% elif s == 'IDLE_COUNTDOWN' %}
+              Sin movimiento en cocina; pronto se reducira el brillo.
+            {% elif s == 'PRE_NOTICE' %}
+              Reduciendo brillo; pronto se apagaron las luces.
+            {% elif s == 'RESTORE_WINDOW' %}
+              Esperando movimiento para volver a prender las luces.
+            {% elif s == 'WAITING_ARRIVAL' %}
+              Esperando arribo a casa para prender las luces automaticamente.
+            {% else %}
+              Algo saliÃ³ mal. Estado desconocido.
+            {% endif %}
+
+          # Icono MDI sugerido para cada estado
+          next_icon: >-
+            {% set s = states('input_select.smart_light_cocina_state') %}
+            {% if s == 'DISABLED' %}mdi:cancel
+            {% elif s == 'ACTIVE' %}mdi:run
+            {% elif s == 'IDLE_COUNTDOWN' %}mdi:timer-sand
+            {% elif s == 'PRE_NOTICE' %}mdi:brightness-4
+            {% elif s == 'RESTORE_WINDOW' %}mdi:backup-restore
+            {% elif s == 'WAITING_ARRIVAL' %}mdi:home-import-outline
+            {% else %}mdi:help-circle
+            {% endif %}
+
+          # Color sugerido (para chips/cards que acepten icon_color)
+          next_color: >-
+            {% set s = states('input_select.smart_light_cocina_state') %}
+            {% if s == 'DISABLED' %}grey
+            {% elif s == 'ACTIVE' %}green
+            {% elif s == 'IDLE_COUNTDOWN' %}orange
+            {% elif s == 'PRE_NOTICE' %}orange
+            {% elif s == 'RESTORE_WINDOW' %}blue
+            {% elif s == 'WAITING_ARRIVAL' %}teal
+            {% else %}grey
+            {% endif %}
+
+          # Timer "vigente" segÃºn estado (Ãºtil para UI)
+          timer_entity: >-
+            {% set s = states('input_select.smart_light_cocina_state') %}
+            {% if s == 'IDLE_COUNTDOWN' %}timer.smart_light_cocina_idle_timeout
+            {% elif s == 'PRE_NOTICE' %}timer.smart_light_cocina_dim_notice
+            {% elif s == 'RESTORE_WINDOW' %}timer.smart_light_cocina_restore_window
+            {% else %}none
+            {% endif %}
+
+          # Remaining bruto (HH:MM:SS) del timer mapeado
+          remaining: >-
+            {% set s = states('input_select.smart_light_cocina_state') %}
+            {% set timer =
+              'timer.smart_light_cocina_idle_timeout' if s == 'IDLE_COUNTDOWN'
+              else 'timer.smart_light_cocina_dim_notice' if s == 'PRE_NOTICE'
+              else 'timer.smart_light_cocina_restore_window' if s == 'RESTORE_WINDOW'
+              else none %}
+            {% if timer not in [none, 'none'] %}
+              {{ state_attr(timer, 'remaining') or '' }}
+            {% endif %}
+
+          # Remaining lindo (mm:ss) si hay valor
+          remaining_pretty: >-
+            {% set raw = this.attributes.get('remaining', '') if this.attributes is defined else '' %}
+            {% if raw and raw != '' %}
+              {% set p = strptime(raw, '%H:%M:%S') %}
+              {{ '%02d:%02d' | format(p.hour*60 + p.minute, p.second) }}
+            {% else %}{{ '' }}{% endif %}
+
+# -------------------------
+# AUTOMATIONS
+# -------------------------
+automation:
+
+  # SMART LIGHTS OFF -> DISABLED
+  - alias: smart_light_cocina - Smart Lights Cocina OFF -> DISABLED
+    id: smart_light_cocina_smart_lights_off
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.smart_lights_cocina
+        to: "off"
+    action:
+      - service: input_select.select_option
+        target: { entity_id: input_select.smart_light_cocina_state }
+        data: { option: DISABLED }
+      - service: timer.cancel
+        target:
+          entity_id:
+            - timer.smart_light_cocina_idle_timeout
+            - timer.smart_light_cocina_dim_notice
+            - timer.smart_light_cocina_restore_window
+      - service: script.turn_off
+        target: { entity_id: script.gradual_brightness_change }
+      - service: script.turn_off
+        target: { entity_id: script.gradual_restore_from_snapshot }
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.smart_light_cocina_fading_active }
+      # No tocar luces
+
+  # SMART LIGHTS ON -> recompute por motion
+  - alias: smart_light_cocina - Smart Lights Cocina ON -> recompute
+    id: smart_light_cocina_smart_lights_on
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.smart_lights_cocina
+        to: "on"
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.motion_cocina
+                state: "on"
+            sequence:
+              - service: input_select.select_option
+                target: { entity_id: input_select.smart_light_cocina_state }
+                data: { option: ACTIVE }
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.motion_cocina
+                state: "off"
+            sequence:
+              - service: script.turn_on
+                target: { entity_id: script.smart_light_cocina_start_idle_flow }
+
+
+  # MOTION OFF -> IDLE_COUNTDOWN (inicia countdown, luego PRE_NOTICE si sigue off)
+  - alias: smart_light_cocina - Motion OFF -> IDLE_COUNTDOWN
+    id: smart_light_cocina_motion_off_idle
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_cocina
+        to: "off"
+    condition:
+      - condition: state
+        entity_id: input_boolean.smart_lights_cocina
+        state: "on"
+    action:
+      - service: script.turn_on
+        target: { entity_id: script.smart_light_cocina_start_idle_flow }
+  # MOTION ON -> ACTIVE (V2): cancela fade si estaba, y si venias de PRE_NOTICE/RESTORE -> restore suave
+  - alias: smart_light_cocina - Motion ON -> ACTIVE (V2 restore suave)
+    id: smart_light_cocina_motion_on_active_v2
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_cocina
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.smart_lights_cocina
+        state: "on"
+    variables:
+      prev_state: "{{ states('input_select.smart_light_cocina_state') }}"
+      fade_sec: "{{ states('input_number.smart_light_cocina_fade_sec') | int(30) }}"
+      steps: "{{ fade_sec }}"   # 1 paso/seg
+      min_pct_floor: 10
+    action:
+      - service: input_select.select_option
+        target: { entity_id: input_select.smart_light_cocina_state }
+        data: { option: ACTIVE }
+
+      # Cancelar timers (ya no aplican al estar en ACTIVE)
+      - service: timer.cancel
+        target:
+          entity_id:
+            - timer.smart_light_cocina_idle_timeout
+            - timer.smart_light_cocina_dim_notice
+            - timer.smart_light_cocina_restore_window
+
+      # Si habia fade corriendo, cancelarlo y bajar flag
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.smart_light_cocina_fading_active
+                state: "on"
+            sequence:
+              - service: script.turn_off
+                target: { entity_id: script.gradual_brightness_change }
+              - service: input_boolean.turn_off
+                target: { entity_id: input_boolean.smart_light_cocina_fading_active }
+
+      # Restaurar segun estado previo
+      - choose:
+          # Desde PRE_NOTICE o RESTORE_WINDOW -> restauracion suave (usa VAR)
+          - conditions:
+              - condition: template
+                value_template: "{{ prev_state in ['PRE_NOTICE','RESTORE_WINDOW'] }}"
+            sequence:
+              - service: script.turn_on
+                target: { entity_id: script.gradual_restore_from_snapshot }
+                data:
+                  variables:
+                    duration: "{{ fade_sec }}"
+                    steps: "{{ steps }}"
+                    min_pct: "{{ min_pct_floor }}"
+          # Desde WAITING_ARRIVAL -> encendido por efecto/franja
+          - conditions:
+              - condition: template
+                value_template: "{{ prev_state == 'WAITING_ARRIVAL' }}"
+            sequence:
+              - service: script.turn_on
+                target: { entity_id: script.smart_light_cocina_turn_on_lights }
+                data:
+                  variables: { use_scene: false }
+        default: []
+
+  # PRE_NOTICE START - set estado, snapshot + (fade o reduccion instantanea)
+  - alias: smart_light_cocina - PRE_NOTICE START - snapshot + dim/fade + RESTORE WINDOW (parallel)
+    id: smart_light_cocina_pre_notice_start_parallel_restore
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: timer.smart_light_cocina_dim_notice
+        to: "active"
+    variables:
+      # Parametros de fade/reduccion
+      reduce_pct: "{{ states('input_number.smart_light_cocina_fade_reduce_pct') | int(60) }}"
+      fade_sec: "{{ states('input_number.smart_light_cocina_fade_sec') | int(30) }}"
+
+      # Objetivo "seguro": % minimo de las encendidas * (1 - reduce/100) ? evita subidas
+      leaf_lights: ['light.cocina', 'light.mesada']
+      on_pcts: >
+        {% set vals = [] %}
+        {% for e in expand(leaf_lights) %}
+          {% if e.state == 'on' %}
+            {% set bri = state_attr(e.entity_id, 'brightness') | int(255) %}
+            {% set pct = (bri / 2.55) | round(0) | int %}
+            {% set vals = vals + [pct] %}
+          {% endif %}
+        {% endfor %}
+        {{ vals }}
+      min_pct_now: "{{ (on_pcts|min if (on_pcts|length > 0) else 100) | int }}"
+      target_pct_global: >
+        {{ ((min_pct_now * (100 - reduce_pct) / 100.0) | round(0) | int) }}
+
+      # Duracion de la ventana de restore por franja (ARRIBO)
+      pd: "{{ states('sensor.parte_del_dia') }}"
+      arribo_min: >
+        {% set suffix_map = {
+          'manana':'manana',
+          'mediodia':'mediodia',
+          'tarde':'tarde',
+          'noche':'noche',
+          'madrugada':'madrugada'
+        } %}
+        {% set suffix = suffix_map.get(pd) %}
+        {% set entity = 'input_number.smart_light_cocina_arribo_' ~ suffix if suffix else none %}
+        {{ states(entity)|int if entity else 15 }}
+      restore_sec: "{{ (arribo_min | int) * 60 }}"
+    action:
+      # 1) Estado logico a PRE_NOTICE
+      - service: input_select.select_option
+        target: { entity_id: input_select.smart_light_cocina_state }
+        data: { option: PRE_NOTICE }
+
+      # 2) Guardar snapshot + targets (para restore suave)
+      - service: script.turn_on
+        target: { entity_id: script.smart_light_cocina_save_scene }
+
+      # 3) Iniciar (en paralelo) la ventana de RESTORE_WINDOW (solo timer + flag UI)
+      - service: timer.cancel
+        target: { entity_id: timer.smart_light_cocina_restore_window }
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ restore_sec | int > 0 }}"
+            sequence:
+              - service: timer.start
+                target: { entity_id: timer.smart_light_cocina_restore_window }
+                data: { duration: "{{ restore_sec }}" }
+
+      # 4) Ejecutar dim/fade del PRE_NOTICE
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.smart_light_cocina_fade
+                state: "on"
+            sequence:
+              - service: input_boolean.turn_on
+                target: { entity_id: input_boolean.smart_light_cocina_fading_active }
+              # Llamada robusta al script externo (via script.turn_on + variables)
+              - service: script.turn_on
+                target: { entity_id: script.gradual_brightness_change }
+                data:
+                  variables:
+                    target:
+                      area_id: cocina
+                    target_brightness: "{{ [target_pct_global, 0] | max }}"
+                    transition_time: "{{ fade_sec }}"
+                    steps: "{{ fade_sec }}"
+                    queue_mode: parallel
+                    include_off_lights: false
+                    flag_entity: input_boolean.smart_light_cocina_fading_active
+        default:
+          - service: script.turn_on
+            target: { entity_id: script.smart_light_cocina_reduce_brightness }
+  # PRE_NOTICE FIN - apagar + arrancar RESTORE_WINDOW (con Arribo por franja)
+  - alias: smart_light_cocina - PRE_NOTICE FIN - apagar + RESTORE START
+    id: smart_light_cocina_pre_notice_finish_off_restore
+    mode: single
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.smart_light_cocina_dim_notice
+    variables:
+      pd: "{{ states('sensor.parte_del_dia') }}"
+      arribo_min: >
+        {% set suffix_map = {
+          'manana':'manana',
+          'mediodia':'mediodia',
+          'tarde':'tarde',
+          'noche':'noche',
+          'madrugada':'madrugada'
+        } %}
+        {% set suffix = suffix_map.get(pd) %}
+        {% set entity = 'input_number.smart_light_cocina_arribo_' ~ suffix if suffix else none %}
+        {{ states(entity)|int if entity else 15 }}
+    action:
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.smart_light_cocina_fading_active }
+      - service: script.turn_on
+        target: { entity_id: script.smart_light_cocina_turn_off_lights }
+
+      - service: input_select.select_option
+        target: { entity_id: input_select.smart_light_cocina_state }
+        data: { option: RESTORE_WINDOW }
+      - service: timer.start
+        target: { entity_id: timer.smart_light_cocina_restore_window }
+        data:
+          duration: "{{ (arribo_min | int) * 60 }}"
+
+  # RESTORE FIN - WAITING_ARRIVAL
+  - alias: smart_light_cocina - RESTORE FIN - WAITING_ARRIVAL
+    id: smart_light_cocina_restore_finish_waiting
+    mode: single
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.smart_light_cocina_restore_window
+    action:
+      - service: input_select.select_option
+        target: { entity_id: input_select.smart_light_cocina_state }
+        data: { option: WAITING_ARRIVAL }

@@ -36,137 +36,87 @@ automation:
           # b6 - Riel (toggle)
           - conditions: "{{ code == 'A1E9A8' }}"
             sequence:
-              - service: light.toggle
-                target: { entity_id: light.riel }
+              - service: script.switch_rf_b6_riel
 
           # b4 - Comedor (toggle)
           - conditions: "{{ code == 'A1E9A2' }}"
             sequence:
-              - service: light.toggle
-                target: { entity_id: light.comedor }
+              - service: script.switch_rf_b4_comedor
 
           # b5 - Mesa (toggle)
           - conditions: "{{ code == 'A1E9A4' }}"
             sequence:
-              - service: light.toggle
-                target: { entity_id: light.mesa }
+              - service: script.switch_rf_b5_mesa
 
           # b1 - Apagar todo Sala de Estar
           - conditions: "{{ code == '984A18' }}"
             sequence:
-              - service: light.turn_off
-                target: { area_id: sala_de_estar }
+              - service: script.switch_rf_b1_sala_off
 
           # b3 - Preset Sala (riel + rack, fría 80%)
           - conditions: "{{ code == '984A12' }}"
             sequence:
-              - service: light.turn_on
-                target:
-                  entity_id:
-                    - light.riel
-                    - light.luz_rack
-                data:
-                  color_temp: 327
-                  brightness_pct: 80
+              - service: script.switch_rf_b3_preset_sala
 
           # b2 - Luces deco Sala (grupo on/off)
           - conditions: "{{ code == '984A14' }}"
             sequence:
-              - choose:
-                  - conditions:
-                      - condition: state
-                        entity_id: light.luces_deco_sala
-                        state: "off"
-                    sequence:
-                      - service: light.turn_on
-                        target: { entity_id: light.luces_deco_sala }
-                default:
-                  - service: light.turn_off
-                    target: { entity_id: light.luces_deco_sala }
+              - service: script.switch_rf_b2_deco_sala
 
           # ====== COCINA / ESTUDIO / PASILLO ======
           # Cocina (toggle)
           - conditions: "{{ code == 'A214B2' }}"
             sequence:
-              - service: light.toggle
-                target: { entity_id: light.cocina }
+              - service: script.switch_rf_cocina
 
           # Estudio (toggle)
           - conditions: "{{ code == '84BCF2' }}"
             sequence:
-              - service: light.toggle
-                target: { entity_id: light.estudio }
+              - service: script.switch_rf_estudio
 
           # Pasillo (toggle)
           - conditions: "{{ code == '84BCF8' }}"
             sequence:
-              - service: light.toggle
-                target: { entity_id: light.wiz130 }
+              - service: script.switch_rf_pasillo
 
           # ====== BAÑO ======
           # Baño toggle (con preset)
           - conditions: "{{ code == '9BDB92' }}"
             sequence:
-              - service: light.toggle
-                target: { entity_id: light.bano }
-                data:
-                  color_temp: 200
-                  brightness_pct: 100
+              - service: script.switch_rf_bano
 
           # ====== PIEZA ======
           # Luz cama (toggle con preset)
           - conditions: "{{ code == 'A1DBC4' }}"
             sequence:
-              - service: light.toggle
-                target: { entity_id: light.luz_cama }
-                data:
-                  color_temp: 251
-                  brightness_pct: 100
+              - service: script.switch_rf_pieza_cama
 
           # Luz pieza (toggle con preset)
           - conditions: "{{ code == 'A1DBC8' }}"
             sequence:
-              - service: light.toggle
-                target: { entity_id: light.pieza }
-                data:
-                  color_temp: 316
-                  brightness_pct: 100
+              - service: script.switch_rf_pieza_techo
 
           # Lucecitas / mapping previo (toggle con preset)
           - conditions: "{{ code == 'A1DBC2' }}"
             sequence:
-              - service: light.toggle
-                target: { entity_id: light.pieza }
-                data:
-                  color_temp: 265
-                  brightness_pct: 100
+              - service: script.switch_rf_pieza_lucecitas
 
           # ====== NIGHTSTAND PIEZA (A2ABE*) ======
           # Botón1 - prender luz pieza
           - conditions: "{{ code == 'A2ABE2' }}"
             sequence:
-              - service: light.toggle
-                target: { entity_id: light.pieza }
-                data:
-                  color_temp: 182
-                  brightness_pct: 100
+              - service: script.switch_rf_nightstand_1
 
           # Botón2 - prender luz cama
           - conditions: "{{ code == 'A2ABE4' }}"
             sequence:
-              - service: light.toggle
-                target: { entity_id: light.luz_cama }
+              - service: script.switch_rf_nightstand_2
 
-          # Botón3 - aire pieza (script)
+          # Botón3 - ventilador
           - conditions: "{{ code == 'A2ABE8' }}"
             sequence:
-              - service: light.toggle
-                target: { entity_id: light.pieza }
-                data:
-                  color_temp: 182
-                  brightness_pct: 100
-
-
+              - service: script.switch_rf_nightstand_3
+           
         # Cualquier código no mapeado cae aquí
         default:
           - if:

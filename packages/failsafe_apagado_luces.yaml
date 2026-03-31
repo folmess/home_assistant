@@ -7,8 +7,10 @@
 #  - Baño: apaga light.bano (ajustar si sumás más luces o grupo)
 # ===========================================================
 
-homeassistant:
-  customize: {}
+input_boolean:
+  turn_off_failsafe:
+    name: Turn Off Failsafe
+    initial: on
 
 automation:
   # -------------------------------
@@ -33,6 +35,9 @@ automation:
            | map(attribute='entity_id') | list }}
 
     condition:
+      - condition: state
+        entity_id: input_boolean.turn_off_failsafe
+        state: "on"
       # 1) El motion de sala está en OFF
       - condition: state
         entity_id: binary_sensor.motion_sala
@@ -64,6 +69,9 @@ automation:
         minutes: "/30"
 
     condition:
+      - condition: state
+        entity_id: input_boolean.turn_off_failsafe
+        state: "on"
       # 1) Motion de baño en OFF
       - condition: state
         entity_id: binary_sensor.motion_bano
@@ -83,3 +91,49 @@ automation:
       - service: light.turn_off
         target:
           entity_id: light.bano
+
+  # -------------------------------
+  # COCINA — Failsafe
+  # -------------------------------
+  - id: cocina_failsafe_apagado_30m
+    alias: Cocina - Failsafe de apagado (cada 30 min)
+    mode: single
+
+    trigger:
+      # Corre dos veces por hora: mm = 00 y 30
+      - platform: time_pattern
+        minutes: "/30"
+
+    variables:
+      area_cocina: "cocina"
+      # Luces ON en el área (lista)
+      luces_on_cocina: >-
+        {{ expand(area_entities(area_cocina))
+           | selectattr('domain','eq','light')
+           | selectattr('state','eq','on')
+           | map(attribute='entity_id') | list }}
+
+    condition:
+      - condition: state
+        entity_id: input_boolean.turn_off_failsafe
+        state: "on"
+      # 1) El motion de cocina está en OFF
+      - condition: state
+        entity_id: binary_sensor.motion_cocina
+        state: "off"
+
+      # 2) Lleva > 20 minutos sin cambiar (sin movimiento sostenido)
+      - condition: template
+        value_template: >
+          {{ (now() - states.binary_sensor.motion_cocina.last_changed).total_seconds() > 20 * 60 }}
+
+      # 3) Hay al menos una luz encendida en el área
+      - condition: template
+        value_template: "{{ luces_on_cocina | length > 0 }}"
+
+    action:
+      - service: light.turn_off
+        target:
+          area_id: "{{ area_cocina }}"
+
+ 

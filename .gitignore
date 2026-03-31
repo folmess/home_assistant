@@ -1,43 +1,53 @@
-home-assistant_v2.db
-home-assistant_v2.db-shm
-home-assistant_v2.db-wal
-**/home-assistant_v2.db
-**/home-assistant_v2.db-shm
-**/home-assistant_v2.db-wal
+# Database
 *.db
 *.db-shm
 *.db-wal
-home-assistant.log
+
+# Logs
 *.log
 *.log.*
+
+# Python cache
 __pycache__/
 *.pyc
+
+# HA runtime & sensitive files
 .storage/
 .backups/
+.ha_run.lock
+.HA_VERSION
+.cache/
 secrets.yaml
+
+# Credentials & tokens
 .ssh/
 .cloud/
 .google.token
 id_rsa*
 id_ed25519*
 *.pem
+
+# HA generated / large dirs
 deps/
 image/
 tts/
 www/
 zigbee2mqtt/
-*xxx*
 custom_components/
 themes/
+blueprints/
+dashboards/
+bubble_card/
+addons_config/
+addons_autoscripts/
+folmerr/
+
+# Scripts
 git_pull.sh
 git_pull_force.sh
 git_push.sh
 git_push_debug.sh
-folmerr/
-blueprints/
+
+# Misc
+*xxx*
 lint-result.txt
-addons_config/fireflyiii/APP_KEY_BACKUP.txt
-addons_config/fireflyiii/database/database.sqlite
-addons_config/fireflyiii/config.yaml
-addons_autoscripts/fireflyiii.sh
-.ha_run.lock

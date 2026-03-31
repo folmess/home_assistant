@@ -1,0 +1,850 @@
+# ===========================================
+# Package: sleep_detection
+# Detecta si el usuario está durmiendo basándose en múltiples sensores
+# Incluye controles manuales, sistema DND global y tiempos configurables
+# ===========================================
+
+###############################################################
+# HELPERS - Estados y Controles
+###############################################################
+input_select:
+  sleep_state:
+    name: Estado de Sueño
+    options:
+      - awake              # Despierto y activo
+      - preparing_sleep    # Preparándose para dormir
+      - light_sleep        # Sueño ligero (posiblemente durmiendo)
+      - deep_sleep         # Sueño profundo (confirmado)
+      - waking_up          # Despertando
+    initial: awake
+    icon: mdi:sleep
+
+input_boolean:
+  sleep_detection_enabled:
+    name: Detección de Sueño Habilitada
+    initial: on
+    icon: mdi:sleep-off
+  
+  manual_sleep_override:
+    name: Forzar Preparación para Dormir
+    initial: off
+    icon: mdi:bed-clock
+  
+  sleep_detection_paused:
+    name: Pausar Detección Temporalmente
+    initial: off
+    icon: mdi:pause-circle
+  
+  skip_sleep_detection_today:
+    name: No Detectar Sueño Hoy
+    initial: off
+    icon: mdi:cancel
+  
+  no_molestar:
+    name: No Molestar (DND Global)
+    initial: off
+    icon: mdi:bell-off
+
+###############################################################
+# HELPERS - Tiempos y Umbrales Configurables
+###############################################################
+input_number:
+  # Tiempo sin actividad para considerar sueño ligero (minutos)
+  sleep_inactivity_threshold:
+    name: Umbral de Inactividad (min)
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: min
+    initial: 5
+    icon: mdi:timer-sand
+  
+  # Tiempo en sueño ligero para confirmar sueño profundo (minutos)
+  sleep_confirmation_time:
+    name: Tiempo de Confirmación (min)
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: min
+    initial: 10
+    icon: mdi:timer-check
+  
+  # Confianza mínima del sensor de sueño (0-100)
+  sleep_confidence_threshold:
+    name: Confianza Mínima de Sueño (%)
+    min: 0
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    initial: 50
+    icon: mdi:percent
+
+###############################################################
+# TIMERS
+###############################################################
+timer:
+  sleep_inactivity_timer:
+    name: Timer de Inactividad
+    restore: true
+
+  sleep_confirmation_timer:
+    name: Timer de Confirmación de Sueño
+    restore: true
+
+  manual_override_timer:
+    name: Timer de Override Manual (6 horas)
+    restore: true
+
+###############################################################
+# TEMPLATE SENSORS
+###############################################################
+template:
+  - binary_sensor:
+      # Sensor principal: ¿Está durmiendo?
+      - name: "Durmiendo"
+        unique_id: sleeping_status
+        device_class: occupancy
+        icon: >
+          {% if is_state('input_select.sleep_state', 'deep_sleep') %}
+            mdi:sleep
+          {% elif is_state('input_select.sleep_state', 'light_sleep') %}
+            mdi:sleep-off
+          {% elif is_state('input_select.sleep_state', 'preparing_sleep') %}
+            mdi:bed-clock
+          {% elif is_state('input_select.sleep_state', 'waking_up') %}
+            mdi:alarm
+          {% else %}
+            mdi:account-alert
+          {% endif %}
+        state: >
+          {{ is_state('input_select.sleep_state', 'deep_sleep') or 
+             is_state('input_select.sleep_state', 'light_sleep') }}
+        attributes:
+          confidence: >
+            {% if is_state('input_select.sleep_state', 'deep_sleep') %}
+              high
+            {% elif is_state('input_select.sleep_state', 'light_sleep') %}
+              medium
+            {% elif is_state('input_select.sleep_state', 'preparing_sleep') %}
+              low
+            {% else %}
+              none
+            {% endif %}
+          sleep_score: >
+            {{ states('sensor.sleep_detection_score') | int(0) }}
+          
+      # Indicadores individuales
+      - name: "Indicador: Horario de Dormir"
+        unique_id: sleep_indicator_schedule
+        state: >
+          {{ is_state('input_boolean.horario_de_dormir', 'on') }}
+        
+      - name: "Indicador: Sin Movimiento"
+        unique_id: sleep_indicator_no_motion
+        state: >
+          {{ is_state('binary_sensor.motion_sala', 'off') and
+             (now() - states.binary_sensor.motion_sala.last_changed).total_seconds() > 
+             (states('input_number.sleep_inactivity_threshold') | int(5) * 60) }}
+        
+      - name: "Indicador: Teléfono Inactivo"
+        unique_id: sleep_indicator_phone_inactive
+        state: >
+          {{ is_state('binary_sensor.samsungs24u_interactive', 'off') and
+             (now() - states.binary_sensor.samsungs24u_interactive.last_changed).total_seconds() > 600 }}
+        
+      - name: "Indicador: Cargando"
+        unique_id: sleep_indicator_charging
+        state: >
+          {{ is_state('binary_sensor.samsungs24u_is_charging', 'on') }}
+        
+      - name: "Indicador: DND Activo"
+        unique_id: sleep_indicator_dnd
+        state: >
+          {{ states('sensor.samsungs24u_do_not_disturb_sensor') in ['priority_only', 'total_silence', 'alarms_only'] }}
+        
+      - name: "Indicador: En Casa"
+        unique_id: sleep_indicator_home
+        state: >
+          {{ is_state('sensor.ubicacion_hernan', 'home') }}
+        
+      - name: "Indicador: Confianza de Sueño Alta"
+        unique_id: sleep_indicator_confidence
+        state: >
+          {{ states('sensor.samsungs24u_sleep_confidence') | int(0) >= 
+             states('input_number.sleep_confidence_threshold') | int(50) }}
+
+  - sensor:
+      # Score de sueño (0-100) basado en múltiples indicadores
+      - name: "Sleep Detection Score"
+        unique_id: sleep_detection_score
+        unit_of_measurement: "%"
+        state: >
+          {% set score = 0 %}
+          
+          {# Sensor nativo de sueño (peso: 40%) #}
+          {% set sleep_conf = states('sensor.samsungs24u_sleep_confidence') | int(0) %}
+          {% set score = score + (sleep_conf * 0.4) %}
+          
+          {# Horario de dormir (peso: 15%) #}
+          {% if is_state('input_boolean.horario_de_dormir', 'on') %}
+            {% set score = score + 15 %}
+          {% endif %}
+          
+          {# Sin movimiento en sala (peso: 15%) #}
+          {% if is_state('binary_sensor.motion_sala', 'off') and
+                (now() - states.binary_sensor.motion_sala.last_changed).total_seconds() > 900 %}
+            {% set score = score + 15 %}
+          {% endif %}
+          
+          {# Teléfono inactivo (peso: 10%) #}
+          {% if is_state('binary_sensor.samsungs24u_interactive', 'off') and
+                (now() - states.binary_sensor.samsungs24u_interactive.last_changed).total_seconds() > 600 %}
+            {% set score = score + 10 %}
+          {% endif %}
+          
+          {# Cargando (peso: 10%) #}
+          {% if is_state('binary_sensor.samsungs24u_is_charging', 'on') %}
+            {% set score = score + 10 %}
+          {% endif %}
+          
+          {# DND activo (peso: 5%) #}
+          {% if states('sensor.samsungs24u_do_not_disturb_sensor') in ['priority_only', 'total_silence', 'alarms_only'] %}
+            {% set score = score + 5 %}
+          {% endif %}
+          
+          {# En casa (peso: 5%) #}
+          {% if is_state('sensor.ubicacion_hernan', 'home') %}
+            {% set score = score + 5 %}
+          {% endif %}
+          
+          {# Bonus por override manual (peso: 40%+) #}
+          {% if is_state('input_boolean.manual_sleep_override', 'on') %}
+            {% set score = score + 40 %}
+          {% endif %}
+          
+          {{ [score | round(0), 100] | min | int }}
+        attributes:
+          sleep_confidence: "{{ states('sensor.samsungs24u_sleep_confidence') | int(0) }}%"
+          in_schedule: "{{ is_state('input_boolean.horario_de_dormir', 'on') }}"
+          no_motion: "{{ is_state('binary_sensor.motion_sala', 'off') }}"
+          phone_inactive: "{{ is_state('binary_sensor.samsungs24u_interactive', 'off') }}"
+          charging: "{{ is_state('binary_sensor.samsungs24u_is_charging', 'on') }}"
+          dnd_active: "{{ states('sensor.samsungs24u_do_not_disturb_sensor') not in ['off', 'unknown', 'unavailable'] }}"
+          at_home: "{{ is_state('sensor.ubicacion_hernan', 'home') }}"
+          manual_override: "{{ is_state('input_boolean.manual_sleep_override', 'on') }}"
+      
+      # Sensor de estado con información detallada
+      - name: "Sleep Status"
+        unique_id: sleep_status_detailed
+        state: "{{ states('input_select.sleep_state') }}"
+        icon: >
+          {% set state = states('input_select.sleep_state') %}
+          {% if state == 'deep_sleep' %}mdi:sleep
+          {% elif state == 'light_sleep' %}mdi:sleep-off
+          {% elif state == 'preparing_sleep' %}mdi:bed-clock
+          {% elif state == 'waking_up' %}mdi:alarm
+          {% else %}mdi:account-alert
+          {% endif %}
+        attributes:
+          friendly_name: >
+            {% set state = states('input_select.sleep_state') %}
+            {% if state == 'awake' %}Despierto
+            {% elif state == 'preparing_sleep' %}Preparándose para dormir
+            {% elif state == 'light_sleep' %}Sueño ligero
+            {% elif state == 'deep_sleep' %}Durmiendo profundamente
+            {% elif state == 'waking_up' %}Despertando
+            {% else %}Desconocido
+            {% endif %}
+          description: >
+            {% set state = states('input_select.sleep_state') %}
+            {% if state == 'awake' %}
+              Usuario activo y despierto
+            {% elif state == 'preparing_sleep' %}
+              Indicios de preparación para dormir detectados
+            {% elif state == 'light_sleep' %}
+              Posiblemente durmiendo, esperando confirmación
+            {% elif state == 'deep_sleep' %}
+              Sueño confirmado con alta confianza
+            {% elif state == 'waking_up' %}
+              Actividad detectada después de dormir
+            {% endif %}
+          sleep_score: "{{ states('sensor.sleep_detection_score') | int(0) }}"
+          last_changed: "{{ states.input_select.sleep_state.last_changed }}"
+          duration: >
+            {{ relative_time(states.input_select.sleep_state.last_changed) }}
+
+###############################################################
+# AUTOMATIONS
+###############################################################
+automation:
+
+  # ============================================
+  # TRANSICIÓN: awake → preparing_sleep
+  # ============================================
+  - alias: Sleep Detection - Awake to Preparing
+    id: sleep_detection_awake_to_preparing
+    mode: restart
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.sleep_detection_score
+        above: 39
+      - platform: state
+        entity_id: input_boolean.horario_de_dormir
+        to: "on"
+      - platform: state
+        entity_id: sensor.samsungs24u_do_not_disturb_sensor
+        to: 
+          - priority_only
+          - total_silence
+          - alarms_only
+      - platform: state
+        entity_id: input_boolean.manual_sleep_override
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.sleep_detection_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.sleep_detection_paused
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.skip_sleep_detection_today
+        state: "off"
+      - condition: state
+        entity_id: input_select.sleep_state
+        state: awake
+      - condition: numeric_state
+        entity_id: sensor.sleep_detection_score
+        above: 39
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.sleep_state
+        data:
+          option: preparing_sleep
+      - service: logbook.log
+        data:
+          name: Sleep Detection
+          message: "Transición a PREPARING_SLEEP - Score: {{ states('sensor.sleep_detection_score') }}%"
+
+  # ============================================
+  # TRANSICIÓN: preparing_sleep → light_sleep
+  # ============================================
+  - alias: Sleep Detection - Preparing to Light Sleep
+    id: sleep_detection_preparing_to_light
+    mode: restart
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.sleep_detection_score
+        above: 59
+      - platform: state
+        entity_id: binary_sensor.motion_sala
+        to: "off"
+        for:
+          minutes: 5
+      - platform: state
+        entity_id: binary_sensor.samsungs24u_interactive
+        to: "off"
+        for:
+          minutes: 10
+    condition:
+      - condition: state
+        entity_id: input_boolean.sleep_detection_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.sleep_detection_paused
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.skip_sleep_detection_today
+        state: "off"
+      - condition: state
+        entity_id: input_select.sleep_state
+        state: preparing_sleep
+      - condition: numeric_state
+        entity_id: sensor.sleep_detection_score
+        above: 59
+      - condition: state
+        entity_id: binary_sensor.motion_sala
+        state: "off"
+      - condition: template
+        value_template: >
+          {{ (now() - states.binary_sensor.motion_sala.last_changed).total_seconds() > 
+             (states('input_number.sleep_inactivity_threshold') | int(5) * 60) }}
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.sleep_state
+        data:
+          option: light_sleep
+      - service: timer.start
+        target:
+          entity_id: timer.sleep_confirmation_timer
+        data:
+          duration: "{{ states('input_number.sleep_confirmation_time') | int(10) * 60 }}"
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.no_molestar
+      - service: logbook.log
+        data:
+          name: Sleep Detection
+          message: "Transición a LIGHT_SLEEP - Score: {{ states('sensor.sleep_detection_score') }}% - DND activado"
+
+  # ============================================
+  # TRANSICIÓN: light_sleep → deep_sleep
+  # ============================================
+  - alias: Sleep Detection - Light to Deep Sleep
+    id: sleep_detection_light_to_deep
+    mode: single
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.sleep_confirmation_timer
+      - platform: template
+        value_template: >
+          {{ states('sensor.sleep_detection_score') | int(0) > 74 }}
+        for:
+          minutes: 5
+    condition:
+      - condition: state
+        entity_id: input_boolean.sleep_detection_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.sleep_detection_paused
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.skip_sleep_detection_today
+        state: "off"
+      - condition: state
+        entity_id: input_select.sleep_state
+        state: light_sleep
+      - condition: template
+        value_template: >
+          {{ states('sensor.sleep_detection_score') | int(0) > 74 }}
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.sleep_state
+        data:
+          option: deep_sleep
+      - service: timer.cancel
+        target:
+          entity_id: timer.sleep_confirmation_timer
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.no_molestar
+      - service: logbook.log
+        data:
+          name: Sleep Detection
+          message: "Transición a DEEP_SLEEP - Score: {{ states('sensor.sleep_detection_score') }}%"
+
+  # ============================================
+  # TRANSICIÓN: deep_sleep → waking_up
+  # ============================================
+  - alias: Sleep Detection - Deep Sleep to Waking Up
+    id: sleep_detection_deep_to_waking
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sala
+        to: "on"
+      - platform: state
+        entity_id: binary_sensor.samsungs24u_interactive
+        to: "on"
+      - platform: template
+        value_template: >
+          {{ states('sensor.sleep_detection_score') | int(100) < 50 }}
+    condition:
+      - condition: state
+        entity_id: input_boolean.sleep_detection_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.sleep_detection_paused
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.skip_sleep_detection_today
+        state: "off"
+      - condition: state
+        entity_id: input_select.sleep_state
+        state: deep_sleep
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.motion_sala
+            state: "on"
+          - condition: state
+            entity_id: binary_sensor.samsungs24u_interactive
+            state: "on"
+          - condition: template
+            value_template: >
+              {{ states('sensor.sleep_detection_score') | int(100) < 50 }}
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.sleep_state
+        data:
+          option: waking_up
+      - service: timer.start
+        target:
+          entity_id: timer.sleep_inactivity_timer
+        data:
+          duration: "00:05:00"
+      - service: logbook.log
+        data:
+          name: Sleep Detection
+          message: "Transición a WAKING_UP - Score: {{ states('sensor.sleep_detection_score') }}%"
+
+  # ============================================
+  # TRANSICIÓN: waking_up → awake
+  # ============================================
+  - alias: Sleep Detection - Waking Up to Awake
+    id: sleep_detection_waking_to_awake
+    mode: restart
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.sleep_inactivity_timer
+      - platform: state
+        entity_id: input_boolean.horario_de_dormir
+        to: "off"
+      - platform: template
+        value_template: >
+          {{ states('sensor.sleep_detection_score') | int(100) < 30 }}
+        for:
+          minutes: 5
+    condition:
+      - condition: state
+        entity_id: input_boolean.sleep_detection_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.sleep_detection_paused
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.skip_sleep_detection_today
+        state: "off"
+      - condition: state
+        entity_id: input_select.sleep_state
+        state: waking_up
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: input_boolean.horario_de_dormir
+            state: "off"
+          - condition: template
+            value_template: >
+              {{ states('sensor.sleep_detection_score') | int(100) < 30 }}
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.sleep_state
+        data:
+          option: awake
+      - service: timer.cancel
+        target:
+          entity_id: timer.sleep_inactivity_timer
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.no_molestar
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.manual_sleep_override
+      - service: logbook.log
+        data:
+          name: Sleep Detection
+          message: "Transición a AWAKE - Score: {{ states('sensor.sleep_detection_score') }}% - DND desactivado"
+
+  # ============================================
+  # TRANSICIÓN: light_sleep → awake (despertar falso)
+  # ============================================
+  - alias: Sleep Detection - Light Sleep to Awake (False Alarm)
+    id: sleep_detection_light_to_awake
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sala
+        to: "on"
+        for:
+          minutes: 3
+      - platform: state
+        entity_id: binary_sensor.samsungs24u_interactive
+        to: "on"
+        for:
+          minutes: 2
+      - platform: template
+        value_template: >
+          {{ states('sensor.sleep_detection_score') | int(100) < 40 }}
+    condition:
+      - condition: state
+        entity_id: input_boolean.sleep_detection_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.sleep_detection_paused
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.skip_sleep_detection_today
+        state: "off"
+      - condition: state
+        entity_id: input_select.sleep_state
+        state: light_sleep
+      - condition: template
+        value_template: >
+          {{ states('sensor.sleep_detection_score') | int(100) < 40 }}
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.sleep_state
+        data:
+          option: awake
+      - service: timer.cancel
+        target:
+          entity_id: timer.sleep_confirmation_timer
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.no_molestar
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.manual_sleep_override
+      - service: logbook.log
+        data:
+          name: Sleep Detection
+          message: "Falsa alarma de sueño - Volviendo a AWAKE - DND desactivado"
+
+  # ============================================
+  # TRANSICIÓN: preparing_sleep → awake (cancelación)
+  # ============================================
+  - alias: Sleep Detection - Preparing to Awake (Cancel)
+    id: sleep_detection_preparing_to_awake
+    mode: restart
+    trigger:
+      - platform: template
+        value_template: >
+          {{ states('sensor.sleep_detection_score') | int(100) < 30 }}
+        for:
+          minutes: 5
+      - platform: state
+        entity_id: binary_sensor.motion_sala
+        to: "on"
+        for:
+          minutes: 3
+    condition:
+      - condition: state
+        entity_id: input_boolean.sleep_detection_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.sleep_detection_paused
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.skip_sleep_detection_today
+        state: "off"
+      - condition: state
+        entity_id: input_select.sleep_state
+        state: preparing_sleep
+      - condition: template
+        value_template: >
+          {{ states('sensor.sleep_detection_score') | int(100) < 30 }}
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.sleep_state
+        data:
+          option: awake
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.manual_sleep_override
+      - service: logbook.log
+        data:
+          name: Sleep Detection
+          message: "Cancelada preparación para dormir - Volviendo a AWAKE"
+
+  # ============================================
+  # CONTROL MANUAL: Pausar detección
+  # ============================================
+  - alias: Sleep Detection - Pause Detection
+    id: sleep_detection_pause
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.sleep_detection_paused
+        to: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.no_molestar
+      - service: timer.cancel
+        target:
+          entity_id:
+            - timer.sleep_inactivity_timer
+            - timer.sleep_confirmation_timer
+      - service: logbook.log
+        data:
+          name: Sleep Detection
+          message: "Detección pausada manualmente - DND desactivado"
+
+  # ============================================
+  # CONTROL MANUAL: Skip detección por hoy
+  # ============================================
+  - alias: Sleep Detection - Skip Today
+    id: sleep_detection_skip_today
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.skip_sleep_detection_today
+        to: "on"
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.sleep_state
+        data:
+          option: awake
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.no_molestar
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.manual_sleep_override
+      - service: timer.cancel
+        target:
+          entity_id:
+            - timer.sleep_inactivity_timer
+            - timer.sleep_confirmation_timer
+      - service: logbook.log
+        data:
+          name: Sleep Detection
+          message: "Detección bloqueada hasta mañana - DND desactivado"
+
+  # ============================================
+  # RESET: Skip automático a las 6 AM
+  # ============================================
+  - alias: Sleep Detection - Reset Skip at 6 AM
+    id: sleep_detection_reset_skip
+    mode: single
+    trigger:
+      - platform: time
+        at: "06:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.skip_sleep_detection_today
+        state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.skip_sleep_detection_today
+      - service: logbook.log
+        data:
+          name: Sleep Detection
+          message: "Skip reseteado - Nueva detección habilitada"
+
+  # ============================================
+  # SINCRONIZACIÓN AL INICIAR HOME ASSISTANT
+  # ============================================
+  - alias: Sleep Detection - Sync on HA Start
+    id: sleep_detection_sync_on_start
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      - delay: "00:00:30"
+      - choose:
+          - conditions:
+              - condition: numeric_state
+                entity_id: sensor.sleep_detection_score
+                above: 74
+              - condition: state
+                entity_id: input_boolean.horario_de_dormir
+                state: "on"
+              - condition: state
+                entity_id: input_boolean.skip_sleep_detection_today
+                state: "off"
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.sleep_state
+                data:
+                  option: deep_sleep
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.no_molestar
+          - conditions:
+              - condition: numeric_state
+                entity_id: sensor.sleep_detection_score
+                above: 59
+              - condition: state
+                entity_id: input_boolean.horario_de_dormir
+                state: "on"
+              - condition: state
+                entity_id: input_boolean.skip_sleep_detection_today
+                state: "off"
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.sleep_state
+                data:
+                  option: light_sleep
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.no_molestar
+          - conditions:
+              - condition: numeric_state
+                entity_id: sensor.sleep_detection_score
+                above: 39
+              - condition: state
+                entity_id: input_boolean.horario_de_dormir
+                state: "on"
+              - condition: state
+                entity_id: input_boolean.skip_sleep_detection_today
+                state: "off"
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.sleep_state
+                data:
+                  option: preparing_sleep
+        default:
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.sleep_state
+            data:
+              option: awake
+          - service: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.no_molestar
+
+  # ============================================
+  # CONTROL MANUAL: Override hasta las 06:00 AM
+  # ============================================
+  - alias: Sleep Detection - Manual Override Activated
+    id: sleep_detection_manual_override_activated
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.manual_sleep_override
+        to: "on"
+    action:
+      - service: logbook.log
+        data:
+          name: Sleep Detection
+          message: "Manual override activado - permanecerá activo hasta las 06:00 AM"
+
+  # ============================================
+  # RESET: Manual override a las 06:00 AM
+  # ============================================
+  - alias: Sleep Detection - Reset Manual Override at 6 AM
+    id: sleep_detection_manual_override_reset_6am
+    mode: single
+    trigger:
+      - platform: time
+        at: "06:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.manual_sleep_override
+        state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.manual_sleep_override
+      - service: logbook.log
+        data:
+          name: Sleep Detection
+          message: "Manual override reseteado automaticamente a las 06:00 AM"

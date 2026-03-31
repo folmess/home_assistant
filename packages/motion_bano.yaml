@@ -73,7 +73,7 @@ automation:
                         target:
                           entity_id: light.bano
                         data:
-                          color_temp: 500
+                          color_temp_kelvin: 2000
                           brightness_pct: "{{ states('input_number.brillo_bano_madrugada') | int }}"
                 default:
                   # Resto del tiempo
@@ -81,7 +81,7 @@ automation:
                     target:
                       entity_id: light.bano
                     data:
-                      color_temp: 200
+                      color_temp_kelvin: 5000
                       brightness_pct: "{{ states('input_number.brillo_bano_diurno') | int }}"
 
           # ── Sin movimiento por 120s: dim suave (70%) ───────────
@@ -99,7 +99,7 @@ automation:
                 target:
                   entity_id: light.bano
                 data:
-                  color_temp: 200
+                  color_temp_kelvin: 5000
                   brightness_pct: 70
 
           # ── Sin movimiento por 180s: apagar ────────────────────

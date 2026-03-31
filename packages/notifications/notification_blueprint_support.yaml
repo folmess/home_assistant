@@ -1,0 +1,247 @@
+# Package: notification_blueprint_support.yaml
+# Scripts de soporte para el blueprint de notificaciones programadas.
+
+script:
+  notification_with_sound:
+    alias: Notification - sonido y tts
+    description: Reproduce un audio opcional y luego dice el mensaje mediante TTS.
+    mode: restart
+    fields:
+      message:
+        name: Mensaje
+        description: Texto que se dira mediante TTS.
+        example: "Es hora de cenar!"
+        required: true
+        selector:
+          text:
+            multiline: true
+      sound_path:
+        name: Ruta del audio
+        description: Selecciona el audio desde Media Source que se reproducira antes del TTS.
+        required: false
+        selector:
+          media:
+      play_sound:
+        name: Reproducir audio
+        description: Ejecuta el chime antes del mensaje.
+        required: false
+        default: true
+        selector:
+          boolean:
+      play_tts:
+        name: Ejecutar TTS
+        description: Dice el mensaje mediante TTS.
+        required: false
+        default: true
+        selector:
+          boolean:
+      media_player:
+        name: Media player
+        description: Entidad del media player que reproducira el sonido y TTS.
+        required: false
+        default: media_player.nest_mini
+        selector:
+          entity:
+            domain: media_player
+      tts_service:
+        name: Servicio TTS
+        description: "Servicio TTS a utilizar (ej: tts.cloud_say, tts.google_translate_say)."
+        required: false
+        default: "tts.cloud_say"
+        selector:
+          text:
+      post_sound_delay:
+        name: Pausa despues del audio
+        description: Segundos a esperar entre el audio y el TTS.
+        required: false
+        default: 0
+        selector:
+          number:
+            min: 0
+            max: 10
+            step: 0.5
+            mode: slider
+    sequence:
+      - variables:
+          _player: "{{ media_player | default('media_player.nest_mini') }}"
+          _sound: >-
+            {% set media = sound_path | default(none) %}
+            {% if media is mapping %}
+              {{ media.media_content_id | default('', true) }}
+            {% elif media is string %}
+              {{ media }}
+            {% else %}
+              {{ '' }}
+            {% endif %}
+          _sound_type: >-
+            {% set media = sound_path | default(none) %}
+            {% if media is mapping %}
+              {{ media.media_content_type | default('music', true) }}
+            {% else %}
+              music
+            {% endif %}
+          _tts_service: "{{ tts_service | default('tts.cloud_say') }}"
+          _delay_seconds: "{{ post_sound_delay | default(0) }}"
+          _play_sound: "{{ play_sound | default(true) }}"
+          _play_tts: "{{ play_tts | default(true) }}"
+      - if:
+          - condition: template
+            value_template: "{{ _play_sound and (_sound | trim | length > 0) }}"
+        then:
+          - service: media_player.play_media
+            target:
+              entity_id: "{{ _player }}"
+            data:
+              media_content_id: "{{ _sound }}"
+              media_content_type: "{{ _sound_type }}"
+          - wait_template: "{{ is_state(_player, 'playing') }}"
+            timeout: "00:00:05"
+            continue_on_timeout: true
+          - wait_template: "{{ not is_state(_player, 'playing') }}"
+            timeout: "00:00:30"
+            continue_on_timeout: true
+          - delay:
+              seconds: "{{ _delay_seconds | float(0) }}"
+      - if:
+          - condition: template
+            value_template: "{{ _play_tts }}"
+        then:
+          - service: "{{ _tts_service }}"
+            data:
+              entity_id: "{{ _player }}"
+              message: "{{ message }}"
+
+  notification_with_light:
+    alias: Notification - luz intermitente
+    description: Hace parpadear una luz tres veces y restaura el estado original.
+    mode: restart
+    fields:
+      light_entity:
+        name: Luz objetivo
+        description: Luz que debe parpadear.
+        required: false
+        default: light.barra1
+        selector:
+          entity:
+            domain: light
+      flashes:
+        name: Cantidad de flashes
+        description: Numero de repeticiones.
+        required: false
+        default: 3
+        selector:
+          number:
+            min: 1
+            max: 10
+            step: 1
+            mode: slider
+      on_duration:
+        name: Duracion encendida
+        description: Segundos que permanecera encendida en cada flash.
+        required: false
+        default: 0.5
+        selector:
+          number:
+            min: 0.1
+            max: 5
+            step: 0.1
+            mode: slider
+      off_duration:
+        name: Duracion apagada
+        description: Segundos que permanecera apagada entre flashes.
+        required: false
+        default: 0.5
+        selector:
+          number:
+            min: 0.1
+            max: 5
+            step: 0.1
+            mode: slider
+      brightness_pct:
+        name: Brillo del flash
+        description: Brillo porcentual durante el flash.
+        required: false
+        default: 100
+        selector:
+          number:
+            min: 1
+            max: 100
+            step: 1
+            mode: slider
+      title:
+        name: Titulo opcional
+        description: Texto que puede usarse para registro (no afecta a la luz).
+        required: false
+        selector:
+          text:
+    sequence:
+      - variables:
+          _light: "{{ light_entity | default('light.barra1') }}"
+          _flash_count: "{{ flashes | default(3) | int }}"
+          _on_time: "{{ on_duration | default(0.5) | float }}"
+          _off_time: "{{ off_duration | default(0.5) | float }}"
+          _brightness: "{{ brightness_pct | default(100) | int }}"
+          _scene_id: notification_light_snapshot
+      - service: scene.create
+        data:
+          scene_id: "{{ _scene_id }}"
+          snapshot_entities:
+            - "{{ _light }}"
+      - repeat:
+          count: "{{ _flash_count }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ _light }}"
+              data:
+                brightness_pct: "{{ _brightness | int }}"
+            - delay:
+                seconds: "{{ _on_time | float(0.5) }}"
+            - service: light.turn_off
+              target:
+                entity_id: "{{ _light }}"
+            - delay:
+                seconds: "{{ _off_time | float(0.5) }}"
+      - service: scene.turn_on
+        data:
+          entity_id: "scene.{{ _scene_id }}"
+      - service: scene.delete
+        data:
+          entity_id: "scene.{{ _scene_id }}"
+
+  notification_to_mobile:
+    alias: Notification - envio a movil
+    description: Envia una notificacion push al servicio indicado.
+    mode: parallel
+    max: 10
+    fields:
+      title:
+        name: Titulo
+        description: Titulo de la notificacion.
+        required: false
+        selector:
+          text:
+      message:
+        name: Mensaje
+        description: Contenido principal de la notificacion.
+        example: "Es hora de cenar!"
+        required: true
+        selector:
+          text:
+            multiline: true
+      notify_service:
+        name: Servicio notify
+        description: Servicio notify al que se enviara el mensaje.
+        required: false
+        default: notify.hernan
+        selector:
+          text:
+    sequence:
+      - variables:
+          _service: "{{ notify_service | default('notify.hernan') }}"
+          _title: "{{ title | default('Notificacion') }}"
+          _message: "{{ message }}"
+      - service: "{{ _service }}"
+        data:
+          title: "{{ _title }}"
+          message: "{{ _message }}"

@@ -1,0 +1,1962 @@
+# ------------------------------------------------------------------------------
+# Smart Climate Core - execution layer only
+# ------------------------------------------------------------------------------
+# Scope:
+# - Atomic scripts with retry/fallback for AC control
+# - No presence/sleep/controller decision automations here
+# - Main entity: climate.aire_acondicionado (LG ThinQ)
+# - Fallback entity: climate.aire_ir (IR) only for power on/off
+# ------------------------------------------------------------------------------
+
+#########################
+# Helpers
+#########################
+
+input_boolean:
+  # Canonical smart_climate helper set (consolidated from climate_gemini_v4).
+  smart_climate:
+    name: smart_climate
+    icon: mdi:brain
+
+  # Legacy compatibility helper retained during package consolidation.
+  clima_sala_auto:
+    name: clima_sala_auto
+    icon: mdi:thermostat-auto
+
+  smart_climate_debug:
+    name: smart_climate_debug
+    icon: mdi:bug-outline
+
+  smart_climate_ir_cooldown:
+    name: smart_climate_ir_cooldown
+    icon: mdi:timer-sand
+
+  # Description: Explicit user request to allow precooling even when away.
+  smart_climate_user_precool_request:
+    name: smart_climate_user_precool_request
+    icon: mdi:home-export-outline
+
+  # Description: Hard lock for fault situations; blocks controller actions except safe power-off flows.
+  smart_climate_error_lock:
+    name: smart_climate_error_lock
+    icon: mdi:alert-octagon-outline
+
+  # Description: User-facing notification enable switch.
+  smart_climate_notifications:
+    name: smart_climate_notifications
+    icon: mdi:bell-outline
+
+  # Description: If on, sleeping mode is allowed to force shutdown policy.
+  smart_climate_allow_sleep_shutdown:
+    name: smart_climate_allow_sleep_shutdown
+    icon: mdi:sleep
+    initial: true
+
+  # Description: Optional fan stage feature switch (currently not used by controller logic).
+  smart_climate_use_fan_stage:
+    name: smart_climate_use_fan_stage
+    icon: mdi:fan
+    initial: false
+
+input_select:
+  # Description: Legacy temperature source selector retained for dashboard compatibility.
+  sensor_temp_fav:
+    name: "Leer temperatura desde"
+    options:
+      - "Desde aire"
+      - "Desde sensor"
+    initial: "Desde aire"
+
+  # Description: High-level operation mode selected by user/controller.
+  smart_climate_modo:
+    name: smart_climate_modo
+    options:
+      - auto
+      - manual
+      - override
+      - precooling
+      - off
+    initial: auto
+    icon: mdi:tune-variant
+
+input_number:
+  smart_climate_api_fail_count:
+    name: smart_climate_api_fail_count
+    icon: mdi:counter
+    min: 0
+    max: 999
+    step: 1
+    mode: box
+
+  smart_climate_temp_offset:
+    name: smart_climate_temp_offset
+    icon: mdi:thermometer-chevron-up
+    min: -5
+    max: 5
+    step: 0.1
+    mode: slider
+    unit_of_measurement: "°C"
+
+  # Description: Comfort target temperature when home and awake.
+  smart_climate_target_temp_home:
+    name: smart_climate_target_temp_home
+    min: 16
+    max: 30
+    step: 0.1
+    mode: slider
+    unit_of_measurement: "°C"
+    initial: 25.0
+
+  # Description: Hysteresis band used to avoid oscillation.
+  smart_climate_hysteresis:
+    name: smart_climate_hysteresis
+    min: 0.1
+    max: 2.0
+    step: 0.1
+    mode: slider
+    unit_of_measurement: "°C"
+    initial: 0.5
+
+  # Description: Aggressive setpoint used while precooling is active.
+  smart_climate_precool_temp:
+    name: smart_climate_precool_temp
+    min: 16
+    max: 24
+    step: 0.1
+    mode: slider
+    unit_of_measurement: "°C"
+    initial: 19.0
+input_datetime:
+  smart_climate_last_action:
+    name: smart_climate_last_action
+    has_date: true
+    has_time: true
+
+input_text:
+  # Description: Latest decision emitted by the step-5 policy controller.
+  smart_climate_last_decision:
+    name: smart_climate_last_decision
+    max: 255
+
+  # Description: Latest action attempted by the step-5 policy controller.
+  smart_climate_last_action:
+    name: smart_climate_last_action
+    max: 255
+timer:
+  smart_climate_ir_cooldown:
+    name: smart_climate_ir_cooldown
+    duration: "00:05:00"
+
+  smart_climate_min_on:
+    name: smart_climate_min_on
+    duration: "00:10:00"
+
+  smart_climate_min_off:
+    name: smart_climate_min_off
+    duration: "00:06:00"
+
+  smart_climate_manual_hold:
+    name: smart_climate_manual_hold
+    duration: "01:30:00"
+
+  smart_climate_precooling:
+    name: smart_climate_precooling
+    duration: "00:30:00"
+
+#########################
+# Temperature Source & Derived Sensors (Step 3)
+#########################
+# Description:
+# - Defines the selected room temperature source (LG current temp vs room sensor)
+# - Applies configurable offset for smart_climate control
+# - Adds 10-minute mean statistics and debug delta sensor
+# - No controller automations in this section
+
+template:
+  - sensor:
+      # Description: Legacy on/off mirror for dashboard compatibility.
+      - name: clima_sala_estado
+        unique_id: clima_sala_estado
+        state: >-
+          {% set s = states('climate.aire_acondicionado') %}
+          {{ 1 if s not in ['off', 'unknown', 'unavailable'] else 0 }}
+        attributes:
+          estado_texto: "{{ states('climate.aire_acondicionado') }}"
+          icon: >-
+            {% if is_state('timer.ac_auto_off', 'active') %}mdi:brightness-5{% else %}mdi:brightness-4{% endif %}
+
+      # Description: Selectable temperature source used by smart_climate.
+      # Source is chosen by input_select.sensor_temp_fav:
+      # - "Desde aire" -> climate.aire_acondicionado current_temperature
+      # - "Desde sensor" -> sensor.temperature_sala
+      # If LG value is unavailable, it falls back to sensor.temperature_sala.
+      - name: clima_sala_temperatura
+        unique_id: clima_sala_temperatura
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: >-
+          {% set source = states('input_select.sensor_temp_fav') %}
+          {% set lg_temp = state_attr('climate.aire_acondicionado', 'current_temperature') | float(default=none) %}
+          {% set room_temp = states('sensor.temperature_sala') | float(default=none) %}
+          {% if source == 'Desde aire' %}
+            {% if lg_temp is not none %}
+              {{ lg_temp | round(1) }}
+            {% elif room_temp is not none %}
+              {{ room_temp | round(1) }}
+            {% else %}
+              unknown
+            {% endif %}
+          {% elif source == 'Desde sensor' %}
+            {% if room_temp is not none %}
+              {{ room_temp | round(1) }}
+            {% else %}
+              unknown
+            {% endif %}
+          {% else %}
+            {% if room_temp is not none %}
+              {{ room_temp | round(1) }}
+            {% elif lg_temp is not none %}
+              {{ lg_temp | round(1) }}
+            {% else %}
+              unknown
+            {% endif %}
+          {% endif %}
+        availability: >-
+          {% set source = states('input_select.sensor_temp_fav') %}
+          {% set lg_temp = state_attr('climate.aire_acondicionado', 'current_temperature') | float(default=none) %}
+          {% set room_temp = states('sensor.temperature_sala') | float(default=none) %}
+          {% if source == 'Desde sensor' %}
+            {{ room_temp is not none }}
+          {% elif source == 'Desde aire' %}
+            {{ (lg_temp is not none) or (room_temp is not none) }}
+          {% else %}
+            {{ (room_temp is not none) or (lg_temp is not none) }}
+          {% endif %}
+
+      # Description: Legacy compatibility mirror for the old dashboard/entity name.
+      - name: "Sala - Temp Interior"
+        unique_id: sala_temp_interior
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: >-
+          {% set temp = states('sensor.clima_sala_temperatura') | float(default=none) %}
+          {% if temp is not none %}
+            {{ temp | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        availability: >-
+          {% set temp = states('sensor.clima_sala_temperatura') | float(default=none) %}
+          {{ temp is not none }}
+
+      # Description: Real control temperature for the system.
+      # This is the only source the future controller should use for decisions.
+      - name: smart_climate_temp_control
+        unique_id: smart_climate_temp_control
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: >-
+          {% set source_temp = states('sensor.clima_sala_temperatura') | float(default=none) %}
+          {% set temp_offset = states('input_number.smart_climate_temp_offset') | float(default=none) %}
+          {% if source_temp is not none and temp_offset is not none %}
+            {{ (source_temp + temp_offset) | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        availability: >-
+          {% set source_temp = states('sensor.clima_sala_temperatura') | float(default=none) %}
+          {% set temp_offset = states('input_number.smart_climate_temp_offset') | float(default=none) %}
+          {{ source_temp is not none and temp_offset is not none }}
+
+      # Description: Delta between current control temperature and 10-minute mean.
+      # Useful for debug/trend visibility (positive = above mean, negative = below mean).
+      - name: smart_climate_temp_delta_vs_mean_10m
+        unique_id: smart_climate_temp_delta_vs_mean_10m
+        unit_of_measurement: "°C"
+        state: >-
+          {% set temp_control = states('sensor.smart_climate_temp_control') | float(default=none) %}
+          {% set mean_10m = states('sensor.smart_climate_temp_stats_10m') | float(default=none) %}
+          {% if temp_control is not none and mean_10m is not none %}
+            {{ (temp_control - mean_10m) | round(2) }}
+          {% else %}
+            unknown
+          {% endif %}
+        availability: >-
+          {% set temp_control = states('sensor.smart_climate_temp_control') | float(default=none) %}
+          {% set mean_10m = states('sensor.smart_climate_temp_stats_10m') | float(default=none) %}
+          {{ temp_control is not none and mean_10m is not none }}
+
+      # Description: Human-readable trend text for dashboard/debug.
+      - name: sala_temp_trend_text
+        unique_id: sala_temp_trend_text
+        state: >-
+          {% set trend = states('binary_sensor.sala_temp_trend') %}
+          {% if trend == 'on' %}
+            subiendo
+          {% elif trend == 'off' %}
+            bajando
+          {% else %}
+            estable
+          {% endif %}
+        icon: >-
+          {% set trend = states('binary_sensor.sala_temp_trend') %}
+          {% if trend == 'on' %}
+            mdi:arrow-up
+          {% elif trend == 'off' %}
+            mdi:arrow-down
+          {% else %}
+            mdi:arrow-left-right
+          {% endif %}
+
+  - binary_sensor:
+      # Description: True when tracked person is at home.
+      - name: smart_climate_is_home
+        unique_id: smart_climate_is_home
+        state: "{{ is_state('person.hernan', 'home') }}"
+
+      # Description: Raw sleeping state from input_select.sleep_state.
+      - name: smart_climate_is_sleeping_raw
+        unique_id: smart_climate_is_sleeping_raw
+        state: >-
+          {{ states('input_select.sleep_state') in ['preparing_sleep', 'light_sleep', 'deep_sleep'] }}
+
+      # Description: Sleep override guard (modo_sofa on means ignore sleeping policies).
+      - name: smart_climate_ignore_sleep
+        unique_id: smart_climate_ignore_sleep
+        state: "{{ is_state('input_boolean.modo_sofa', 'on') }}"
+
+      # Description: Effective sleeping considering modo_sofa override.
+      - name: smart_climate_is_sleeping_effective
+        unique_id: smart_climate_is_sleeping_effective
+        state: >-
+          {{ is_state('binary_sensor.smart_climate_is_sleeping_raw', 'on')
+             and not is_state('binary_sensor.smart_climate_ignore_sleep', 'on') }}
+
+      # Description: True when controller actions are currently allowed by policy guardrails.
+      - name: smart_climate_action_allowed
+        unique_id: smart_climate_action_allowed
+        state: "{{ states('sensor.smart_climate_action_block_reason') == 'none' }}"
+
+  - sensor:
+      # Description: High-level context classification for policy logic.
+      - name: smart_climate_context
+        unique_id: smart_climate_context
+        state: >-
+          {% if not is_state('binary_sensor.smart_climate_is_home', 'on') %}
+            away
+          {% elif is_state('binary_sensor.smart_climate_is_sleeping_effective', 'on') %}
+            home_sleep
+          {% else %}
+            home_awake
+          {% endif %}
+
+      # Description: Effective system mode computed from guardrails and timers.
+      - name: smart_climate_effective_mode
+        unique_id: smart_climate_effective_mode
+        state: >-
+          {% set smart_enabled = is_state('input_boolean.smart_climate', 'on') %}
+          {% set error_lock = is_state('input_boolean.smart_climate_error_lock', 'on') %}
+          {% set is_home = is_state('binary_sensor.smart_climate_is_home', 'on') %}
+          {% set sleep_effective = is_state('binary_sensor.smart_climate_is_sleeping_effective', 'on') %}
+          {% set precool_timer = is_state('timer.smart_climate_precooling', 'active') %}
+          {% set manual_hold_timer = is_state('timer.smart_climate_manual_hold', 'active') %}
+          {% set modo = states('input_select.smart_climate_modo') %}
+          {% set away_precool_request = is_state('input_boolean.smart_climate_user_precool_request', 'on') %}
+          {% if not smart_enabled %}
+            disabled
+          {% elif error_lock %}
+            error_lock
+          {% elif not is_home %}
+            {% if away_precool_request or precool_timer %}
+              away_precool
+            {% else %}
+              away
+            {% endif %}
+          {% elif precool_timer or modo == 'precooling' %}
+            precooling
+          {% elif manual_hold_timer or modo == 'manual' %}
+            manual_hold
+          {% elif sleep_effective %}
+            sleeping
+          {% elif modo == 'auto' %}
+            auto
+          {% elif modo == 'override' %}
+            override
+          {% elif modo == 'off' %}
+            off
+          {% else %}
+            auto
+          {% endif %}
+
+      # Description: First blocking reason applied by policy guardrails.
+      - name: smart_climate_action_block_reason
+        unique_id: smart_climate_action_block_reason
+        state: >-
+          {% set mode = states('sensor.smart_climate_effective_mode') %}
+          {% if mode in ['unknown', 'unavailable', 'none', ''] %}
+            unknown
+          {% elif mode == 'disabled' %}
+            disabled
+          {% elif mode == 'error_lock' %}
+            error_lock
+          {% elif mode == 'manual_hold' %}
+            manual_hold
+          {% elif mode == 'off' %}
+            off
+          {% elif is_state('timer.smart_climate_min_off', 'active') %}
+            min_off_active
+          {% else %}
+            none
+          {% endif %}
+
+      # Description: Compact policy summary for dashboard/debug panels.
+      - name: smart_climate_policy_summary
+        unique_id: smart_climate_policy_summary
+        state: >-
+          {% set mode = states('sensor.smart_climate_effective_mode') %}
+          {% set context = states('sensor.smart_climate_context') %}
+          {% set home = 1 if is_state('binary_sensor.smart_climate_is_home', 'on') else 0 %}
+          {% set sleeping = 1 if is_state('binary_sensor.smart_climate_is_sleeping_effective', 'on') else 0 %}
+          {% set sofa = 1 if is_state('binary_sensor.smart_climate_ignore_sleep', 'on') else 0 %}
+          {% set allowed = 1 if is_state('binary_sensor.smart_climate_action_allowed', 'on') else 0 %}
+          {{ 'mode=' ~ mode ~ ' | context=' ~ context ~ ' | home=' ~ home
+             ~ ' | sleeping=' ~ sleeping ~ ' | sofa=' ~ sofa ~ ' | allowed=' ~ allowed }}
+
+sensor:
+  # Description: 10-minute moving mean for smart_climate_temp_control.
+  # Used for stability/debug and future controller smoothing decisions.
+  - platform: statistics
+    name: smart_climate_temp_stats_10m
+    unique_id: smart_climate_temp_stats_10m
+    entity_id: sensor.smart_climate_temp_control
+    state_characteristic: mean
+    max_age:
+      minutes: 10
+    keep_last_sample: true
+    sampling_size: 60
+
+binary_sensor:
+  # Description: Temperature trend binary sensor (5-minute trend window).
+  # Kept for legacy dashboard compatibility after migration from climate_gemini_v4.
+  - platform: trend
+    sensors:
+      sala_temp_trend:
+        entity_id: sensor.clima_sala_temperatura
+        friendly_name: "Tendencia temperatura sala"
+        sample_duration: 300
+        max_samples: 5
+        min_gradient: 0.001
+        device_class: heat
+
+#########################
+# Scripts
+#########################
+
+script:
+  # ---------------------------------------------------------------------------
+  # Debug helper
+  # ---------------------------------------------------------------------------
+  smart_climate_debug_log:
+    alias: smart_climate_debug_log
+    description: Writes debug logs only when input_boolean.smart_climate_debug is on.
+    mode: parallel
+    fields:
+      message:
+        name: message
+        description: Debug message to write in logbook.
+        required: true
+    sequence:
+      - condition: state
+        entity_id: input_boolean.smart_climate_debug
+        state: "on"
+      - service: logbook.log
+        data:
+          name: smart_climate_core
+          message: "{{ message }}"
+          entity_id: climate.aire_acondicionado
+
+  # ---------------------------------------------------------------------------
+  # Notification helper
+  # ---------------------------------------------------------------------------
+  smart_climate_notify:
+    alias: smart_climate_notify
+    description: Sends a user-facing smart_climate notification when notifications are enabled.
+    mode: parallel
+    fields:
+      title:
+        name: title
+        description: Notification title.
+        required: false
+      message:
+        name: message
+        description: Notification body.
+        required: true
+    sequence:
+      - condition: state
+        entity_id: input_boolean.smart_climate_notifications
+        state: "on"
+      - service: notify.hernan
+        data:
+          title: "{{ title | default('Smart Climate') }}"
+          message: "{{ message }}"
+
+  # ---------------------------------------------------------------------------
+  # Action helpers for mobile notifications
+  # ---------------------------------------------------------------------------
+  smart_climate_stop_precooling_and_power_off:
+    alias: smart_climate_stop_precooling_and_power_off
+    description: Cancels precooling/request state if needed and powers off the AC.
+    mode: restart
+    sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.smart_climate_user_precool_request
+      - service: timer.cancel
+        target:
+          entity_id: timer.smart_climate_precooling
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.smart_climate_modo
+                state: precooling
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.smart_climate_modo
+                data:
+                  option: auto
+      - service: script.smart_climate_exec_apply
+        data:
+          power: "off"
+
+  smart_climate_power_off_in_15m:
+    alias: smart_climate_power_off_in_15m
+    description: Waits 15 minutes and then powers off the AC, cancelling precooling if active.
+    mode: restart
+    sequence:
+      - delay: "00:15:00"
+      - service: script.smart_climate_stop_precooling_and_power_off
+
+  smart_climate_power_on_manual_90m:
+    alias: smart_climate_power_on_manual_90m
+    description: Powers on the AC and keeps manual hold active for 90 minutes.
+    mode: restart
+    sequence:
+      - service: timer.start
+        target:
+          entity_id: timer.smart_climate_manual_hold
+        data:
+          duration: "01:30:00"
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.smart_climate_modo
+        data:
+          option: manual
+      - service: script.smart_climate_exec_apply
+        data:
+          power: "on"
+          hvac_mode: "cool"
+          temperature: "{{ states('input_number.smart_climate_target_temp_home') | float(default=25.0) }}"
+
+  # ---------------------------------------------------------------------------
+  # Timestamp helper
+  # ---------------------------------------------------------------------------
+  smart_climate_touch_last_action:
+    alias: smart_climate_touch_last_action
+    description: Updates input_datetime.smart_climate_last_action with the current timestamp.
+    mode: parallel
+    sequence:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.smart_climate_last_action
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+  # ---------------------------------------------------------------------------
+  # Keep cooldown boolean in sync with timer state
+  # ---------------------------------------------------------------------------
+  smart_climate_sync_ir_cooldown:
+    alias: smart_climate_sync_ir_cooldown
+    description: Mirrors timer.smart_climate_ir_cooldown state into input_boolean.smart_climate_ir_cooldown.
+    mode: single
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: timer.smart_climate_ir_cooldown
+                state: "active"
+            sequence:
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.smart_climate_ir_cooldown
+        default:
+          - service: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.smart_climate_ir_cooldown
+
+  # ---------------------------------------------------------------------------
+  # 1) Power ON executor
+  # ---------------------------------------------------------------------------
+  smart_climate_exec_power_on:
+    alias: smart_climate_exec_power_on
+    description: Turns on AC using LG with up to 3 attempts; falls back to IR if LG fails and cooldown is idle.
+    mode: single
+    max_exceeded: silent
+    sequence:
+      - service: script.smart_climate_sync_ir_cooldown
+
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.smart_climate
+                state: "off"
+            sequence:
+              - service: script.smart_climate_debug_log
+                data:
+                  message: "exec_power_on skipped: input_boolean.smart_climate is off."
+              - stop: smart_climate is off
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {% set s = states('climate.aire_acondicionado') %}
+                  {% set m = state_attr('climate.aire_acondicionado', 'hvac_mode') %}
+                  {% set p = state_attr('climate.aire_acondicionado', 'power') %}
+                  {% set p_on = (p is not none) and (p|string|lower in ['on','true','1']) %}
+                  {{ (s not in ['off', 'unknown', 'unavailable']) or (m is not none and m != 'off') or p_on }}
+            sequence:
+              - service: script.smart_climate_debug_log
+                data:
+                  message: "exec_power_on idempotent skip: AC already on."
+              - service: script.smart_climate_touch_last_action
+              - stop: AC already on
+
+      - variables:
+          lg_success: false
+
+      - repeat:
+          count: 3
+          sequence:
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ not lg_success }}"
+                  sequence:
+                    - service: climate.turn_on
+                      target:
+                        entity_id: climate.aire_acondicionado
+                    - wait_template: >-
+                        {% set s = states('climate.aire_acondicionado') %}
+                        {% set m = state_attr('climate.aire_acondicionado', 'hvac_mode') %}
+                        {% set p = state_attr('climate.aire_acondicionado', 'power') %}
+                        {% set p_on = (p is not none) and (p|string|lower in ['on','true','1']) %}
+                        {{ (s not in ['off', 'unknown', 'unavailable']) or (m is not none and m != 'off') or p_on }}
+                      timeout: "00:00:08"
+                      continue_on_timeout: true
+                    - choose:
+                        - conditions:
+                            - condition: template
+                              value_template: "{{ wait.completed }}"
+                          sequence:
+                            - variables:
+                                lg_success: true
+                            - service: input_number.set_value
+                              target:
+                                entity_id: input_number.smart_climate_api_fail_count
+                              data:
+                                value: 0
+                            - service: script.smart_climate_debug_log
+                              data:
+                                message: "exec_power_on LG success at attempt {{ repeat.index }}."
+                      default:
+                        - service: input_number.set_value
+                          target:
+                            entity_id: input_number.smart_climate_api_fail_count
+                          data:
+                            value: "{{ [states('input_number.smart_climate_api_fail_count')|int(0) + 1, 999] | min }}"
+                        - service: script.smart_climate_debug_log
+                          data:
+                            message: "exec_power_on LG failed at attempt {{ repeat.index }}."
+                        - delay: "00:00:02"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ not lg_success }}"
+            sequence:
+              - variables:
+                  ir_cooldown_active: >-
+                    {{ is_state('timer.smart_climate_ir_cooldown', 'active')
+                       or is_state('input_boolean.smart_climate_ir_cooldown', 'on') }}
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ ir_cooldown_active }}"
+                    sequence:
+                      - service: script.smart_climate_debug_log
+                        data:
+                          message: "exec_power_on fallback blocked: IR cooldown active."
+                default:
+                  - service: climate.turn_on
+                    target:
+                      entity_id: climate.aire_ir
+                  - service: input_boolean.turn_on
+                    target:
+                      entity_id: input_boolean.smart_climate_ir_cooldown
+                  - service: timer.start
+                    target:
+                      entity_id: timer.smart_climate_ir_cooldown
+                    data:
+                      duration: "00:05:00"
+                  - service: script.smart_climate_debug_log
+                    data:
+                      message: "exec_power_on fallback executed via IR and cooldown started."
+
+      - service: script.smart_climate_touch_last_action
+
+  # ---------------------------------------------------------------------------
+  # 2) Power OFF executor (critical reliability)
+  # ---------------------------------------------------------------------------
+  smart_climate_exec_power_off:
+    alias: smart_climate_exec_power_off
+    description: Turns off AC using LG with up to 3 attempts; falls back to IR if LG fails and cooldown is idle.
+    mode: single
+    max_exceeded: silent
+    sequence:
+      - service: script.smart_climate_sync_ir_cooldown
+
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.smart_climate
+                state: "off"
+            sequence:
+              - service: script.smart_climate_debug_log
+                data:
+                  message: "exec_power_off skipped: input_boolean.smart_climate is off."
+              - stop: smart_climate is off
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {% set s = states('climate.aire_acondicionado') %}
+                  {% set m = state_attr('climate.aire_acondicionado', 'hvac_mode') %}
+                  {% set p = state_attr('climate.aire_acondicionado', 'power') %}
+                  {% set p_off = (p is not none) and (p|string|lower in ['off','false','0']) %}
+                  {{ s == 'off' or m == 'off' or p_off }}
+            sequence:
+              - service: script.smart_climate_debug_log
+                data:
+                  message: "exec_power_off idempotent skip: AC already off."
+              - service: script.smart_climate_touch_last_action
+              - stop: AC already off
+
+      - variables:
+          lg_success: false
+
+      - repeat:
+          count: 3
+          sequence:
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ not lg_success }}"
+                  sequence:
+                    - service: climate.turn_off
+                      target:
+                        entity_id: climate.aire_acondicionado
+                    - wait_template: >-
+                        {% set s = states('climate.aire_acondicionado') %}
+                        {% set m = state_attr('climate.aire_acondicionado', 'hvac_mode') %}
+                        {% set p = state_attr('climate.aire_acondicionado', 'power') %}
+                        {% set p_off = (p is not none) and (p|string|lower in ['off','false','0']) %}
+                        {{ s == 'off' or m == 'off' or p_off }}
+                      timeout: "00:00:08"
+                      continue_on_timeout: true
+                    - choose:
+                        - conditions:
+                            - condition: template
+                              value_template: "{{ wait.completed }}"
+                          sequence:
+                            - variables:
+                                lg_success: true
+                            - service: input_number.set_value
+                              target:
+                                entity_id: input_number.smart_climate_api_fail_count
+                              data:
+                                value: 0
+                            - service: script.smart_climate_debug_log
+                              data:
+                                message: "exec_power_off LG success at attempt {{ repeat.index }}."
+                      default:
+                        - service: input_number.set_value
+                          target:
+                            entity_id: input_number.smart_climate_api_fail_count
+                          data:
+                            value: "{{ [states('input_number.smart_climate_api_fail_count')|int(0) + 1, 999] | min }}"
+                        - service: script.smart_climate_debug_log
+                          data:
+                            message: "exec_power_off LG failed at attempt {{ repeat.index }}."
+                        - delay: "00:00:02"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ not lg_success }}"
+            sequence:
+              - variables:
+                  ir_cooldown_active: >-
+                    {{ is_state('timer.smart_climate_ir_cooldown', 'active')
+                       or is_state('input_boolean.smart_climate_ir_cooldown', 'on') }}
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ ir_cooldown_active }}"
+                    sequence:
+                      - service: script.smart_climate_debug_log
+                        data:
+                          message: "exec_power_off fallback blocked: IR cooldown active."
+                default:
+                  - service: climate.turn_off
+                    target:
+                      entity_id: climate.aire_ir
+                  - service: input_boolean.turn_on
+                    target:
+                      entity_id: input_boolean.smart_climate_ir_cooldown
+                  - service: timer.start
+                    target:
+                      entity_id: timer.smart_climate_ir_cooldown
+                    data:
+                      duration: "00:05:00"
+                  - service: script.smart_climate_debug_log
+                    data:
+                      message: "exec_power_off fallback executed via IR and cooldown started."
+
+      - service: script.smart_climate_touch_last_action
+
+  # ---------------------------------------------------------------------------
+  # 3) Set temperature executor (LG only)
+  # ---------------------------------------------------------------------------
+  smart_climate_exec_set_temperature:
+    alias: smart_climate_exec_set_temperature
+    description: Sets target temperature via LG only, with up to 3 attempts and state-based validation.
+    mode: single
+    max_exceeded: silent
+    fields:
+      temperature:
+        name: temperature
+        description: Target temperature in Celsius.
+        required: true
+        selector:
+          number:
+            min: 16
+            max: 30
+            step: 0.5
+            unit_of_measurement: "C"
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.smart_climate
+                state: "off"
+            sequence:
+              - service: script.smart_climate_debug_log
+                data:
+                  message: "exec_set_temperature skipped: input_boolean.smart_climate is off."
+              - stop: smart_climate is off
+
+      - variables:
+          desired_temperature: "{{ temperature | float }}"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {% set t = state_attr('climate.aire_acondicionado', 'temperature') %}
+                  {% set t_alt = state_attr('climate.aire_acondicionado', 'target_temp') %}
+                  {% set current_target = t if t is not none else t_alt %}
+                  {{ current_target is not none and ((current_target|float - desired_temperature|float)|abs <= 0.1) }}
+            sequence:
+              - service: script.smart_climate_debug_log
+                data:
+                  message: "exec_set_temperature idempotent skip: target already {{ desired_temperature }}."
+              - service: script.smart_climate_touch_last_action
+              - stop: Temperature already set
+
+      - variables:
+          lg_success: false
+
+      - repeat:
+          count: 3
+          sequence:
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ not lg_success }}"
+                  sequence:
+                    - service: climate.set_temperature
+                      target:
+                        entity_id: climate.aire_acondicionado
+                      data:
+                        temperature: "{{ desired_temperature }}"
+                    - wait_template: >-
+                        {% set t = state_attr('climate.aire_acondicionado', 'temperature') %}
+                        {% set t_alt = state_attr('climate.aire_acondicionado', 'target_temp') %}
+                        {% set current_target = t if t is not none else t_alt %}
+                        {{ current_target is not none and ((current_target|float - desired_temperature|float)|abs <= 0.1) }}
+                      timeout: "00:00:08"
+                      continue_on_timeout: true
+                    - choose:
+                        - conditions:
+                            - condition: template
+                              value_template: "{{ wait.completed }}"
+                          sequence:
+                            - variables:
+                                lg_success: true
+                            - service: input_number.set_value
+                              target:
+                                entity_id: input_number.smart_climate_api_fail_count
+                              data:
+                                value: 0
+                            - service: script.smart_climate_debug_log
+                              data:
+                                message: "exec_set_temperature LG success at attempt {{ repeat.index }}."
+                      default:
+                        - service: input_number.set_value
+                          target:
+                            entity_id: input_number.smart_climate_api_fail_count
+                          data:
+                            value: "{{ [states('input_number.smart_climate_api_fail_count')|int(0) + 1, 999] | min }}"
+                        - service: script.smart_climate_debug_log
+                          data:
+                            message: "exec_set_temperature LG failed at attempt {{ repeat.index }}."
+                        - delay: "00:00:02"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ not lg_success }}"
+            sequence:
+              - service: script.smart_climate_debug_log
+                data:
+                  message: "exec_set_temperature finished with LG failure after retries (no IR fallback)."
+
+      - service: script.smart_climate_touch_last_action
+
+  # ---------------------------------------------------------------------------
+  # 4) Set cooling/hvac mode executor (LG only)
+  # ---------------------------------------------------------------------------
+  smart_climate_exec_set_cooling:
+    alias: smart_climate_exec_set_cooling
+    description: Sets hvac_mode via LG only (default cool), with retries and state-based validation.
+    mode: single
+    max_exceeded: silent
+    fields:
+      hvac_mode:
+        name: hvac_mode
+        description: Target hvac mode (cool, fan_only, auto).
+        required: false
+        selector:
+          select:
+            options:
+              - cool
+              - fan_only
+              - auto
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.smart_climate
+                state: "off"
+            sequence:
+              - service: script.smart_climate_debug_log
+                data:
+                  message: "exec_set_cooling skipped: input_boolean.smart_climate is off."
+              - stop: smart_climate is off
+
+      - variables:
+          desired_hvac_mode: "{{ (hvac_mode | default('cool')) | string | lower }}"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ desired_hvac_mode not in ['cool', 'fan_only', 'auto'] }}"
+            sequence:
+              - service: script.smart_climate_debug_log
+                data:
+                  message: "exec_set_cooling invalid hvac_mode requested: {{ desired_hvac_mode }}."
+              - stop: invalid hvac_mode
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {% set state_mode = states('climate.aire_acondicionado') %}
+                  {% set attr_mode = state_attr('climate.aire_acondicionado', 'hvac_mode') %}
+                  {{ state_mode == desired_hvac_mode or attr_mode == desired_hvac_mode }}
+            sequence:
+              - service: script.smart_climate_debug_log
+                data:
+                  message: "exec_set_cooling idempotent skip: hvac_mode already {{ desired_hvac_mode }}."
+              - service: script.smart_climate_touch_last_action
+              - stop: Hvac mode already set
+
+      - variables:
+          lg_success: false
+
+      - repeat:
+          count: 3
+          sequence:
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ not lg_success }}"
+                  sequence:
+                    - service: climate.set_hvac_mode
+                      target:
+                        entity_id: climate.aire_acondicionado
+                      data:
+                        hvac_mode: "{{ desired_hvac_mode }}"
+                    - wait_template: >-
+                        {% set state_mode = states('climate.aire_acondicionado') %}
+                        {% set attr_mode = state_attr('climate.aire_acondicionado', 'hvac_mode') %}
+                        {{ state_mode == desired_hvac_mode or attr_mode == desired_hvac_mode }}
+                      timeout: "00:00:08"
+                      continue_on_timeout: true
+                    - choose:
+                        - conditions:
+                            - condition: template
+                              value_template: "{{ wait.completed }}"
+                          sequence:
+                            - variables:
+                                lg_success: true
+                            - service: input_number.set_value
+                              target:
+                                entity_id: input_number.smart_climate_api_fail_count
+                              data:
+                                value: 0
+                            - service: script.smart_climate_debug_log
+                              data:
+                                message: "exec_set_cooling LG success at attempt {{ repeat.index }} ({{ desired_hvac_mode }})."
+                      default:
+                        - service: input_number.set_value
+                          target:
+                            entity_id: input_number.smart_climate_api_fail_count
+                          data:
+                            value: "{{ [states('input_number.smart_climate_api_fail_count')|int(0) + 1, 999] | min }}"
+                        - service: script.smart_climate_debug_log
+                          data:
+                            message: "exec_set_cooling LG failed at attempt {{ repeat.index }} ({{ desired_hvac_mode }})."
+                        - delay: "00:00:02"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ not lg_success }}"
+            sequence:
+              - service: script.smart_climate_debug_log
+                data:
+                  message: "exec_set_cooling finished with LG failure after retries (no IR fallback)."
+
+      - service: script.smart_climate_touch_last_action
+
+  # ---------------------------------------------------------------------------
+  # 5) Wrapper apply script
+  # ---------------------------------------------------------------------------
+  smart_climate_exec_apply:
+    alias: smart_climate_exec_apply
+    description: Idempotent wrapper that applies optional power/hvac_mode/temperature in a fixed order.
+    mode: single
+    max_exceeded: silent
+    fields:
+      power:
+        name: power
+        description: Optional power command (on/off).
+        required: false
+        selector:
+          select:
+            options:
+              - "on"
+              - "off"
+      hvac_mode:
+        name: hvac_mode
+        description: Optional hvac mode (cool/fan_only/auto).
+        required: false
+        selector:
+          select:
+            options:
+              - cool
+              - fan_only
+              - auto
+      temperature:
+        name: temperature
+        description: Optional temperature setpoint in Celsius.
+        required: false
+        selector:
+          number:
+            min: 16
+            max: 30
+            step: 0.5
+            unit_of_measurement: "C"
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.smart_climate
+                state: "off"
+            sequence:
+              - service: script.smart_climate_debug_log
+                data:
+                  message: "exec_apply skipped: input_boolean.smart_climate is off."
+              - stop: smart_climate is off
+
+      - variables:
+          requested_power: "{{ power | default(none) }}"
+          requested_hvac_mode: "{{ hvac_mode | default(none) }}"
+          requested_temperature: "{{ temperature | default(none) }}"
+
+      # Order 1: power on
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ requested_power == 'on' }}"
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: >-
+                          {% set s = states('climate.aire_acondicionado') %}
+                          {% set m = state_attr('climate.aire_acondicionado', 'hvac_mode') %}
+                          {% set p = state_attr('climate.aire_acondicionado', 'power') %}
+                          {% set p_on = (p is not none) and (p|string|lower in ['on','true','1']) %}
+                          {{ (s not in ['off', 'unknown', 'unavailable']) or (m is not none and m != 'off') or p_on }}
+                    sequence:
+                      - service: script.smart_climate_debug_log
+                        data:
+                          message: "exec_apply skipped power on: AC already on."
+                default:
+                  - service: script.smart_climate_exec_power_on
+
+      # Order 2: hvac_mode
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ requested_hvac_mode is not none }}"
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: >-
+                          {% set state_mode = states('climate.aire_acondicionado') %}
+                          {% set attr_mode = state_attr('climate.aire_acondicionado', 'hvac_mode') %}
+                          {{ state_mode == requested_hvac_mode or attr_mode == requested_hvac_mode }}
+                    sequence:
+                      - service: script.smart_climate_debug_log
+                        data:
+                          message: "exec_apply skipped hvac_mode: already {{ requested_hvac_mode }}."
+                default:
+                  - service: script.smart_climate_exec_set_cooling
+                    data:
+                      hvac_mode: "{{ requested_hvac_mode }}"
+
+      # Order 3: temperature
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ requested_temperature is not none }}"
+            sequence:
+              - variables:
+                  requested_temperature_float: "{{ requested_temperature | float }}"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: >-
+                          {% set t = state_attr('climate.aire_acondicionado', 'temperature') %}
+                          {% set t_alt = state_attr('climate.aire_acondicionado', 'target_temp') %}
+                          {% set current_target = t if t is not none else t_alt %}
+                          {{ current_target is not none and ((current_target|float - requested_temperature_float|float)|abs <= 0.1) }}
+                    sequence:
+                      - service: script.smart_climate_debug_log
+                        data:
+                          message: "exec_apply skipped temperature: already {{ requested_temperature_float }}."
+                default:
+                  - service: script.smart_climate_exec_set_temperature
+                    data:
+                      temperature: "{{ requested_temperature_float }}"
+
+      # Order 4: power off
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ requested_power == 'off' }}"
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: >-
+                          {% set s = states('climate.aire_acondicionado') %}
+                          {% set m = state_attr('climate.aire_acondicionado', 'hvac_mode') %}
+                          {% set p = state_attr('climate.aire_acondicionado', 'power') %}
+                          {% set p_off = (p is not none) and (p|string|lower in ['off','false','0']) %}
+                          {{ s == 'off' or m == 'off' or p_off }}
+                    sequence:
+                      - service: script.smart_climate_debug_log
+                        data:
+                          message: "exec_apply skipped power off: AC already off."
+                default:
+                  - service: script.smart_climate_exec_power_off
+
+
+#########################
+# Controller & Guardrail Automations (Step 5)
+#########################
+# Description:
+# - This controller decides policy/state transitions.
+# - It NEVER calls climate.* services directly.
+# - It uses script.smart_climate_exec_apply exclusively for execution.
+
+automation:
+  - id: smart_climate_controller
+    alias: smart_climate_controller
+    description: Main smart_climate policy controller. Uses effective_mode + temp_control + guardrails.
+    mode: single
+    max_exceeded: queued
+    trigger:
+      - platform: state
+        entity_id: sensor.smart_climate_temp_control
+      - platform: state
+        entity_id: sensor.smart_climate_effective_mode
+      - platform: state
+        entity_id: input_number.smart_climate_target_temp_home
+      - platform: state
+        entity_id: input_number.smart_climate_hysteresis
+      - platform: state
+        entity_id: input_number.smart_climate_precool_temp
+      - platform: state
+        entity_id: input_select.smart_climate_modo
+      - platform: state
+        entity_id: input_boolean.smart_climate
+      - platform: state
+        entity_id: input_boolean.smart_climate_error_lock
+      - platform: state
+        entity_id: binary_sensor.smart_climate_is_home
+      - platform: state
+        entity_id: binary_sensor.smart_climate_is_sleeping_effective
+      - platform: state
+        entity_id: binary_sensor.smart_climate_action_allowed
+      - platform: state
+        entity_id: input_boolean.smart_climate_user_precool_request
+      - platform: state
+        entity_id: input_boolean.smart_climate_allow_sleep_shutdown
+      - platform: state
+        entity_id: climate.aire_acondicionado
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.smart_climate_min_on
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.smart_climate_min_off
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.smart_climate_precooling
+      - platform: time_pattern
+        minutes: "/5"
+    action:
+      - variables:
+          trigger_source: >-
+            {% if trigger.platform == 'state' %}
+              {{ trigger.entity_id }}
+            {% elif trigger.platform == 'time_pattern' %}
+              watchdog_5m
+            {% elif trigger.platform == 'event' %}
+              {{ trigger.event.event_type }}:{{ trigger.event.data.entity_id | default('unknown') }}
+            {% else %}
+              {{ trigger.platform }}
+            {% endif %}
+          effective_mode: "{{ states('sensor.smart_climate_effective_mode') }}"
+          action_allowed: "{{ is_state('binary_sensor.smart_climate_action_allowed', 'on') }}"
+          block_reason: "{{ states('sensor.smart_climate_action_block_reason') }}"
+          is_home: "{{ is_state('binary_sensor.smart_climate_is_home', 'on') }}"
+          temp: "{{ states('sensor.smart_climate_temp_control') | float(default=none) }}"
+          target_home: "{{ states('input_number.smart_climate_target_temp_home') | float(default=25.0) }}"
+          hyst: "{{ states('input_number.smart_climate_hysteresis') | float(default=0.5) }}"
+          precool_temp: "{{ states('input_number.smart_climate_precool_temp') | float(default=19.0) }}"
+          allow_sleep_shutdown: "{{ is_state('input_boolean.smart_climate_allow_sleep_shutdown', 'on') }}"
+          min_on_active: "{{ is_state('timer.smart_climate_min_on', 'active') }}"
+          min_off_active: "{{ is_state('timer.smart_climate_min_off', 'active') }}"
+          precool_active: "{{ is_state('timer.smart_climate_precooling', 'active') }}"
+          ac_state: "{{ states('climate.aire_acondicionado') }}"
+          ac_hvac: "{{ state_attr('climate.aire_acondicionado', 'hvac_mode') | default('unknown') }}"
+          ac_target: "{{ state_attr('climate.aire_acondicionado', 'temperature') | float(default=none) }}"
+          temp_valid: "{{ temp is not none }}"
+          need_cool: "{{ temp is not none and temp >= (target_home + hyst) }}"
+          can_stop: "{{ temp is not none and temp <= (target_home - hyst) }}"
+          ac_is_on: "{{ ac_state not in ['off', 'unknown', 'unavailable'] and ac_hvac != 'off' }}"
+          desired_action: none
+          desired_temp: "{{ target_home }}"
+          decision_text: "init"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ effective_mode == 'disabled' }}"
+            sequence:
+              - variables:
+                  desired_action: none
+                  decision_text: "disabled"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ effective_mode == 'error_lock' }}"
+            sequence:
+              - variables:
+                  desired_action: off
+                  decision_text: "error_lock (only off allowed)"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ effective_mode == 'away' }}"
+            sequence:
+              - variables:
+                  desired_action: off
+                  decision_text: "away -> force off (failsafe)"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ effective_mode == 'away_precool' }}"
+            sequence:
+              - variables:
+                  desired_action: precool_on
+                  desired_temp: "{{ precool_temp }}"
+                  decision_text: "away_precool -> keep cooling"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ not precool_active }}"
+                    sequence:
+                      - service: timer.start
+                        target:
+                          entity_id: timer.smart_climate_precooling
+
+          - conditions:
+              - condition: template
+                value_template: "{{ effective_mode == 'manual_hold' }}"
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ (not is_home) and ac_is_on }}"
+                    sequence:
+                      - variables:
+                          desired_action: off
+                          decision_text: "manual_hold but away -> force off"
+                default:
+                  - variables:
+                      desired_action: none
+                      decision_text: "manual_hold"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ effective_mode == 'sleeping' }}"
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ allow_sleep_shutdown and ac_is_on and not min_on_active }}"
+                    sequence:
+                      - variables:
+                          desired_action: off
+                          decision_text: "sleeping -> shutdown"
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ allow_sleep_shutdown and ac_is_on and min_on_active }}"
+                    sequence:
+                      - variables:
+                          desired_action: none
+                          decision_text: "sleeping -> waiting min_on"
+                default:
+                  - variables:
+                      decision_text: "sleeping -> treated as auto"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ desired_action == 'none' and (not allow_sleep_shutdown) }}"
+                    sequence:
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ not temp_valid }}"
+                            sequence:
+                              - variables:
+                                  desired_action: none
+                                  decision_text: "sleeping(auto) -> temp unavailable"
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ need_cool and not min_off_active }}"
+                            sequence:
+                              - variables:
+                                  desired_action: cool_on
+                                  desired_temp: "{{ target_home }}"
+                                  decision_text: "sleeping(auto) -> need_cool"
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ need_cool and min_off_active }}"
+                            sequence:
+                              - variables:
+                                  desired_action: none
+                                  decision_text: "sleeping(auto) -> waiting min_off"
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ can_stop and ac_is_on and not min_on_active }}"
+                            sequence:
+                              - variables:
+                                  desired_action: off
+                                  decision_text: "sleeping(auto) -> can_stop"
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ can_stop and ac_is_on and min_on_active }}"
+                            sequence:
+                              - variables:
+                                  desired_action: none
+                                  decision_text: "sleeping(auto) -> waiting min_on"
+                        default:
+                          - variables:
+                              desired_action: none
+                              decision_text: "sleeping(auto) -> hold"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ effective_mode == 'off' }}"
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ ac_is_on and not min_on_active }}"
+                    sequence:
+                      - variables:
+                          desired_action: off
+                          decision_text: "mode off -> shutdown"
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ ac_is_on and min_on_active }}"
+                    sequence:
+                      - variables:
+                          desired_action: none
+                          decision_text: "mode off -> waiting min_on"
+                default:
+                  - variables:
+                      desired_action: none
+                      decision_text: "mode off -> already off"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ effective_mode in ['auto', 'override', 'precooling'] }}"
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ not temp_valid }}"
+                    sequence:
+                      - variables:
+                          desired_action: none
+                          decision_text: "temp unavailable -> no cool"
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ need_cool and not min_off_active }}"
+                    sequence:
+                      - variables:
+                          desired_action: cool_on
+                          desired_temp: "{{ target_home }}"
+                          decision_text: "need_cool"
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ need_cool and min_off_active }}"
+                    sequence:
+                      - variables:
+                          desired_action: none
+                          decision_text: "need_cool blocked by min_off"
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ can_stop and ac_is_on and not min_on_active }}"
+                    sequence:
+                      - variables:
+                          desired_action: off
+                          decision_text: "can_stop"
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ can_stop and ac_is_on and min_on_active }}"
+                    sequence:
+                      - variables:
+                          desired_action: none
+                          decision_text: "can_stop waiting min_on"
+                default:
+                  - variables:
+                      desired_action: none
+                      decision_text: "within hysteresis band"
+
+        default:
+          - variables:
+              desired_action: none
+              decision_text: "unknown effective_mode"
+
+      - variables:
+          force_off_mode: "{{ effective_mode in ['away', 'error_lock'] }}"
+          off_failsafe_exception: "{{ desired_action == 'off' and effective_mode in ['away', 'error_lock'] }}"
+          execute_allowed: "{{ action_allowed or off_failsafe_exception }}"
+          action_text: "none"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ desired_action in ['cool_on', 'precool_on'] and execute_allowed }}"
+            sequence:
+              - service: script.smart_climate_exec_apply
+                data:
+                  power: "on"
+                  hvac_mode: "cool"
+                  temperature: "{{ desired_temp }}"
+              - choose:
+                  - conditions:
+                      - condition: state
+                        entity_id: timer.smart_climate_min_off
+                        state: active
+                    sequence:
+                      - service: timer.cancel
+                        target:
+                          entity_id: timer.smart_climate_min_off
+              - choose:
+                  - conditions:
+                      - condition: not
+                        conditions:
+                          - condition: state
+                            entity_id: timer.smart_climate_min_on
+                            state: active
+                    sequence:
+                      - service: timer.start
+                        target:
+                          entity_id: timer.smart_climate_min_on
+              - variables:
+                  action_text: "apply: power=on hvac=cool temp={{ desired_temp }}"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ desired_action == 'off' and execute_allowed and (ac_is_on or force_off_mode) }}"
+            sequence:
+              - service: script.smart_climate_exec_apply
+                data:
+                  power: "off"
+              - choose:
+                  - conditions:
+                      - condition: state
+                        entity_id: timer.smart_climate_min_on
+                        state: active
+                    sequence:
+                      - service: timer.cancel
+                        target:
+                          entity_id: timer.smart_climate_min_on
+              - choose:
+                  - conditions:
+                      - condition: not
+                        conditions:
+                          - condition: state
+                            entity_id: timer.smart_climate_min_off
+                            state: active
+                    sequence:
+                      - service: timer.start
+                        target:
+                          entity_id: timer.smart_climate_min_off
+              - variables:
+                  action_text: "apply: power=off"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ desired_action == 'off' and execute_allowed and not ac_is_on }}"
+            sequence:
+              - variables:
+                  action_text: "skip off: already off"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ desired_action != 'none' and not execute_allowed }}"
+            sequence:
+              - variables:
+                  action_text: "blocked: reason={{ block_reason }} mode={{ effective_mode }}"
+
+        default:
+          - variables:
+              action_text: "no action"
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.smart_climate_last_decision
+        data:
+          value: "{{ decision_text }} | trigger={{ trigger_source }}"
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.smart_climate_last_action
+        data:
+          value: "{{ action_text }}"
+
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.smart_climate_debug
+                state: "on"
+            sequence:
+              - service: logbook.log
+                data:
+                  name: smart_climate_controller
+                  message: "trigger={{ trigger_source }} mode={{ effective_mode }} decision={{ decision_text }} action={{ action_text }}"
+                  entity_id: climate.aire_acondicionado
+
+  - id: smart_climate_notify_error_lock_on
+    alias: smart_climate_notify_error_lock_on
+    description: Notifies when smart_climate enters error lock.
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.smart_climate_error_lock
+        to: "on"
+    action:
+      - service: script.smart_climate_notify
+        data:
+          title: "Smart Climate bloqueado"
+          message: "Se activó error_lock. El sistema bloqueará acciones normales hasta que revises la causa."
+
+  - id: smart_climate_notify_error_lock_off
+    alias: smart_climate_notify_error_lock_off
+    description: Notifies when smart_climate leaves error lock.
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.smart_climate_error_lock
+        to: "off"
+    action:
+      - service: script.smart_climate_notify
+        data:
+          title: "Smart Climate recuperado"
+          message: "error_lock quedó en off. El sistema volvió a permitir acciones normales."
+
+  - id: smart_climate_notify_api_fail_threshold
+    alias: smart_climate_notify_api_fail_threshold
+    description: Notifies when LG/API failures cross the retry alert threshold.
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: input_number.smart_climate_api_fail_count
+        above: 2
+    action:
+      - service: script.smart_climate_notify
+        data:
+          title: "Smart Climate con fallos"
+          message: "El contador de fallos de API llegó a {{ states('input_number.smart_climate_api_fail_count') | int(0) }}. Revisá la conectividad o el control del aire."
+
+  - id: smart_climate_notify_api_fail_recovered
+    alias: smart_climate_notify_api_fail_recovered
+    description: Notifies when LG/API failures recover after being above the alert threshold.
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_number.smart_climate_api_fail_count
+        to: "0"
+    condition:
+      - condition: template
+        value_template: "{{ trigger.from_state is not none and (trigger.from_state.state | int(0)) > 2 }}"
+    action:
+      - service: script.smart_climate_notify
+        data:
+          title: "Smart Climate estable"
+          message: "El contador de fallos de API volvió a 0. El control del aire parece recuperado."
+
+  - id: smart_climate_notify_precooling_started
+    alias: smart_climate_notify_precooling_started
+    description: Sends an actionable notification when precooling starts cooling the AC.
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_text.smart_climate_last_action
+    condition:
+      - condition: state
+        entity_id: input_boolean.smart_climate_notifications
+        state: "on"
+      - condition: template
+        value_template: "{{ trigger.to_state is not none and trigger.to_state.state.startswith('apply: power=on hvac=cool temp=') }}"
+      - condition: template
+        value_template: "{{ states('sensor.smart_climate_effective_mode') in ['precooling', 'away_precool'] }}"
+    action:
+      - service: notify.mobile_app_samsungs24u
+        data:
+          title: "Smart Climate: pre-cooling activo"
+          message: "El aire se prendió por pre-cooling en {{ state_attr('climate.aire_acondicionado', 'temperature') | float(default=states('input_number.smart_climate_precool_temp') | float(default=19.0)) }} °C."
+          data:
+            tag: smart_climate_precooling
+            actions:
+              - action: SMART_CLIMATE_TURN_OFF_NOW
+                title: "Apagar ahora"
+              - action: SMART_CLIMATE_TURN_OFF_15M
+                title: "Apagar en 15m"
+
+  - id: smart_climate_notify_ac_turned_off
+    alias: smart_climate_notify_ac_turned_off
+    description: Sends an actionable notification when the AC turns off.
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: climate.aire_acondicionado
+        to: "off"
+    condition:
+      - condition: state
+        entity_id: input_boolean.smart_climate_notifications
+        state: "on"
+      - condition: template
+        value_template: "{{ trigger.from_state is not none and trigger.from_state.state not in ['unknown', 'unavailable', 'off'] }}"
+    action:
+      - service: notify.mobile_app_samsungs24u
+        data:
+          title: "Smart Climate: aire apagado"
+          message: "El aire se apagó. Última decisión: {{ states('input_text.smart_climate_last_decision') }}."
+          data:
+            tag: smart_climate_ac_off
+            actions:
+              - action: SMART_CLIMATE_TURN_ON_90M
+                title: "Volver a prender"
+              - action: SMART_CLIMATE_REQUEST_PRECOOL
+                title: "Pre-cooling 30m"
+
+  - id: smart_climate_notification_action_turn_off_now
+    alias: smart_climate_notification_action_turn_off_now
+    description: Handles the actionable notification request to power off immediately.
+    mode: single
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: SMART_CLIMATE_TURN_OFF_NOW
+    action:
+      - service: script.smart_climate_stop_precooling_and_power_off
+
+  - id: smart_climate_notification_action_turn_off_15m
+    alias: smart_climate_notification_action_turn_off_15m
+    description: Handles the actionable notification request to power off after 15 minutes.
+    mode: restart
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: SMART_CLIMATE_TURN_OFF_15M
+    action:
+      - service: script.smart_climate_power_off_in_15m
+
+  - id: smart_climate_notification_action_turn_on_90m
+    alias: smart_climate_notification_action_turn_on_90m
+    description: Handles the actionable notification request to power on with manual hold.
+    mode: single
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: SMART_CLIMATE_TURN_ON_90M
+    action:
+      - service: script.smart_climate_power_on_manual_90m
+
+  - id: smart_climate_notification_action_request_precool
+    alias: smart_climate_notification_action_request_precool
+    description: Handles the actionable notification request to start precooling.
+    mode: single
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: SMART_CLIMATE_REQUEST_PRECOOL
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.smart_climate_user_precool_request
+  - id: smart_climate_precool_weekday_1150
+    alias: smart_climate_precool_weekday_1150
+    description: Requests precooling at 11:50 on weekdays when away and the control temperature is above 24 C.
+    mode: single
+    trigger:
+      - platform: time
+        at: "11:50:00"
+    condition:
+      - condition: time
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+      - condition: state
+        entity_id: binary_sensor.smart_climate_is_home
+        state: "off"
+      - condition: numeric_state
+        entity_id: sensor.smart_climate_temp_control
+        above: 24
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.smart_climate_user_precool_request
+
+  - id: smart_climate_precool_weekday_1550
+    alias: smart_climate_precool_weekday_1550
+    description: Requests precooling at 15:50 on weekdays when away and the control temperature is above 24 C.
+    mode: single
+    trigger:
+      - platform: time
+        at: "15:50:00"
+    condition:
+      - condition: time
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+      - condition: state
+        entity_id: binary_sensor.smart_climate_is_home
+        state: "off"
+      - condition: numeric_state
+        entity_id: sensor.smart_climate_temp_control
+        above: 24
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.smart_climate_user_precool_request
+
+  - id: smart_climate_precool_request_handler
+    alias: smart_climate_precool_request_handler
+    description: Handles explicit precool requests and starts precooling timer.
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.smart_climate_user_precool_request
+        to: "on"
+    action:
+      - choose:
+          - conditions:
+              - condition: not
+                conditions:
+                  - condition: state
+                    entity_id: timer.smart_climate_precooling
+                    state: active
+            sequence:
+              - service: timer.start
+                target:
+                  entity_id: timer.smart_climate_precooling
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.smart_climate_modo
+                state: auto
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.smart_climate_modo
+                data:
+                  option: precooling
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.smart_climate_last_action
+        data:
+          value: "precool requested"
+
+  - id: smart_climate_precool_end_handler
+    alias: smart_climate_precool_end_handler
+    description: Finalizes precooling and restores away/home policy behavior.
+    mode: single
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.smart_climate_precooling
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.smart_climate_user_precool_request
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.smart_climate_is_home
+                state: "off"
+            sequence:
+              - service: script.smart_climate_exec_apply
+                data:
+                  power: "off"
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.smart_climate_last_action
+                data:
+                  value: "precool ended away -> off"
+        default:
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.smart_climate_modo
+            data:
+              option: auto
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.smart_climate_last_action
+            data:
+              value: "precool ended home -> auto"
+
+# ------------------------------------------------------------------------------
+# Mini guide (service call examples)
+# ------------------------------------------------------------------------------
+# Example 1 - full apply (power on + cool + 24C):
+# service: script.smart_climate_exec_apply
+# data:
+#   power: "on"
+#   hvac_mode: "cool"
+#   temperature: 24
+#
+# Example 2 - only change temperature:
+# service: script.smart_climate_exec_apply
+# data:
+#   temperature: 25
+#
+# Example 3 - power off reliably (LG retries + IR fallback if allowed):
+# service: script.smart_climate_exec_apply
+# data:
+#   power: "off"
+#
+# Example 4 - call leaf scripts directly:
+# service: script.smart_climate_exec_power_on
+# service: script.smart_climate_exec_power_off
+# service: script.smart_climate_exec_set_temperature
+# data:
+#   temperature: 23.5
+#
+# Como usar (controller futuro):
+# - El controller de automations del paso 5 debe usar exclusivamente:
+#   sensor.smart_climate_temp_control
+# - sensor.smart_climate_effective_mode
+# - binary_sensor.smart_climate_action_allowed
+# - sensor.clima_sala_temperatura define la fuente base (LG vs sensor ambiente).
+# - input_number.smart_climate_temp_offset permite calibracion sin tocar automations.
+# - Regla modo_sofa: si input_boolean.modo_sofa = on, se ignora sleeping
+#   (binary_sensor.smart_climate_is_sleeping_effective queda en off).
+#
+# Que hace el controller (paso 5):
+# - away/error_lock: prioriza fail-safe y apaga aunque action_allowed sea false.
+# - away_precool: permite enfriar away solo por pedido explicito (request/timer).
+# - auto/override/precooling: controla por hysteresis con temp_control.
+# - sleeping: apaga solo si smart_climate_allow_sleep_shutdown = on.
+#
+# Que entidades mirar en dashboard:
+# - sensor.smart_climate_effective_mode
+# - binary_sensor.smart_climate_action_allowed
+# - sensor.smart_climate_action_block_reason
+# - sensor.smart_climate_temp_control
+# - input_text.smart_climate_last_decision
+# - input_text.smart_climate_last_action
+

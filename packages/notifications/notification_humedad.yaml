@@ -1,0 +1,44 @@
+automation:
+  - id: avisos_humedad_sala_nest_mini_entero
+    alias: "Aviso cambio humedad sala (Nest Mini)"
+    mode: single
+
+    trigger:
+      - platform: state
+        entity_id: sensor.humidity_sala
+
+    condition:
+      - condition: template
+        value_template: >-
+          {% set s_from = trigger.from_state.state %}
+          {% set s_to   = trigger.to_state.state %}
+          {% if s_from in ['unknown','unavailable'] or s_to in ['unknown','unavailable'] %}
+            false
+          {% else %}
+            {% set oi = (s_from | float) | int %}
+            {% set ni = (s_to   | float) | int %}
+            {{ oi != ni }}
+          {% endif %}
+
+    action:
+      - variables:
+          old_i: "{{ trigger.from_state.state | float(0) | int }}"
+          new_i: "{{ trigger.to_state.state   | float(0) | int }}"
+          sube: "{{ new_i > old_i }}"
+      - choose:
+          - conditions: "{{ sube }}"
+            sequence:
+              - service: media_player.play_media
+                target:
+                  entity_id: media_player.nest_mini
+                data:
+                  media_content_id: media-source://media_source/local/Notifications/uiup.mp3
+                  media_content_type: music
+          - conditions: "{{ not sube }}"
+            sequence:
+              - service: media_player.play_media
+                target:
+                  entity_id: media_player.nest_mini
+                data:
+                  media_content_id: media-source://media_source/local/Notifications/uidown.mp3
+                  media_content_type: music

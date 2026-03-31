@@ -1,0 +1,91 @@
+#========================
+# Customizador de escenas.
+# Agregar el id de la escena, un nombre personalizado, y hasta 4 colores personalizados.
+# Esto se usa con una auto-entities para generar cards con colores personalizados.
+#========================
+
+homeassistant:
+  customize:
+
+    scene.funky_violet_green:
+      custom_name: "Funky violet green"
+      custom_color1: "#511B63"
+      custom_color2: "#48B545"
+      custom_color3: "#AB0EA8"
+      custom_color4: "#62BD7A"
+
+    scene.cozy_club:
+      custom_name: "Cozy club"
+      custom_color1: "#C73A10"
+      custom_color2: "#FF8512"
+      custom_color3: "#FFC05E"
+      custom_color4: "#F01C00"
+
+    scene.cozy_ocean:
+      custom_name: "Cozy ocean"
+      custom_color1: "#50DED3"
+      custom_color2: "#4DA0FF"
+      custom_color3: "#B8721D"
+      custom_color4: "#33B09C"
+
+    scene.daylight_100:
+      custom_name: "daylight 100"
+      custom_color1: "#F2E8CB"
+      custom_color2: "#FFFFFF"
+      custom_color3: "#F0E8DA"
+      custom_color4: "#F2E8CB"
+  
+    scene.neutral_100:
+      custom_name: "Neutral 100"
+      custom_color1: "#F2E8CB"
+      custom_color2: "#EDF7F4"
+      custom_color3: "#FFFFFF"
+      custom_color4: "#FFFBE8"
+  
+    scene.relax:
+      custom_name: "Relax"
+      custom_color1: "#7BE0D4"
+      custom_color2: "#F79F34"
+      custom_color3: "#D95A2B"
+      custom_color4: "#F7B75C"
+  
+    scene.madrugada1:
+      custom_color1: "#995E4B"
+      custom_color2: "#2E1407"
+      custom_color3: "#2B2B2B"
+      custom_color4: "#DB3939"
+      custom_name: "madrugada"
+  
+    scene.spots_x23:
+      custom_color1: "#B57919"
+      custom_name: "spots 2&3"
+  
+    scene.tv_friendly_cozy_spots:
+      custom_color1: "#9CD9C4"
+      custom_name: "tv friendly"
+  
+    scene.sala_full_azul:
+      custom_name: "full blue"
+      custom_color1: "#2C41F5"
+      custom_color2: "#0B75B5"
+      custom_color3: "#0333FF"
+      custom_color4: "#1A58B0"
+  
+    scene.sala_full_red:
+      custom_name: "full red"
+      custom_color1: "#FF0000"
+      custom_color2: "#B51F1F"
+      custom_color3: "#FF351F"
+      custom_color4: "#BA1807"
+  
+    scene.sala_full_redblue:
+      custom_name: "full redblue"
+      custom_color1: "#FF321F"
+      custom_color2: "#1F41FF"
+      custom_color3: "#566EF5"
+      custom_color4: "#E83023"
+
+
+
+
+
