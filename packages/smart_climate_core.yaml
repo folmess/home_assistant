@@ -425,6 +425,68 @@ template:
           {{ 'mode=' ~ mode ~ ' | context=' ~ context ~ ' | home=' ~ home
              ~ ' | sleeping=' ~ sleeping ~ ' | sofa=' ~ sofa ~ ' | allowed=' ~ allowed }}
 
+      # Description: Human-readable translation of last decision to natural Spanish language.
+      - name: smart_climate_last_decision_human
+        unique_id: smart_climate_last_decision_human
+        state: >
+          {% set raw = states('input_text.smart_climate_last_decision') %}
+          {% if raw in ['unknown', 'unavailable', none, ''] %}
+            sin información
+          {% else %}
+            {% set parts = raw.split(' | trigger=') %}
+            {% set decision = parts[0] %}
+            {% set trigger_src = parts[1] | default('') %}
+            {% set trigger_name = (trigger_src.replace('sensor.smart_climate_', 'sensor: ')
+                                             .replace('binary_sensor.smart_climate_', 'binario: ')
+                                             .replace('input_select.', 'opción: ')
+                                             .replace('input_boolean.', 'bool: ')
+                                             .replace('input_number.', 'número: ')
+                                             .replace('timer.smart_climate_', 'timer: ')
+                                             .replace('climate.', 'clima: ')
+                                             .replace('_', ' ')) | title %}
+            {% if decision == 'disabled' %}
+              🔴 Sistema deshabilitado (gatillo: {{ trigger_name }})
+            {% elif 'error_lock' in decision %}
+              ⛔ Bloqueo de error: solo apagado permitido (gatillo: {{ trigger_name }})
+            {% elif 'away' in decision and 'force off' in decision %}
+              🏃 Fuera de casa: apagado de seguridad (gatillo: {{ trigger_name }})
+            {% elif 'away_precool' in decision %}
+              ❄️ Pre-cooling activo: manteniendo enfriamiento (gatillo: {{ trigger_name }})
+            {% elif decision == 'manual_hold' %}
+              🔒 Modo manual: sin cambios (gatillo: {{ trigger_name }})
+            {% elif 'manual_hold but away' in decision %}
+              🔒 Manual pero fuera: apagando (gatillo: {{ trigger_name }})
+            {% elif decision == 'sleeping -> shutdown' %}
+              😴 Durmiendo: apagando aire (gatillo: {{ trigger_name }})
+            {% elif 'sleeping -> waiting' in decision %}
+              ⏳ Durmiendo: esperando tiempo mínimo (gatillo: {{ trigger_name }})
+            {% elif 'sleeping' in decision and 'auto' in decision %}
+              😴 Durmiendo: modo automático activo (gatillo: {{ trigger_name }})
+            {% elif 'mode off -> shutdown' in decision %}
+              📴 Modo apagado: apagando unidad (gatillo: {{ trigger_name }})
+            {% elif 'mode off -> waiting' in decision %}
+              ⏳ Modo apagado: esperando tiempo (gatillo: {{ trigger_name }})
+            {% elif 'mode off -> already off' in decision %}
+              ✓ Modo apagado: ya está apagado (gatillo: {{ trigger_name }})
+            {% elif 'temp unavailable' in decision %}
+              ❓ Temperatura no disponible: sin enfriar (gatillo: {{ trigger_name }})
+            {% elif decision == 'need_cool' %}
+              🌡️ Temperatura alta: enfriando (gatillo: {{ trigger_name }})
+            {% elif 'need_cool blocked' in decision %}
+              ⏸️ Necesita enfriar pero bloqueado (gatillo: {{ trigger_name }})
+            {% elif decision == 'can_stop' %}
+              ✓ Temperatura correcta: puede apagar (gatillo: {{ trigger_name }})
+            {% elif 'can_stop' in decision and 'waiting' in decision %}
+              ⏳ Temperatura correcta pero esperando (gatillo: {{ trigger_name }})
+            {% elif 'within hysteresis' in decision %}
+              — Temperatura estable dentro del rango (gatillo: {{ trigger_name }})
+            {% elif 'unknown effective_mode' in decision %}
+              ❓ Modo no reconocido (gatillo: {{ trigger_name }})
+            {% else %}
+              📋 {{ decision | replace('_', ' ') }} (gatillo: {{ trigger_name }})
+            {% endif %}
+          {% endif %}
+
 sensor:
   # Description: 10-minute moving mean for smart_climate_temp_control.
   # Used for stability/debug and future controller smoothing decisions.
@@ -1224,8 +1286,8 @@ automation:
   - id: smart_climate_controller
     alias: smart_climate_controller
     description: Main smart_climate policy controller. Uses effective_mode + temp_control + guardrails.
-    mode: single
-    max_exceeded: queued
+    mode: restart
+    max_exceeded: 'WARNING'
     trigger:
       - platform: state
         entity_id: sensor.smart_climate_temp_control
