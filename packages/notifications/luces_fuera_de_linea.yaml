@@ -32,28 +32,53 @@ template:
                           | selectattr('state','in',['unavailable','unknown'])
                           | map(attribute='entity_id') | list %}
             {{ (bad | reject('in', ignore) | list) | count }}
-          lista_ids: >-
+          # Guardamos la lista matemáticamente para evitar el límite de 255 caracteres del estado regular
+          lista_desconectadas: >-
             {% set ignore = expand('group.luces_fuera_de_linea_ignoradas')
                               | map(attribute='entity_id') | list %}
             {% set bad = states.light
                           | selectattr('state','in',['unavailable','unknown'])
                           | map(attribute='entity_id') | list %}
-            {{ (bad | reject('in', ignore) | list) | join(',') }}
+            {{ bad | reject('in', ignore) | list }}
 
   - sensor:
-      - name: Luces fuera de línea lista (filtradas)
-        unique_id: luces_fuera_de_linea_lista_filtrada
-        icon: mdi:alert
+      - name: "Resumen de Luces Offline"
+        unique_id: resumen_luces_offline_nlp
+        icon: mdi:information-outline
+        # El estado contiene el título cortito (ideal tarjeta del dashboard)
         state: >-
-          {% set ids = state_attr('binary_sensor.luces_fuera_de_linea_filtradas','lista_ids') %}
-          {% set lista = (ids.split(',') if ids else []) %}
-          {%- if lista | length == 0 -%}
-          Ninguna
-          {%- else -%}
-          {%- for e in lista -%}
-          - {{ state_attr(e, 'friendly_name') or e }} ({{ e }}){% if not loop.last %}\n{% endif %}
-          {%- endfor -%}
-          {%- endif -%}
+          {% set qty = state_attr('binary_sensor.luces_fuera_de_linea_filtradas', 'cantidad') | int(0) %}
+          {% if qty == 0 %}Todo conectado
+          {% elif qty == 1 %}1 luz sin conexión!
+          {% else %}{{ qty }} luces sin conexión!{% endif %}
+        attributes:
+          # El atributo contiene el texto largo con cálculo de tiempos de caída
+          subtexto_largo: >-
+            {% set lista = state_attr('binary_sensor.luces_fuera_de_linea_filtradas', 'lista_desconectadas') %}
+            {% if lista is none or lista | length == 0 %}
+              No hay problemas de conexión en este momento.
+            {% else %}
+              {% set ns = namespace(parts=[]) %}
+              {% for light_id in lista %}
+                {% set txt_name = state_attr(light_id, 'friendly_name') | default(light_id) %}
+                {% set l_changed = states[light_id].last_changed if states[light_id] is defined else none %}
+                
+                {% if l_changed %}
+                  {% set diff_sec = (now() - l_changed).total_seconds() %}
+                  {% set hrs = (diff_sec / 3600) | int %}
+                  {% set mins = ((diff_sec % 3600) / 60) | int %}
+                  {% if hrs > 0 %}
+                    {% set tiempo = hrs ~ 'h ' ~ mins ~ 'm' %}
+                  {% else %}
+                    {% set tiempo = mins ~ 'm' %}
+                  {% endif %}
+                  {% set ns.parts = ns.parts + [txt_name ~ " (hace " ~ tiempo ~ ")"] %}
+                {% else %}
+                  {% set ns.parts = ns.parts + [txt_name] %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.parts | join(', ') }}
+            {% endif %}
 
 ###############################################################################
 # AUTOMATIONS (usando sensores FILTRADOS)
@@ -63,24 +88,31 @@ automation:
     id: alertar_luces_fuera_de_linea_on_filtradas
     mode: single
     trigger:
+      # Cambiamos el disparador: ahora reacciona a CUALQUIER cambio en la 'cantidad' de luces caídas
       - platform: state
         entity_id: binary_sensor.luces_fuera_de_linea_filtradas
-        to: "on"
+        attribute: cantidad
+    condition:
+      # Condición clave: Solo notificar si la cantidad AUMENTÓ.
+      # Así no te manda notificaciones cuando una luz se recupera.
+      - condition: template
+        value_template: >
+          {% set to_qty = trigger.to_state.attributes.cantidad | default(0) | int %}
+          {% set from_qty = trigger.from_state.attributes.cantidad | default(0) | int if trigger.from_state is not none else 0 %}
+          {{ to_qty > from_qty }}
     action:
       - service: persistent_notification.create
         data:
-          title: "Luces fuera de línea"
+          title: "⚠️ {{ states('sensor.resumen_de_luces_offline') }}"
           message: >-
-            Se detectaron {{ state_attr('binary_sensor.luces_fuera_de_linea_filtradas','cantidad') }}
-            luces en estado 'unknown' o 'unavailable':
-
-            {{ states('sensor.luces_fuera_de_linea_lista_filtradas') }}
+            {{ state_attr('sensor.resumen_de_luces_offline', 'subtexto_largo') }}
           notification_id: "luces_fuera_de_linea"
 
   - alias: Alertar - Luces fuera de línea (filtradas) (clear)
     id: alertar_luces_fuera_de_linea_off_filtradas
     mode: single
     trigger:
+      # Limpia la alerta solo cuando ya no queda NINGUNA caída (to: "off")
       - platform: state
         entity_id: binary_sensor.luces_fuera_de_linea_filtradas
         to: "off"
