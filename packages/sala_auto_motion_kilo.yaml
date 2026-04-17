@@ -1,28 +1,28 @@
-﻿# =========================
-# Package: sala_auto (codename: motion_kilo)
+# =========================
+# Package: smart_light_sala (codename: motion_kilo)
 # Auto lights en Sala de Estar: escena, reducción/fade, restore desde snapshot, y waiting arrival
 # timers por franja y "leaf lights"
 #
 # Requiere:
-# - Integración HACS "var" (entidad: var.sala_snapshot_targets)
+# - Integración HACS "var" (entidad: var.smart_light_sala_snapshot_targets)
 # - script.gradual_brightness_change  (externo)
 # - script.gradual_restore_from_snapshot (externo)
 # =========================
 
 var:
-  sala_snapshot_targets:
+  smart_light_sala_snapshot_targets:
     initial_value: "{}"
     restore: true
     attributes:
-      friendly_name: "Sala auto - snapshot targets (JSON)"
+      friendly_name: "Smart Light Sala - snapshot targets (JSON)"
       icon: mdi:code-json
 
 # -------------------------
 # HELPERS (estados / flags)
 # -------------------------
 input_select:
-  sala_auto_state:
-    name: SALA AUTO - Estado logico
+  smart_light_sala_state:
+    name: SMART LIGHT SALA - Estado logico
     options:
       - ACTIVE
       - IDLE_COUNTDOWN
@@ -33,15 +33,15 @@ input_select:
     initial: ACTIVE
 
 input_boolean:
-  sala_auto_debug_mode:
-    name: SALA AUTO - Debug
+  smart_light_sala_debug_mode:
+    name: SMART LIGHT SALA - Debug
     initial: off
-  sala_auto_fade:
-    name: SALA AUTO - Usar fade en PRE_NOTICE
+  smart_light_sala_fade:
+    name: SMART LIGHT SALA - Usar fade en PRE_NOTICE
     icon: mdi:transition
     initial: on
-  sala_auto_fading_active:
-    name: SALA AUTO - Fading activo
+  smart_light_sala_fading_active:
+    name: SMART LIGHT SALA - Fading activo
     icon: mdi:animation-play-outline
   smart_lights_sala:
     name: Smart Lights Sala
@@ -52,35 +52,35 @@ input_boolean:
 # -------------------------
 input_number:
   # Timeouts (min) por franja
-  sala_auto_timeout_manana:
+  smart_light_sala_timeout_manana:
     name: Timeout - Manana
     min: 1
     max: 60
     step: 1
     unit_of_measurement: minutes
     initial: 5
-  sala_auto_timeout_mediodia:
+  smart_light_sala_timeout_mediodia:
     name: Timeout - Mediodia
     min: 1
     max: 60
     step: 1
     unit_of_measurement: minutes
     initial: 5
-  sala_auto_timeout_tarde:
+  smart_light_sala_timeout_tarde:
     name: Timeout - Tarde
     min: 1
     max: 60
     step: 1
     unit_of_measurement: minutes
     initial: 5
-  sala_auto_timeout_noche:
+  smart_light_sala_timeout_noche:
     name: Timeout - Noche
     min: 1
     max: 60
     step: 1
     unit_of_measurement: minutes
     initial: 5
-  sala_auto_timeout_madrugada:
+  smart_light_sala_timeout_madrugada:
     name: Timeout - Madrugada
     min: 1
     max: 60
@@ -89,35 +89,35 @@ input_number:
     initial: 3
 
   # Arribo (ventana de restore, min) por franja
-  sala_auto_arribo_manana:
-    name: Arribo - MaÃ±ana
+  smart_light_sala_arribo_manana:
+    name: Arribo - Mañana
     min: 1
     max: 120
     step: 1
     unit_of_measurement: minutes
     initial: 4
-  sala_auto_arribo_mediodia:
-    name: Arribo - MediodÃ±ia
+  smart_light_sala_arribo_mediodia:
+    name: Arribo - Mediodía
     min: 1
     max: 120
     step: 1
     unit_of_measurement: minutes
     initial: 4
-  sala_auto_arribo_tarde:
+  smart_light_sala_arribo_tarde:
     name: Arribo - Tarde
     min: 1
     max: 120
     step: 1
     unit_of_measurement: minutes
     initial: 4
-  sala_auto_arribo_noche:
+  smart_light_sala_arribo_noche:
     name: Arribo - Noche
     min: 1
     max: 120
     step: 1
     unit_of_measurement: minutes
     initial: 4
-  sala_auto_arribo_madrugada:
+  smart_light_sala_arribo_madrugada:
     name: Arribo - Madrugada
     min: 1
     max: 120
@@ -126,31 +126,31 @@ input_number:
     initial: 2
 
   # Brillos por franja (fallback encendido simple)
-  sala_auto_brightness_manana:
-    name: Brightness - MaÃ±ana
+  smart_light_sala_brightness_manana:
+    name: Brightness - Mañana
     min: 0
     max: 255
     step: 1
     initial: 200
-  sala_auto_brightness_mediodia:
+  smart_light_sala_brightness_mediodia:
     name: Brightness - Mediodia
     min: 0
     max: 255
     step: 1
     initial: 200
-  sala_auto_brightness_tarde:
+  smart_light_sala_brightness_tarde:
     name: Brightness - Tarde
     min: 0
     max: 255
     step: 1
     initial: 200
-  sala_auto_brightness_noche:
+  smart_light_sala_brightness_noche:
     name: Brightness - Noche
     min: 0
     max: 255
     step: 1
     initial: 150
-  sala_auto_brightness_madrugada:
+  smart_light_sala_brightness_madrugada:
     name: Brightness - Madrugada
     min: 0
     max: 255
@@ -158,7 +158,7 @@ input_number:
     initial: 50
 
   # Reduccion instantanea (cuando fade OFF)
-  sala_auto_reduction_percentage:
+  smart_light_sala_reduction_percentage:
     name: Reduccion en PRE_NOTICE (%)
     min: 0
     max: 100
@@ -167,14 +167,14 @@ input_number:
     initial: 50
 
   # Parametros de fade
-  sala_auto_fade_sec:
+  smart_light_sala_fade_sec:
     name: Fade duracion (s)
     min: 5
     max: 600
     step: 5
     unit_of_measurement: s
     initial: 20
-  sala_auto_fade_reduce_pct:
+  smart_light_sala_fade_reduce_pct:
     name: Fade - Reducir (% sobre % MIN actual)
     min: 0
     max: 100
@@ -186,22 +186,22 @@ input_number:
 # Efectos por franja (nombres de scripts)
 # -------------------------
 input_text:
-  sala_auto_effect_script_name:
+  smart_light_sala_effect_script_name:
     name: Effect Script - Global
     initial: sala_arribo_global
-  sala_auto_effect_script_manana:
+  smart_light_sala_effect_script_manana:
     name: Effect Script - Mañana
 
-  sala_auto_effect_script_mediodia:
+  smart_light_sala_effect_script_mediodia:
     name: Effect Script - Mediodia
 
-  sala_auto_effect_script_tarde:
+  smart_light_sala_effect_script_tarde:
     name: Effect Script - Tarde
 
-  sala_auto_effect_script_noche:
+  smart_light_sala_effect_script_noche:
     name: Effect Script - Noche
 
-  sala_auto_effect_script_madrugada:
+  smart_light_sala_effect_script_madrugada:
     name: Effect Script - Madrugada
 
 
@@ -209,13 +209,13 @@ input_text:
 # TIMERS
 # -------------------------
 timer:
-  sala_auto_idle_timeout:
+  smart_light_sala_idle_timeout:
     name: Idle countdown
     restore: true
-  sala_auto_dim_notice:
+  smart_light_sala_dim_notice:
     name: Pre-Notice
     restore: true
-  sala_auto_restore_window:
+  smart_light_sala_restore_window:
     name: Restore Window
     restore: true
 
@@ -224,9 +224,9 @@ timer:
 # -------------------------
 script:
 
-  # Guardar escena + volcar targets por-luz (JSON) en var.sala_snapshot_targets
-  sala_auto_save_scene:
-    alias: SALA AUTO - Guardar escena + targets JSON (leaf)
+  # Guardar escena + volcar targets por-luz (JSON) en var.smart_light_sala_snapshot_targets
+  smart_light_sala_save_scene:
+    alias: SMART LIGHT SALA - Guardar escena + targets JSON (leaf)
     mode: parallel
     sequence:
       - variables:
@@ -253,33 +253,33 @@ script:
             {{ ns.d | to_json }}
       - service: scene.create
         data:
-          scene_id: sala_auto_snapshot
+          scene_id: smart_light_sala_snapshot
           snapshot_entities: "{{ leaf_lights }}"
-      # Guardar JSON largo en VAR (HACS) -> var.sala_snapshot_targets
+      # Guardar JSON largo en VAR (HACS) -> var.smart_light_sala_snapshot_targets
       - service: var.set
         data:
-          entity_id: var.sala_snapshot_targets
+          entity_id: var.smart_light_sala_snapshot_targets
           value: "{{ targets_map }}"
           attributes:
             snapshot_taken_at: "{{ now().isoformat() }}"
 
   # Reducir brillo instantaneamente (cuando fade OFF)
-  sala_auto_reduce_brightness:
-    alias: SALA AUTO - Reducir brillo instantaneo (leaf)
+  smart_light_sala_reduce_brightness:
+    alias: SMART LIGHT SALA - Reducir brillo instantaneo (leaf)
     mode: parallel
     sequence:
       - variables:
           pd: "{{ states('sensor.parte_del_dia') }}"
           map_bri: >
             {{ {
-              'manana':'input_number.sala_auto_brightness_manana',
-              'mediodia':'input_number.sala_auto_brightness_mediodia',
-              'tarde':'input_number.sala_auto_brightness_tarde',
-              'noche':'input_number.sala_auto_brightness_noche',
-              'madrugada':'input_number.sala_auto_brightness_madrugada'
+              'manana':'input_number.smart_light_sala_brightness_manana',
+              'mediodia':'input_number.smart_light_sala_brightness_mediodia',
+              'tarde':'input_number.smart_light_sala_brightness_tarde',
+              'noche':'input_number.smart_light_sala_brightness_noche',
+              'madrugada':'input_number.smart_light_sala_brightness_madrugada'
             } }}
           base: "{{ states(map_bri[pd])|int if pd in map_bri else 200 }}"
-          red: "{{ states('input_number.sala_auto_reduction_percentage')|int }}"
+          red: "{{ states('input_number.smart_light_sala_reduction_percentage')|int }}"
           target_bri: "{{ (base * (100 - red) / 100) | int }}"
           leaf_lights: >
             {% set ns = namespace(leaf=[]) %}
@@ -300,8 +300,8 @@ script:
                 data: { brightness: "{{ target_bri }}", transition: 1 }
 
   # Apagar todas las luces del area (leaf)
-  sala_auto_turn_off_lights:
-    alias: SALA AUTO - Apagar luces (leaf)
+  smart_light_sala_turn_off_lights:
+    alias: SMART LIGHT SALA - Apagar luces (leaf)
     mode: parallel
     sequence:
       - variables:
@@ -316,8 +316,8 @@ script:
         target: { entity_id: "{{ leaf_lights }}" }
 
   # Encendido (escena/efecto por franja o fallback simple)
-  sala_auto_turn_on_lights:
-    alias: SALA AUTO - Encender (escena/efecto por franja, leaf)
+  smart_light_sala_turn_on_lights:
+    alias: SMART LIGHT SALA - Encender (escena/efecto por franja, leaf)
     mode: parallel
     sequence:
       - variables:
@@ -326,23 +326,23 @@ script:
           pd: "{{ states('sensor.parte_del_dia') }}"
           map_bri: >
             {{ {
-              'manana':'input_number.sala_auto_brightness_manana',
-              'mediodia':'input_number.sala_auto_brightness_mediodia',
-              'tarde':'input_number.sala_auto_brightness_tarde',
-              'noche':'input_number.sala_auto_brightness_noche',
-              'madrugada':'input_number.sala_auto_brightness_madrugada'
+              'manana':'input_number.smart_light_sala_brightness_manana',
+              'mediodia':'input_number.smart_light_sala_brightness_mediodia',
+              'tarde':'input_number.smart_light_sala_brightness_tarde',
+              'noche':'input_number.smart_light_sala_brightness_noche',
+              'madrugada':'input_number.smart_light_sala_brightness_madrugada'
             } }}
           map_fx: >
             {{ {
-              'manana':'input_text.sala_auto_effect_script_manana',
-              'mediodia':'input_text.sala_auto_effect_script_mediodia',
-              'tarde':'input_text.sala_auto_effect_script_tarde',
-              'noche':'input_text.sala_auto_effect_script_noche',
-              'madrugada':'input_text.sala_auto_effect_script_madrugada'
+              'manana':'input_text.smart_light_sala_effect_script_manana',
+              'mediodia':'input_text.smart_light_sala_effect_script_mediodia',
+              'tarde':'input_text.smart_light_sala_effect_script_tarde',
+              'noche':'input_text.smart_light_sala_effect_script_noche',
+              'madrugada':'input_text.smart_light_sala_effect_script_madrugada'
             } }}
           brightness: "{{ states(map_bri[pd])|int if pd in map_bri else 200 }}"
           per_slot_fx: "{{ states(map_fx[pd]) if pd in map_fx else '' }}"
-          global_fx: "{{ states('input_text.sala_auto_effect_script_name') }}"
+          global_fx: "{{ states('input_text.smart_light_sala_effect_script_name') }}"
           effect_name: >
             {% set pick = (per_slot_fx | trim) if (per_slot_fx | trim) != '' else (global_fx | trim) %}
             {{ pick }}
@@ -360,10 +360,10 @@ script:
               - condition: template
                 value_template: >
                   {{ use_scene_var and
-                     (state_attr('scene.sala_auto_snapshot','entity_id') | default([]) | count > 0) }}
+                     (state_attr('scene.smart_light_sala_snapshot','entity_id') | default([]) | count > 0) }}
             sequence:
               - service: scene.turn_on
-                target: { entity_id: scene.sala_auto_snapshot }
+                target: { entity_id: scene.smart_light_sala_snapshot }
           - conditions:
               - condition: template
                 value_template: >
@@ -379,8 +379,8 @@ script:
             data: { brightness: "{{ brightness }}", transition: 1 }
 
 
-  sala_auto_start_idle_flow:
-    alias: SALA AUTO - Idle countdown flow
+  smart_light_sala_start_idle_flow:
+    alias: SMART LIGHT SALA - Idle countdown flow
     mode: restart
     fields:
       timeout_seconds:
@@ -405,7 +405,7 @@ script:
             } }}
           timeout_entity: >
             {% set suffix = timeout_suffix_map.get(pd) %}
-            {{ ('input_number.sala_auto_timeout_' ~ suffix) if suffix else none }}
+            {{ ('input_number.smart_light_sala_timeout_' ~ suffix) if suffix else none }}
           timeout_minutes_default: "{{ states(timeout_entity)|int if timeout_entity else 10 }}"
           timeout_override: "{{ timeout_seconds | default(none) }}"
           timeout_sec: >-
@@ -428,24 +428,24 @@ script:
                 state: "off"
             sequence:
               - service: input_select.select_option
-                target: { entity_id: input_select.sala_auto_state }
+                target: { entity_id: input_select.smart_light_sala_state }
                 data: { option: IDLE_COUNTDOWN }
               - service: timer.cancel
                 target:
                   entity_id:
-                    - timer.sala_auto_dim_notice
-                    - timer.sala_auto_restore_window
+                    - timer.smart_light_sala_dim_notice
+                    - timer.smart_light_sala_restore_window
               - service: input_boolean.turn_off
                 target:
                   entity_id:
-                    - input_boolean.sala_auto_fading_active
+                    - input_boolean.smart_light_sala_fading_active
               - choose:
                   - conditions:
                       - condition: template
                         value_template: "{{ timeout_sec|int > 0 }}"
                     sequence:
                       - service: timer.start
-                        target: { entity_id: timer.sala_auto_idle_timeout }
+                        target: { entity_id: timer.smart_light_sala_idle_timeout }
                         data: { duration: "{{ timeout_sec }}" }
                       - wait_for_trigger:
                           - platform: state
@@ -467,30 +467,30 @@ script:
                                 entity_id: input_boolean.smart_lights_sala
                                 state: "on"
                               - condition: state
-                                entity_id: input_select.sala_auto_state
+                                entity_id: input_select.smart_light_sala_state
                                 state: IDLE_COUNTDOWN
                               - condition: state
-                                entity_id: timer.sala_auto_idle_timeout
+                                entity_id: timer.smart_light_sala_idle_timeout
                                 state: "active"
                             sequence:
                               - service: timer.start
-                                target: { entity_id: timer.sala_auto_dim_notice }
+                                target: { entity_id: timer.smart_light_sala_dim_notice }
                                 data: { duration: "{{ pre_notice_sec }}" }
                               - service: timer.cancel
-                                target: { entity_id: timer.sala_auto_idle_timeout }
+                                target: { entity_id: timer.smart_light_sala_idle_timeout }
                           - conditions:
                               - condition: template
                                 value_template: "{{ wait.completed }}"
                               - condition: state
-                                entity_id: timer.sala_auto_idle_timeout
+                                entity_id: timer.smart_light_sala_idle_timeout
                                 state: "active"
                             sequence:
                               - service: timer.cancel
-                                target: { entity_id: timer.sala_auto_idle_timeout }
+                                target: { entity_id: timer.smart_light_sala_idle_timeout }
         default: []
 
-  sala_auto_toggle_smart_lights:
-    alias: SALA AUTO - Toggle Smart Lights flag
+  smart_light_sala_toggle_smart_lights:
+    alias: SMART LIGHT SALA - Toggle Smart Lights flag
     mode: single
     sequence:
       - service: input_boolean.toggle
@@ -501,32 +501,32 @@ script:
 ## ============================================
 template:
   - sensor:
-      - name: "Sala Auto State"
-        unique_id: sala_auto_state_sensor
-        state: "{{ states('input_select.sala_auto_state') }}"
+      - name: "Smart Light Sala State"
+        unique_id: smart_light_sala_state_sensor
+        state: "{{ states('input_select.smart_light_sala_state') }}"
         attributes:
           # Mensaje "humano"
           next_action: >-
-            {% set s = states('input_select.sala_auto_state') %}
+            {% set s = states('input_select.smart_light_sala_state') %}
             {% if s == 'DISABLED' %}
               Luces configuradas manualmente, Smart Lights Sala apagado.
             {% elif s == 'ACTIVE' %}
               Hay movimiento en sala.
             {% elif s == 'IDLE_COUNTDOWN' %}
-              Sin movimiento en sala; pronto se reducira el brillo.
+              Sin movimiento en sala; pronto se reducirá el brillo.
             {% elif s == 'PRE_NOTICE' %}
-              Reduciendo brillo; pronto se apagaron las luces.
+              Reduciendo brillo; pronto se apagarán las luces.
             {% elif s == 'RESTORE_WINDOW' %}
               Esperando movimiento para volver a prender las luces.
             {% elif s == 'WAITING_ARRIVAL' %}
-              Esperando arribo a casa para prender las luces automaticamente.
+              Esperando arribo a casa para prender las luces automáticamente.
             {% else %}
-              Algo saliÃ³ mal. Estado desconocido.
+              Algo salió mal. Estado desconocido.
             {% endif %}
 
           # Icono MDI sugerido para cada estado
           next_icon: >-
-            {% set s = states('input_select.sala_auto_state') %}
+            {% set s = states('input_select.smart_light_sala_state') %}
             {% if s == 'DISABLED' %}mdi:cancel
             {% elif s == 'ACTIVE' %}mdi:run
             {% elif s == 'IDLE_COUNTDOWN' %}mdi:timer-sand
@@ -538,7 +538,7 @@ template:
 
           # Color sugerido (para chips/cards que acepten icon_color)
           next_color: >-
-            {% set s = states('input_select.sala_auto_state') %}
+            {% set s = states('input_select.smart_light_sala_state') %}
             {% if s == 'DISABLED' %}grey
             {% elif s == 'ACTIVE' %}green
             {% elif s == 'IDLE_COUNTDOWN' %}orange
@@ -548,22 +548,22 @@ template:
             {% else %}grey
             {% endif %}
 
-          # Timer "vigente" segÃºn estado (Ãºtil para UI)
+          # Timer "vigente" según estado (útil para UI)
           timer_entity: >-
-            {% set s = states('input_select.sala_auto_state') %}
-            {% if s == 'IDLE_COUNTDOWN' %}timer.sala_auto_idle_timeout
-            {% elif s == 'PRE_NOTICE' %}timer.sala_auto_dim_notice
-            {% elif s == 'RESTORE_WINDOW' %}timer.sala_auto_restore_window
+            {% set s = states('input_select.smart_light_sala_state') %}
+            {% if s == 'IDLE_COUNTDOWN' %}timer.smart_light_sala_idle_timeout
+            {% elif s == 'PRE_NOTICE' %}timer.smart_light_sala_dim_notice
+            {% elif s == 'RESTORE_WINDOW' %}timer.smart_light_sala_restore_window
             {% else %}none
             {% endif %}
 
           # Remaining bruto (HH:MM:SS) del timer mapeado
           remaining: >-
-            {% set s = states('input_select.sala_auto_state') %}
+            {% set s = states('input_select.smart_light_sala_state') %}
             {% set timer =
-              'timer.sala_auto_idle_timeout' if s == 'IDLE_COUNTDOWN'
-              else 'timer.sala_auto_dim_notice' if s == 'PRE_NOTICE'
-              else 'timer.sala_auto_restore_window' if s == 'RESTORE_WINDOW'
+              'timer.smart_light_sala_idle_timeout' if s == 'IDLE_COUNTDOWN'
+              else 'timer.smart_light_sala_dim_notice' if s == 'PRE_NOTICE'
+              else 'timer.smart_light_sala_restore_window' if s == 'RESTORE_WINDOW'
               else none %}
             {% if timer not in [none, 'none'] %}
               {{ state_attr(timer, 'remaining') or '' }}
@@ -583,8 +583,8 @@ template:
 automation:
 
   # SMART LIGHTS OFF -> DISABLED
-  - alias: sala_auto - Smart Lights Sala OFF -> DISABLED
-    id: sala_auto_smart_lights_off
+  - alias: smart_light_sala - Smart Lights Sala OFF -> DISABLED
+    id: smart_light_sala_smart_lights_off
     mode: single
     trigger:
       - platform: state
@@ -592,25 +592,25 @@ automation:
         to: "off"
     action:
       - service: input_select.select_option
-        target: { entity_id: input_select.sala_auto_state }
+        target: { entity_id: input_select.smart_light_sala_state }
         data: { option: DISABLED }
       - service: timer.cancel
         target:
           entity_id:
-            - timer.sala_auto_idle_timeout
-            - timer.sala_auto_dim_notice
-            - timer.sala_auto_restore_window
+            - timer.smart_light_sala_idle_timeout
+            - timer.smart_light_sala_dim_notice
+            - timer.smart_light_sala_restore_window
       - service: script.turn_off
         target: { entity_id: script.gradual_brightness_change }
       - service: script.turn_off
         target: { entity_id: script.gradual_restore_from_snapshot }
       - service: input_boolean.turn_off
-        target: { entity_id: input_boolean.sala_auto_fading_active }
+        target: { entity_id: input_boolean.smart_light_sala_fading_active }
       # No tocar luces
 
   # SMART LIGHTS ON -> recompute por motion
-  - alias: sala_auto - Smart Lights Sala ON -> recompute
-    id: sala_auto_smart_lights_on
+  - alias: smart_light_sala - Smart Lights Sala ON -> recompute
+    id: smart_light_sala_smart_lights_on
     mode: single
     trigger:
       - platform: state
@@ -624,7 +624,7 @@ automation:
                 state: "on"
             sequence:
               - service: input_select.select_option
-                target: { entity_id: input_select.sala_auto_state }
+                target: { entity_id: input_select.smart_light_sala_state }
                 data: { option: ACTIVE }
           - conditions:
               - condition: state
@@ -632,12 +632,12 @@ automation:
                 state: "off"
             sequence:
               - service: script.turn_on
-                target: { entity_id: script.sala_auto_start_idle_flow }
+                target: { entity_id: script.smart_light_sala_start_idle_flow }
 
 
   # MOTION OFF -> IDLE_COUNTDOWN (inicia countdown, luego PRE_NOTICE si sigue off)
-  - alias: sala_auto - Motion OFF -> IDLE_COUNTDOWN
-    id: sala_auto_motion_off_idle
+  - alias: smart_light_sala - Motion OFF -> IDLE_COUNTDOWN
+    id: smart_light_sala_motion_off_idle
     mode: restart
     trigger:
       - platform: state
@@ -649,10 +649,10 @@ automation:
         state: "on"
     action:
       - service: script.turn_on
-        target: { entity_id: script.sala_auto_start_idle_flow }
-  # MOTION ON -> ACTIVE (V2): cancela fade si estaba, y si venias de PRE_NOTICE/RESTORE -> restore suave
-  - alias: sala_auto - Motion ON -> ACTIVE (V2 restore suave)
-    id: sala_auto_motion_on_active_v2
+        target: { entity_id: script.smart_light_sala_start_idle_flow }
+  # MOTION ON -> ACTIVE (V2): cancela fade si estaba, y si venías de PRE_NOTICE/RESTORE -> restore suave
+  - alias: smart_light_sala - Motion ON -> ACTIVE (V2 restore suave)
+    id: smart_light_sala_motion_on_active_v2
     mode: restart
     trigger:
       - platform: state
@@ -663,28 +663,28 @@ automation:
         entity_id: input_boolean.smart_lights_sala
         state: "on"
     variables:
-      prev_state: "{{ states('input_select.sala_auto_state') }}"
-      fade_sec: "{{ states('input_number.sala_auto_fade_sec') | int(30) }}"
+      prev_state: "{{ states('input_select.smart_light_sala_state') }}"
+      fade_sec: "{{ states('input_number.smart_light_sala_fade_sec') | int(30) }}"
       steps: "{{ fade_sec }}"   # 1 paso/seg
       min_pct_floor: 10
     action:
       - service: input_select.select_option
-        target: { entity_id: input_select.sala_auto_state }
+        target: { entity_id: input_select.smart_light_sala_state }
         data: { option: ACTIVE }
 
       # Cancelar timers (ya no aplican al estar en ACTIVE)
       - service: timer.cancel
         target:
           entity_id:
-            - timer.sala_auto_idle_timeout
-            - timer.sala_auto_dim_notice
-            - timer.sala_auto_restore_window
+            - timer.smart_light_sala_idle_timeout
+            - timer.smart_light_sala_dim_notice
+            - timer.smart_light_sala_restore_window
 
-      # Si habia fade corriendo, cancelarlo y bajar flag
+      # Si había fade corriendo, cancelarlo y bajar flag
       - choose:
           - conditions:
               - condition: state
-                entity_id: input_boolean.sala_auto_fading_active
+                entity_id: input_boolean.smart_light_sala_fading_active
                 state: "on"
             sequence:
               - service: script.turn_off
@@ -692,11 +692,11 @@ automation:
               - service: script.turn_off
                 target: { entity_id: script.gradual_brightness_worker }
               - service: input_boolean.turn_off
-                target: { entity_id: input_boolean.sala_auto_fading_active }
+                target: { entity_id: input_boolean.smart_light_sala_fading_active }
 
-      # Restaurar segun estado previo
+      # Restaurar según estado previo
       - choose:
-          # Desde PRE_NOTICE o RESTORE_WINDOW -> restauracion suave (usa VAR)
+          # Desde PRE_NOTICE o RESTORE_WINDOW -> restauración suave (usa VAR)
           - conditions:
               - condition: template
                 value_template: "{{ prev_state in ['PRE_NOTICE','RESTORE_WINDOW'] }}"
@@ -714,25 +714,25 @@ automation:
                 value_template: "{{ prev_state == 'WAITING_ARRIVAL' }}"
             sequence:
               - service: script.turn_on
-                target: { entity_id: script.sala_auto_turn_on_lights }
+                target: { entity_id: script.smart_light_sala_turn_on_lights }
                 data:
                   variables: { use_scene: false }
         default: []
 
-  # PRE_NOTICE START - set estado, snapshot + (fade o reduccion instantanea)
-  - alias: sala_auto - PRE_NOTICE START - snapshot + dim/fade + RESTORE WINDOW (parallel)
-    id: sala_auto_pre_notice_start_parallel_restore
+  # PRE_NOTICE START - set estado, snapshot + (fade o reducción instantánea)
+  - alias: smart_light_sala - PRE_NOTICE START - snapshot + dim/fade + RESTORE WINDOW (parallel)
+    id: smart_light_sala_pre_notice_start_parallel_restore
     mode: restart
     trigger:
       - platform: state
-        entity_id: timer.sala_auto_dim_notice
+        entity_id: timer.smart_light_sala_dim_notice
         to: "active"
     variables:
-      # Parametros de fade/reduccion
-      reduce_pct: "{{ states('input_number.sala_auto_fade_reduce_pct') | int(60) }}"
-      fade_sec: "{{ states('input_number.sala_auto_fade_sec') | int(30) }}"
+      # Parámetros de fade/reducción
+      reduce_pct: "{{ states('input_number.smart_light_sala_fade_reduce_pct') | int(60) }}"
+      fade_sec: "{{ states('input_number.smart_light_sala_fade_sec') | int(30) }}"
 
-      # Objetivo "seguro": % minimo de las encendidas * (1 - reduce/100) ? evita subidas
+      # Objetivo "seguro": % mínimo de las encendidas * (1 - reduce/100) → evita subidas
       leaf_lights: >
         {% set ns = namespace(leaf=[]) %}
         {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
@@ -754,7 +754,7 @@ automation:
       target_pct_global: >
         {{ ((min_pct_now * (100 - reduce_pct) / 100.0) | round(0) | int) }}
 
-      # Duracion de la ventana de restore por franja (ARRIBO)
+      # Duración de la ventana de restore por franja (ARRIBO)
       pd: "{{ states('sensor.parte_del_dia') }}"
       arribo_min: >
         {% set suffix_map = {
@@ -765,43 +765,43 @@ automation:
           'madrugada':'madrugada'
         } %}
         {% set suffix = suffix_map.get(pd) %}
-        {% set entity = 'input_number.sala_auto_arribo_' ~ suffix if suffix else none %}
+        {% set entity = 'input_number.smart_light_sala_arribo_' ~ suffix if suffix else none %}
         {{ states(entity)|int if entity else 15 }}
       restore_sec: "{{ (arribo_min | int) * 60 }}"
     action:
-      # 1) Estado logico a PRE_NOTICE
+      # 1) Estado lógico a PRE_NOTICE
       - service: input_select.select_option
-        target: { entity_id: input_select.sala_auto_state }
+        target: { entity_id: input_select.smart_light_sala_state }
         data: { option: PRE_NOTICE }
 
       # 2) Guardar snapshot + targets (para restore suave)
       - service: script.turn_on
-        target: { entity_id: script.sala_auto_save_scene }
+        target: { entity_id: script.smart_light_sala_save_scene }
 
       # 3) Iniciar (en paralelo) la ventana de RESTORE_WINDOW (solo timer + flag UI)
       - service: timer.cancel
-        target: { entity_id: timer.sala_auto_restore_window }
+        target: { entity_id: timer.smart_light_sala_restore_window }
       - choose:
           - conditions:
               - condition: template
                 value_template: "{{ restore_sec | int > 0 }}"
             sequence:
               - service: timer.start
-                target: { entity_id: timer.sala_auto_restore_window }
+                target: { entity_id: timer.smart_light_sala_restore_window }
                 data: { duration: "{{ restore_sec }}" }
 
       # 4) Ejecutar dim/fade del PRE_NOTICE
       - choose:
           - conditions:
               - condition: state
-                entity_id: input_boolean.sala_auto_fade
+                entity_id: input_boolean.smart_light_sala_fade
                 state: "on"
             sequence:
               - service: input_boolean.turn_on
-                target: { entity_id: input_boolean.sala_auto_fading_active }
+                target: { entity_id: input_boolean.smart_light_sala_fading_active }
               - variables:
-                  reduce_pct: "{{ states('input_number.sala_auto_fade_reduce_pct') | int(50) }}"
-                  fade_sec: "{{ states('input_number.sala_auto_fade_sec') | int(20) }}"
+                  reduce_pct: "{{ states('input_number.smart_light_sala_fade_reduce_pct') | int(50) }}"
+                  fade_sec: "{{ states('input_number.smart_light_sala_fade_sec') | int(20) }}"
                   steps: "{{ fade_sec * 2 }}"
                   step_delay_ms: "{{ ((fade_sec | float) * 1000 / steps) | int }}"
                   leaf_lights: >
@@ -849,7 +849,7 @@ automation:
                                   target_brightness: "{{ target_pct }}"
                                   steps: "{{ steps }}"
                                   step_delay_ms: "{{ step_delay_ms }}"
-                                  flag_entity: input_boolean.sala_auto_fading_active
+                                  flag_entity: input_boolean.smart_light_sala_fading_active
                         - conditions:
                             - condition: template
                               value_template: "{{ not is_dimmable }}"
@@ -858,16 +858,16 @@ automation:
                             []
         default:
           - service: script.turn_on
-            target: { entity_id: script.sala_auto_reduce_brightness }
+            target: { entity_id: script.smart_light_sala_reduce_brightness }
   # PRE_NOTICE FIN - apagar + arrancar RESTORE_WINDOW (con Arribo por franja)
-  - alias: sala_auto - PRE_NOTICE FIN - apagar + RESTORE START
-    id: sala_auto_pre_notice_finish_off_restore
+  - alias: smart_light_sala - PRE_NOTICE FIN - apagar + RESTORE START
+    id: smart_light_sala_pre_notice_finish_off_restore
     mode: single
     trigger:
       - platform: event
         event_type: timer.finished
         event_data:
-          entity_id: timer.sala_auto_dim_notice
+          entity_id: timer.smart_light_sala_dim_notice
     variables:
       pd: "{{ states('sensor.parte_del_dia') }}"
       arribo_min: >
@@ -879,48 +879,32 @@ automation:
           'madrugada':'madrugada'
         } %}
         {% set suffix = suffix_map.get(pd) %}
-        {% set entity = 'input_number.sala_auto_arribo_' ~ suffix if suffix else none %}
+        {% set entity = 'input_number.smart_light_sala_arribo_' ~ suffix if suffix else none %}
         {{ states(entity)|int if entity else 15 }}
     action:
       - service: input_boolean.turn_off
-        target: { entity_id: input_boolean.sala_auto_fading_active }
+        target: { entity_id: input_boolean.smart_light_sala_fading_active }
       - service: script.turn_on
-        target: { entity_id: script.sala_auto_turn_off_lights }
+        target: { entity_id: script.smart_light_sala_turn_off_lights }
 
       - service: input_select.select_option
-        target: { entity_id: input_select.sala_auto_state }
+        target: { entity_id: input_select.smart_light_sala_state }
         data: { option: RESTORE_WINDOW }
       - service: timer.start
-        target: { entity_id: timer.sala_auto_restore_window }
+        target: { entity_id: timer.smart_light_sala_restore_window }
         data:
           duration: "{{ (arribo_min | int) * 60 }}"
 
   # RESTORE FIN - WAITING_ARRIVAL
-  - alias: sala_auto - RESTORE FIN - WAITING_ARRIVAL
-    id: sala_auto_restore_finish_waiting
+  - alias: smart_light_sala - RESTORE FIN - WAITING_ARRIVAL
+    id: smart_light_sala_restore_finish_waiting
     mode: single
     trigger:
       - platform: event
         event_type: timer.finished
         event_data:
-          entity_id: timer.sala_auto_restore_window
+          entity_id: timer.smart_light_sala_restore_window
     action:
       - service: input_select.select_option
-        target: { entity_id: input_select.sala_auto_state }
+        target: { entity_id: input_select.smart_light_sala_state }
         data: { option: WAITING_ARRIVAL }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
