@@ -1,0 +1,156 @@
+Sí. Mirando [packages/sala_auto_motion_kilo.yaml](</C:/Users/HernánFolmerVanziniS/.codex/worktrees/4b37/config/packages/sala_auto_motion_kilo.yaml>), hay varias cosas que podrían separarse mejor en workers. Algunas ya están bien encaminadas como scripts internos, pero hay bloques largos dentro de automatizaciones que son buenos candidatos.
+
+**Candidatos Claros**
+
+1. **Worker para “entrar en DISABLED”**
+
+Ahora la automatización `Smart Lights Sala OFF -> DISABLED` hace todo directo en [packages/sala_auto_motion_kilo.yaml](</C:/Users/HernánFolmerVanziniS/.codex/worktrees/4b37/config/packages/sala_auto_motion_kilo.yaml:640>):
+
+- setea estado `DISABLED`
+- cancela timers
+- apaga scripts de fade/restore
+- baja `smart_light_sala_fading_active`
+
+Esto podría ser:
+
+```text
+script.smart_light_sala_enter_disabled
+```
+
+Ventaja: cualquier otra cosa que quiera desactivar el sistema, como `modo_cine`, dormir, switch físico, etc., llama al mismo worker. Menos riesgo de olvidar cancelar un timer o un worker.
+
+2. **Worker para “cancelar timers y fades”**
+
+Este patrón aparece en varios lugares:
+
+- cancelar `timer.smart_light_sala_idle_timeout`
+- cancelar `timer.smart_light_sala_dim_notice`
+- cancelar `timer.smart_light_sala_restore_window`
+- apagar `script.gradual_brightness_change`
+- apagar `script.gradual_restore_from_snapshot`
+- apagar `script.gradual_brightness_worker`
+- apagar `input_boolean.smart_light_sala_fading_active`
+
+Yo haría:
+
+```text
+script.smart_light_sala_cancel_motion_runtime
+```
+
+Este es probablemente el worker más valioso. Sirve para cine, dormir, OFF manual, motion ON, reset, debugging.
+
+3. **Worker para “setear estado lógico”**
+
+Hay muchos:
+
+```yaml
+input_select.select_option:
+  entity_id: input_select.smart_light_sala_state
+```
+
+No es urgente, pero si querés consistencia y logging/debug después, podrías tener:
+
+```text
+script.smart_light_sala_set_state
+```
+
+Con variable:
+
+```text
+state: ACTIVE / IDLE_COUNTDOWN / PRE_NOTICE / RESTORE_WINDOW / WAITING_ARRIVAL / DISABLED
+```
+
+Ventaja: más adelante podés agregar debug, notificación, historial, validaciones, etc. Desventaja: para algo simple puede sentirse demasiado indirecto.
+
+4. **Worker para “calcular y arrancar idle countdown”**
+
+El script `smart_light_sala_start_idle_flow` ya existe, pero adentro tiene bastante lógica: calcula timeout, arranca timer, espera, decide si pasar a preaviso. Está bien que sea script. Yo no lo partiría todavía salvo que empiece a crecer más.
+
+Lo que sí podría salir es la parte de “pasar a IDLE_COUNTDOWN + preparar timers/flags”, algo tipo:
+
+```text
+script.smart_light_sala_enter_idle_countdown
+```
+
+Pero esto lo dejaría para después. No es el primer refactor que haría.
+
+5. **Worker para PRE_NOTICE START**
+
+La automatización `PRE_NOTICE START` en [packages/sala_auto_motion_kilo.yaml](</C:/Users/HernánFolmerVanziniS/.codex/worktrees/4b37/config/packages/sala_auto_motion_kilo.yaml:789>) es larga y hace varias cosas:
+
+- setea estado `PRE_NOTICE`
+- guarda snapshot
+- arranca restore window
+- decide fade vs reducción instantánea
+- calcula luces y targets
+- lanza `gradual_brightness_worker`
+
+Esto podría ser:
+
+```text
+script.smart_light_sala_enter_pre_notice
+```
+
+Y la automatización sólo quedaría como trigger + condiciones + llamada al worker.
+
+Este sería mi segundo refactor prioritario, porque esa automatización concentra mucha lógica.
+
+6. **Worker para PRE_NOTICE FIN / entrar en RESTORE_WINDOW**
+
+La automatización `PRE_NOTICE FIN` en [packages/sala_auto_motion_kilo.yaml](</C:/Users/HernánFolmerVanziniS/.codex/worktrees/4b37/config/packages/sala_auto_motion_kilo.yaml:936>) también es buen candidato:
+
+```text
+script.smart_light_sala_enter_restore_window
+```
+
+Haría:
+
+- apagar flag fading
+- apagar luces
+- setear estado `RESTORE_WINDOW`
+- arrancar timer restore
+
+Esto es muy limpio para worker.
+
+7. **Worker para “restore fin -> waiting arrival”**
+
+Esta es chiquita:
+
+```text
+script.smart_light_sala_enter_waiting_arrival
+```
+
+No es imprescindible, pero si hacés workers para los otros estados, queda simétrico.
+
+**Mi Orden Recomendado**
+
+Yo lo haría en este orden:
+
+1. `script.smart_light_sala_cancel_motion_runtime`
+2. `script.smart_light_sala_enter_disabled`
+3. `script.smart_light_sala_enter_restore_window`
+4. `script.smart_light_sala_enter_pre_notice`
+5. Opcional: `script.smart_light_sala_set_state`
+6. Opcional: `script.smart_light_sala_enter_waiting_arrival`
+
+**Qué No Tocaría Todavía**
+
+No movería todavía los scripts de mood a package workers. Esos está perfecto que vivan en `scripts.yaml` porque querés editarlos desde la UI.
+
+Tampoco movería `smart_light_sala_turn_on_lights` fuera del package. Ese es un dispatcher interno del sistema, no una receta editable. Está bien que viva en el package y llame a scripts editables como `script.sala_mood_tv_noche`.
+
+**Regla Que Usaría**
+
+- Workers técnicos del sistema: dentro del package.
+  - cancelar timers
+  - cambiar estado lógico
+  - preparar restore window
+  - limpiar runtime
+
+- Recetas de iluminación: en `scripts.yaml`.
+  - moods
+  - escenas
+  - efectos
+  - combinaciones visuales
+
+Va muy por ahí. El refactor más rentable sería extraer primero `cancel_motion_runtime` y `enter_disabled`, porque son los que reducen más riesgo con `modo_cine`, dormir y apagados manuales.

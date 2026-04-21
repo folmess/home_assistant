@@ -770,3 +770,38 @@
     input:
       vacuum: vacuum.xiaomi_us_1171669205_e101gb
       camera: camera.xiaomi_cloud_map_extractor
+- id: '1861028400001'
+  alias: Zosia one-shot puerta 11:40-12:30 Our Mutual Friend
+  description: 'Creada por Zosia: dispara al abrir puerta entre 11:40 y 12:30 (solo
+    2026-04-15) y se desactiva sola'
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.puerta_entrada
+    to:
+    - 'on'
+  conditions:
+  - condition: time
+    after: '11:40:00'
+    before: '12:30:00'
+  - condition: template
+    value_template: '{{ now().date().isoformat() == ''2026-04-15'' }}'
+  actions:
+  - action: media_player.volume_set
+    data:
+      volume_level: 0.6
+    target:
+      entity_id: media_player.nest_mini
+  - action: media_player.play_media
+    data:
+      media:
+        media_content_id: media-source://media_source/local/Music/our_mutual_friend_xique_xique.m4a
+        media_content_type: audio/mp4
+        metadata:
+          title: Our Mutual Friend feat. Xique-Xique - iorie
+    target:
+      entity_id: media_player.nest_mini
+  - action: automation.turn_off
+    target:
+      entity_id: automation.zosia_one_shot_puerta_11_40_12_30_our_mutual_friend
+  mode: single

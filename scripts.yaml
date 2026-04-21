@@ -2631,101 +2631,327 @@ switch_sala_b1_single:
   alias: Switch sala - Boton 1 single
   mode: single
   sequence:
-  - service: scene.turn_on
-    target:
-      entity_id: scene.daylight_100
+  - variables:
+      selected: '{{ states(''input_select.switch_sala_b1_single_script'') }}'
+      domain: '{{ selected.split(''.'')[0] }}'
+  - choose:
+    - conditions: '{{ domain == ''scene'' }}'
+      sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: '{{ selected }}'
+    - conditions: '{{ domain == ''script'' }}'
+      sequence:
+      - action: '{{ selected }}'
+        data: {}
+    - conditions: '{{ selected == ''light.turn_on__sala'' }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          area_id: sala_de_estar
+    - conditions: '{{ selected == ''light.turn_off__sala'' }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          area_id: sala_de_estar
 switch_sala_b2_single:
   alias: Switch sala - Boton 2 single
   mode: single
   sequence:
-  - service: scene.turn_on
-    target:
-      entity_id: scene.sala_de_estar_100_warm
+  - variables:
+      selected: '{{ states(''input_select.switch_sala_b2_single_script'') }}'
+      domain: '{{ selected.split(''.'')[0] }}'
+  - choose:
+    - conditions: '{{ domain == ''scene'' }}'
+      sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: '{{ selected }}'
+    - conditions: '{{ domain == ''script'' }}'
+      sequence:
+      - action: '{{ selected }}'
+        data: {}
+    - conditions: '{{ selected == ''light.turn_on__sala'' }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          area_id: sala_de_estar
+    - conditions: '{{ selected == ''light.turn_off__sala'' }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          area_id: sala_de_estar
 switch_sala_b3_single:
   alias: Switch sala - Boton 3 single
   mode: single
   sequence:
-  - service: scene.turn_on
-    target:
-      entity_id: scene.sala_de_estar_warm_night
+  - variables:
+      selected: '{{ states(''input_select.switch_sala_b3_single_script'') }}'
+      domain: '{{ selected.split(''.'')[0] }}'
+  - choose:
+    - conditions: '{{ domain == ''scene'' }}'
+      sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: '{{ selected }}'
+    - conditions: '{{ domain == ''script'' }}'
+      sequence:
+      - action: '{{ selected }}'
+        data: {}
+    - conditions: '{{ selected == ''light.turn_on__sala'' }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          area_id: sala_de_estar
+    - conditions: '{{ selected == ''light.turn_off__sala'' }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          area_id: sala_de_estar
 switch_sala_b4_single:
   alias: Switch sala - Boton 4 single
   mode: single
   sequence:
-  - service: scene.turn_on
-    target:
-      entity_id: scene.cozy_ocean
+  - variables:
+      selected: '{{ states(''input_select.switch_sala_b4_single_script'') }}'
+      domain: '{{ selected.split(''.'')[0] }}'
+  - choose:
+    - conditions: '{{ domain == ''scene'' }}'
+      sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: '{{ selected }}'
+    - conditions: '{{ domain == ''script'' }}'
+      sequence:
+      - action: '{{ selected }}'
+        data: {}
+    - conditions: '{{ selected == ''light.turn_on__sala'' }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          area_id: sala_de_estar
+    - conditions: '{{ selected == ''light.turn_off__sala'' }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          area_id: sala_de_estar
 switch_sala_b1_double:
   alias: Switch sala - Boton 1 double
   mode: single
   sequence:
-  - action: scene.turn_on
-    metadata: {}
-    data: {}
-    target:
-      entity_id: scene.cozy_club
+  - variables:
+      selected: '{{ states(''input_select.switch_sala_b1_double_script'') }}'
+      domain: '{{ selected.split(''.'')[0] }}'
+  - choose:
+    - conditions: '{{ domain == ''scene'' }}'
+      sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: '{{ selected }}'
+    - conditions: '{{ domain == ''script'' }}'
+      sequence:
+      - action: '{{ selected }}'
+        data: {}
+    - conditions: '{{ selected == ''light.turn_on__sala'' }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          area_id: sala_de_estar
+    - conditions: '{{ selected == ''light.turn_off__sala'' }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          area_id: sala_de_estar
 switch_sala_b2_double:
   alias: Switch sala - Boton 2 double
   mode: single
   sequence:
-  - action: scene.turn_on
-    metadata: {}
-    data: {}
-    target:
-      entity_id: scene.sala_full_azul
+  - variables:
+      selected: '{{ states(''input_select.switch_sala_b2_double_script'') }}'
+      domain: '{{ selected.split(''.'')[0] }}'
+  - choose:
+    - conditions: '{{ domain == ''scene'' }}'
+      sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: '{{ selected }}'
+    - conditions: '{{ domain == ''script'' }}'
+      sequence:
+      - action: '{{ selected }}'
+        data: {}
+    - conditions: '{{ selected == ''light.turn_on__sala'' }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          area_id: sala_de_estar
+    - conditions: '{{ selected == ''light.turn_off__sala'' }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          area_id: sala_de_estar
 switch_sala_b3_double:
   alias: Switch sala - Boton 3 double
   mode: single
   sequence:
-  - service: scene.turn_on
-    target:
-      entity_id: scene.cozy_ocean
+  - variables:
+      selected: '{{ states(''input_select.switch_sala_b3_double_script'') }}'
+      domain: '{{ selected.split(''.'')[0] }}'
+  - choose:
+    - conditions: '{{ domain == ''scene'' }}'
+      sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: '{{ selected }}'
+    - conditions: '{{ domain == ''script'' }}'
+      sequence:
+      - action: '{{ selected }}'
+        data: {}
+    - conditions: '{{ selected == ''light.turn_on__sala'' }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          area_id: sala_de_estar
+    - conditions: '{{ selected == ''light.turn_off__sala'' }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          area_id: sala_de_estar
 switch_sala_b4_double:
   alias: Switch sala - Boton 4 double
   mode: single
   sequence:
-  - target:
-      entity_id: scene.cozy_ocean
-    action: scene.turn_on
-    data: {}
-    enabled: false
-  - action: scene.turn_on
-    metadata: {}
-    data: {}
-    target:
-      entity_id: scene.sala_full_redblue
+  - variables:
+      selected: '{{ states(''input_select.switch_sala_b4_double_script'') }}'
+      domain: '{{ selected.split(''.'')[0] }}'
+  - choose:
+    - conditions: '{{ domain == ''scene'' }}'
+      sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: '{{ selected }}'
+    - conditions: '{{ domain == ''script'' }}'
+      sequence:
+      - action: '{{ selected }}'
+        data: {}
+    - conditions: '{{ selected == ''light.turn_on__sala'' }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          area_id: sala_de_estar
+    - conditions: '{{ selected == ''light.turn_off__sala'' }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          area_id: sala_de_estar
 switch_sala_b3_hold:
   alias: Switch sala - Boton 3 hold
   mode: single
-  sequence:
-  - action: input_boolean.toggle
-    data: {}
-    target:
-      entity_id: input_boolean.smart_lights_sala
   description: ''
+  sequence:
+  - variables:
+      selected: '{{ states(''input_select.switch_sala_b3_hold_script'') }}'
+      domain: '{{ selected.split(''.'')[0] }}'
+  - choose:
+    - conditions: '{{ domain == ''scene'' }}'
+      sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: '{{ selected }}'
+    - conditions: '{{ domain == ''script'' }}'
+      sequence:
+      - action: '{{ selected }}'
+        data: {}
+    - conditions: '{{ selected == ''light.turn_on__sala'' }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          area_id: sala_de_estar
+    - conditions: '{{ selected == ''light.turn_off__sala'' }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          area_id: sala_de_estar
 switch_sala_b4_hold:
   alias: Switch sala - Boton 4 hold
   mode: single
   sequence:
-  - action: input_boolean.turn_on
-    metadata: {}
-    data: {}
-    target:
-      entity_id: input_boolean.dormir_activo
+  - variables:
+      selected: '{{ states(''input_select.switch_sala_b4_hold_script'') }}'
+      domain: '{{ selected.split(''.'')[0] }}'
+  - choose:
+    - conditions: '{{ domain == ''scene'' }}'
+      sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: '{{ selected }}'
+    - conditions: '{{ domain == ''script'' }}'
+      sequence:
+      - action: '{{ selected }}'
+        data: {}
+    - conditions: '{{ selected == ''light.turn_on__sala'' }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          area_id: sala_de_estar
+    - conditions: '{{ selected == ''light.turn_off__sala'' }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          area_id: sala_de_estar
 switch_sala_b1_hold:
   alias: Switch sala - Boton 1 hold
   mode: single
   sequence:
-  - action: script.sala_cozy_noisy
-    metadata: {}
-    data: {}
+  - variables:
+      selected: '{{ states(''input_select.switch_sala_b1_hold_script'') }}'
+      domain: '{{ selected.split(''.'')[0] }}'
+  - choose:
+    - conditions: '{{ domain == ''scene'' }}'
+      sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: '{{ selected }}'
+    - conditions: '{{ domain == ''script'' }}'
+      sequence:
+      - action: '{{ selected }}'
+        data: {}
+    - conditions: '{{ selected == ''light.turn_on__sala'' }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          area_id: sala_de_estar
+    - conditions: '{{ selected == ''light.turn_off__sala'' }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          area_id: sala_de_estar
 switch_sala_b2_hold:
   alias: Switch sala - Boton 2 hold
   mode: single
   sequence:
-  - service: light.turn_on
-    target:
-      area_id: sala_de_estar
+  - variables:
+      selected: '{{ states(''input_select.switch_sala_b2_hold_script'') }}'
+      domain: '{{ selected.split(''.'')[0] }}'
+  - choose:
+    - conditions: '{{ domain == ''scene'' }}'
+      sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: '{{ selected }}'
+    - conditions: '{{ domain == ''script'' }}'
+      sequence:
+      - action: '{{ selected }}'
+        data: {}
+    - conditions: '{{ selected == ''light.turn_on__sala'' }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          area_id: sala_de_estar
+    - conditions: '{{ selected == ''light.turn_off__sala'' }}'
+      sequence:
+      - action: light.turn_off
+        target:
+          area_id: sala_de_estar
 luz_barra_feedback_brillo_5x:
   sequence:
   - action: scene.create
@@ -3234,9 +3460,10 @@ switch_rf_b5_mesa:
   alias: Switch RF - B5 Mesa
   mode: single
   sequence:
-  - service: light.toggle
+  - action: light.toggle
+    data: {}
     target:
-      entity_id: light.mesa
+      entity_id: light.barra1
 switch_rf_b1_sala_off:
   alias: Switch RF - B1 Sala Off
   mode: single
@@ -3284,16 +3511,18 @@ switch_rf_estudio:
   alias: Switch RF - Estudio
   mode: single
   sequence:
-  - service: light.toggle
-    target:
-      entity_id: light.estudio
+  - target:
+      entity_id: light.barra1
+    action: light.toggle
+    data: {}
 switch_rf_pasillo:
   alias: Switch RF - Pasillo
   mode: single
   sequence:
-  - service: light.toggle
-    target:
-      entity_id: light.wiz130
+  - target:
+      entity_id: light.barra1
+    action: light.toggle
+    data: {}
 switch_rf_bano:
   alias: Switch RF - Baño
   mode: single

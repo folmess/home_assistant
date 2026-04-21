@@ -1,0 +1,323 @@
+# ====================================================
+#  Switch Sala - Configuración dinámica de scripts
+#  Permite elegir qué script ejecuta cada botón
+#  desde el dashboard sin editar YAML
+# ====================================================
+
+input_select:
+
+  # ── BOTÓN 1 ──────────────────────────────────────
+  switch_sala_b1_single_script:
+    name: "B1 · Tap"
+    icon: mdi:gesture-tap
+    options:
+      - scene.daylight_100
+      - scene.sala_de_estar_100_warm
+      - scene.sala_de_estar_warm_night
+      - scene.cozy_ocean
+      - scene.cozy_club
+      - scene.sala_full_azul
+      - scene.sala_full_redblue
+      - script.sala_cycle_scenes
+      - script.sala_encendido_suave
+      - script.sala_apagado_suave
+      - script.luces_manana
+      - script.luces_tarde
+      - script.luces_madrugada
+      - script.luces_sala_global
+      - script.sala_de_estar_turn_on_lights
+      - script.arribo_global
+      - script.aire_toggle_24
+      - script.dormir_secuencia
+      - script.sala_cozy_noisy
+      - light.turn_on__sala
+      - light.turn_off__sala
+
+  switch_sala_b1_double_script:
+    name: "B1 · Double"
+    icon: mdi:gesture-double-tap
+    options:
+      - scene.daylight_100
+      - scene.sala_de_estar_100_warm
+      - scene.sala_de_estar_warm_night
+      - scene.cozy_ocean
+      - scene.cozy_club
+      - scene.sala_full_azul
+      - scene.sala_full_redblue
+      - script.sala_cycle_scenes
+      - script.sala_encendido_suave
+      - script.sala_apagado_suave
+      - script.luces_manana
+      - script.luces_tarde
+      - script.luces_madrugada
+      - script.luces_sala_global
+      - script.sala_de_estar_turn_on_lights
+      - script.arribo_global
+      - script.aire_toggle_24
+      - script.dormir_secuencia
+      - script.sala_cozy_noisy
+      - light.turn_on__sala
+      - light.turn_off__sala
+
+  switch_sala_b1_hold_script:
+    name: "B1 · Hold"
+    icon: mdi:gesture-tap-hold
+    options:
+      - scene.daylight_100
+      - scene.sala_de_estar_100_warm
+      - scene.sala_de_estar_warm_night
+      - scene.cozy_ocean
+      - scene.cozy_club
+      - scene.sala_full_azul
+      - scene.sala_full_redblue
+      - script.sala_cycle_scenes
+      - script.sala_encendido_suave
+      - script.sala_apagado_suave
+      - script.luces_manana
+      - script.luces_tarde
+      - script.luces_madrugada
+      - script.luces_sala_global
+      - script.sala_de_estar_turn_on_lights
+      - script.arribo_global
+      - script.aire_toggle_24
+      - script.dormir_secuencia
+      - script.sala_cozy_noisy
+      - light.turn_on__sala
+      - light.turn_off__sala
+
+  # ── BOTÓN 2 ──────────────────────────────────────
+  switch_sala_b2_single_script:
+    name: "B2 · Tap"
+    icon: mdi:gesture-tap
+    options:
+      - scene.daylight_100
+      - scene.sala_de_estar_100_warm
+      - scene.sala_de_estar_warm_night
+      - scene.cozy_ocean
+      - scene.cozy_club
+      - scene.sala_full_azul
+      - scene.sala_full_redblue
+      - script.sala_cycle_scenes
+      - script.sala_encendido_suave
+      - script.sala_apagado_suave
+      - script.luces_manana
+      - script.luces_tarde
+      - script.luces_madrugada
+      - script.luces_sala_global
+      - script.sala_de_estar_turn_on_lights
+      - script.arribo_global
+      - script.aire_toggle_24
+      - script.dormir_secuencia
+      - script.sala_cozy_noisy
+      - light.turn_on__sala
+      - light.turn_off__sala
+
+  switch_sala_b2_double_script:
+    name: "B2 · Double"
+    icon: mdi:gesture-double-tap
+    options:
+      - scene.daylight_100
+      - scene.sala_de_estar_100_warm
+      - scene.sala_de_estar_warm_night
+      - scene.cozy_ocean
+      - scene.cozy_club
+      - scene.sala_full_azul
+      - scene.sala_full_redblue
+      - script.sala_cycle_scenes
+      - script.sala_encendido_suave
+      - script.sala_apagado_suave
+      - script.luces_manana
+      - script.luces_tarde
+      - script.luces_madrugada
+      - script.luces_sala_global
+      - script.sala_de_estar_turn_on_lights
+      - script.arribo_global
+      - script.aire_toggle_24
+      - script.dormir_secuencia
+      - script.sala_cozy_noisy
+      - light.turn_on__sala
+      - light.turn_off__sala
+
+  switch_sala_b2_hold_script:
+    name: "B2 · Hold"
+    icon: mdi:gesture-tap-hold
+    options:
+      - scene.daylight_100
+      - scene.sala_de_estar_100_warm
+      - scene.sala_de_estar_warm_night
+      - scene.cozy_ocean
+      - scene.cozy_club
+      - scene.sala_full_azul
+      - scene.sala_full_redblue
+      - script.sala_cycle_scenes
+      - script.sala_encendido_suave
+      - script.sala_apagado_suave
+      - script.luces_manana
+      - script.luces_tarde
+      - script.luces_madrugada
+      - script.luces_sala_global
+      - script.sala_de_estar_turn_on_lights
+      - script.arribo_global
+      - script.aire_toggle_24
+      - script.dormir_secuencia
+      - script.sala_cozy_noisy
+      - light.turn_on__sala
+      - light.turn_off__sala
+
+  # ── BOTÓN 3 ──────────────────────────────────────
+  switch_sala_b3_single_script:
+    name: "B3 · Tap"
+    icon: mdi:gesture-tap
+    options:
+      - scene.daylight_100
+      - scene.sala_de_estar_100_warm
+      - scene.sala_de_estar_warm_night
+      - scene.cozy_ocean
+      - scene.cozy_club
+      - scene.sala_full_azul
+      - scene.sala_full_redblue
+      - script.sala_cycle_scenes
+      - script.sala_encendido_suave
+      - script.sala_apagado_suave
+      - script.luces_manana
+      - script.luces_tarde
+      - script.luces_madrugada
+      - script.luces_sala_global
+      - script.sala_de_estar_turn_on_lights
+      - script.arribo_global
+      - script.aire_toggle_24
+      - script.dormir_secuencia
+      - script.sala_cozy_noisy
+      - light.turn_on__sala
+      - light.turn_off__sala
+
+  switch_sala_b3_double_script:
+    name: "B3 · Double"
+    icon: mdi:gesture-double-tap
+    options:
+      - scene.daylight_100
+      - scene.sala_de_estar_100_warm
+      - scene.sala_de_estar_warm_night
+      - scene.cozy_ocean
+      - scene.cozy_club
+      - scene.sala_full_azul
+      - scene.sala_full_redblue
+      - script.sala_cycle_scenes
+      - script.sala_encendido_suave
+      - script.sala_apagado_suave
+      - script.luces_manana
+      - script.luces_tarde
+      - script.luces_madrugada
+      - script.luces_sala_global
+      - script.sala_de_estar_turn_on_lights
+      - script.arribo_global
+      - script.aire_toggle_24
+      - script.dormir_secuencia
+      - script.sala_cozy_noisy
+      - light.turn_on__sala
+      - light.turn_off__sala
+
+  switch_sala_b3_hold_script:
+    name: "B3 · Hold"
+    icon: mdi:gesture-tap-hold
+    options:
+      - scene.daylight_100
+      - scene.sala_de_estar_100_warm
+      - scene.sala_de_estar_warm_night
+      - scene.cozy_ocean
+      - scene.cozy_club
+      - scene.sala_full_azul
+      - scene.sala_full_redblue
+      - script.sala_cycle_scenes
+      - script.sala_encendido_suave
+      - script.sala_apagado_suave
+      - script.luces_manana
+      - script.luces_tarde
+      - script.luces_madrugada
+      - script.luces_sala_global
+      - script.sala_de_estar_turn_on_lights
+      - script.arribo_global
+      - script.aire_toggle_24
+      - script.dormir_secuencia
+      - script.sala_cozy_noisy
+      - light.turn_on__sala
+      - light.turn_off__sala
+
+  # ── BOTÓN 4 ──────────────────────────────────────
+  switch_sala_b4_single_script:
+    name: "B4 · Tap"
+    icon: mdi:gesture-tap
+    options:
+      - scene.daylight_100
+      - scene.sala_de_estar_100_warm
+      - scene.sala_de_estar_warm_night
+      - scene.cozy_ocean
+      - scene.cozy_club
+      - scene.sala_full_azul
+      - scene.sala_full_redblue
+      - script.sala_cycle_scenes
+      - script.sala_encendido_suave
+      - script.sala_apagado_suave
+      - script.luces_manana
+      - script.luces_tarde
+      - script.luces_madrugada
+      - script.luces_sala_global
+      - script.sala_de_estar_turn_on_lights
+      - script.arribo_global
+      - script.aire_toggle_24
+      - script.dormir_secuencia
+      - script.sala_cozy_noisy
+      - light.turn_on__sala
+      - light.turn_off__sala
+
+  switch_sala_b4_double_script:
+    name: "B4 · Double"
+    icon: mdi:gesture-double-tap
+    options:
+      - scene.daylight_100
+      - scene.sala_de_estar_100_warm
+      - scene.sala_de_estar_warm_night
+      - scene.cozy_ocean
+      - scene.cozy_club
+      - scene.sala_full_azul
+      - scene.sala_full_redblue
+      - script.sala_cycle_scenes
+      - script.sala_encendido_suave
+      - script.sala_apagado_suave
+      - script.luces_manana
+      - script.luces_tarde
+      - script.luces_madrugada
+      - script.luces_sala_global
+      - script.sala_de_estar_turn_on_lights
+      - script.arribo_global
+      - script.aire_toggle_24
+      - script.dormir_secuencia
+      - script.sala_cozy_noisy
+      - light.turn_on__sala
+      - light.turn_off__sala
+
+  switch_sala_b4_hold_script:
+    name: "B4 · Hold"
+    icon: mdi:gesture-tap-hold
+    options:
+      - scene.daylight_100
+      - scene.sala_de_estar_100_warm
+      - scene.sala_de_estar_warm_night
+      - scene.cozy_ocean
+      - scene.cozy_club
+      - scene.sala_full_azul
+      - scene.sala_full_redblue
+      - script.sala_cycle_scenes
+      - script.sala_encendido_suave
+      - script.sala_apagado_suave
+      - script.luces_manana
+      - script.luces_tarde
+      - script.luces_madrugada
+      - script.luces_sala_global
+      - script.sala_de_estar_turn_on_lights
+      - script.arribo_global
+      - script.aire_toggle_24
+      - script.dormir_secuencia
+      - script.sala_cozy_noisy
+      - light.turn_on__sala
+      - light.turn_off__sala

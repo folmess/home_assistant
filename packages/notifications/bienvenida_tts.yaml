@@ -29,14 +29,32 @@ script:
       - variables:
           _speaker: "{{ speaker }}"
           _nombre: "{{ states(nombre_helper) | trim }}"
-      - service: tts.cloud_say
+          _mensaje: "Hola, {{ _nombre if _nombre else 'invitado' }}. Bienvenido a casa."
+          
+      - alias: "Intención principal con Nabu Casa TTS"
+        service: tts.cloud_say
         target:
           entity_id: "{{ _speaker }}"
         data:
-          message: "Hola, {{ _nombre if _nombre else 'invitado' }}. Bienvenido a casa."
+          message: "{{ _mensaje }}"
           cache: true
           language: es-ES
-          # Opcional: descomenta y ajusta la voz si querés
-          # options:
-          #   voice: Lucia
+        continue_on_error: true   # <--- Si falla, el script NO se detiene
+        
+      - alias: "Espera breve para darle tiempo a conectar"
+        delay: "00:00:01"
+        
+      - alias: "Fallback si no está reproduciendo"
+        if:
+          - condition: template
+            value_template: "{{ not is_state(_speaker, 'playing') }}"
+        then:
+          - alias: "Usar Google Translate como respaldo"
+            service: tts.google_translate_say
+            target:
+              entity_id: "{{ _speaker }}"
+            data:
+              message: "{{ _mensaje }}"
+              language: es
+            # Opcional: Podés cambiar google_translate_say por piper si querés todo 100% local
     mode: restart
