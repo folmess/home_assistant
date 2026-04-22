@@ -3745,3 +3745,199 @@ sala_cozy_noisy:
       entity_id: scene.pieza_red_spot
   alias: sala_cozy_noisy
   description: ''
+sala_mood_normal_dia:
+  alias: Sala Mood - Normal Dia
+  mode: restart
+  sequence:
+  - choose:
+      - conditions: "{{ states('sensor.parte_del_dia') == 'tarde' }}"
+        sequence:
+        - service: script.turn_on
+          target:
+            entity_id: script.luces_tarde
+    default:
+    - service: script.turn_on
+      target:
+        entity_id: script.luces_manana
+  description: ''
+sala_mood_normal_noche:
+  alias: Sala Mood - Normal Noche
+  mode: restart
+  sequence:
+  - variables:
+      leaf_lights: >
+        {% set ns = namespace(leaf=[]) %}
+        {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+          {% set m = state_attr(l,'entity_id') %}
+          {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+        {% endfor %}
+        {{ ns.leaf | unique | list }}
+      brightness: "{{ states('input_number.smart_light_sala_brightness_noche') | int(40) }}"
+  - service: light.turn_on
+    target:
+      entity_id: "{{ leaf_lights }}"
+    data:
+      brightness: "{{ brightness }}"
+      transition: 1
+  description: ''
+sala_mood_normal_madrugada:
+  alias: Sala Mood - Normal Madrugada
+  mode: restart
+  sequence:
+  - service: script.turn_on
+    target:
+      entity_id: script.luces_madrugada
+  description: ''
+sala_mood_chill_dia:
+  alias: Sala Mood - Chill Dia
+  mode: restart
+  sequence:
+  - service: scene.turn_on
+    target:
+      entity_id: scene.cozy_club
+  description: ''
+sala_mood_chill_noche:
+  alias: Sala Mood - Chill Noche
+  mode: restart
+  sequence:
+  - service: scene.turn_on
+    target:
+      entity_id: scene.cozy_club
+  - service: light.turn_on
+    target:
+      entity_id:
+      - light.barra
+      - light.riel
+    data:
+      brightness_pct: 20
+      color_temp_kelvin: 2200
+      transition: 2
+  description: ''
+sala_mood_chill_madrugada:
+  alias: Sala Mood - Chill Madrugada
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      entity_id:
+      - light.barra
+      - light.riel
+    data:
+      brightness_pct: 8
+      color_temp_kelvin: 2000
+      transition: 2
+  description: ''
+sala_mood_tv_dia:
+  alias: Sala Mood - TV Dia
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      entity_id:
+      - light.barra
+      - light.riel
+    data:
+      brightness_pct: 25
+      color_temp_kelvin: 2500
+      transition: 2
+  description: ''
+sala_mood_tv_noche:
+  alias: Sala Mood - TV Noche
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      entity_id:
+      - light.barra
+      - light.riel
+    data:
+      brightness_pct: 12
+      color_temp_kelvin: 2200
+      transition: 2
+  description: ''
+sala_mood_tv_madrugada:
+  alias: Sala Mood - TV Madrugada
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      entity_id:
+      - light.barra
+      - light.riel
+    data:
+      brightness_pct: 5
+      color_temp_kelvin: 2000
+      transition: 2
+  description: ''
+sala_mood_cena_dia:
+  alias: Sala Mood - Cena Dia
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      entity_id:
+      - light.riel
+      - light.barra
+    data:
+      brightness_pct: 55
+      color_temp_kelvin: 2700
+      transition: 1
+  description: ''
+sala_mood_cena_noche:
+  alias: Sala Mood - Cena Noche
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      entity_id:
+      - light.riel
+      - light.barra
+    data:
+      brightness_pct: 35
+      color_temp_kelvin: 2400
+      transition: 1
+  description: ''
+sala_mood_cena_madrugada:
+  alias: Sala Mood - Cena Madrugada
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      entity_id:
+      - light.riel
+      - light.barra
+    data:
+      brightness_pct: 12
+      color_temp_kelvin: 2200
+      transition: 1
+  description: ''
+sala_mood_noche_dia:
+  alias: Sala Mood - Noche Dia
+  mode: restart
+  sequence:
+  - service: script.turn_on
+    target:
+      entity_id: script.sala_mood_normal_noche
+  description: ''
+sala_mood_noche_noche:
+  alias: Sala Mood - Noche Noche
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      entity_id:
+      - light.barra
+      - light.riel
+    data:
+      brightness_pct: 10
+      color_temp_kelvin: 2000
+      transition: 2
+  description: ''
+sala_mood_noche_madrugada:
+  alias: Sala Mood - Noche Madrugada
+  mode: restart
+  sequence:
+  - service: script.turn_on
+    target:
+      entity_id: script.sala_mood_chill_madrugada
+  description: ''

@@ -125,7 +125,10 @@ automation:
       # 2) Lleva > 20 minutos sin cambiar (sin movimiento sostenido)
       - condition: template
         value_template: >
-          {{ (now() - states.binary_sensor.motion_cocina.last_changed).total_seconds() > 20 * 60 }}
+          {% set motion = states.binary_sensor.motion_cocina if states.binary_sensor.motion_cocina is defined else none %}
+          {{ motion is not none
+             and motion.state == 'off'
+             and (now() - motion.last_changed).total_seconds() > 20 * 60 }}
 
       # 3) Hay al menos una luz encendida en el área
       - condition: template
@@ -135,5 +138,3 @@ automation:
       - service: light.turn_off
         target:
           area_id: "{{ area_cocina }}"
-
- 
