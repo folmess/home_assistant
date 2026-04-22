@@ -1337,6 +1337,7 @@ automation:
                     duration: "{{ fade_sec }}"
                     steps: "{{ steps }}"
                     min_pct: "{{ min_pct_floor }}"
+                    snapshot_var: var.smart_light_sala_snapshot_targets
           # Desde WAITING_ARRIVAL -> encendido por efecto/franja
           - conditions:
               - condition: template

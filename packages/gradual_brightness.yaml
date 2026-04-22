@@ -338,10 +338,13 @@ script:
                 target:
                   entity_id: "{{ light }}"
   gradual_restore_from_snapshot:
-    alias: Sala - Encendido suave desde snapshot
-    description: Transición hacia los brillos guardados en var.sala_snapshot_targets
+    alias: Snapshot - Encendido suave desde snapshot
+    description: Transicion hacia los brillos guardados en un var JSON de snapshot.
     mode: restart
     fields:
+      snapshot_var:
+        description: Entidad var que contiene el JSON de targets por luz
+        default: var.smart_light_sala_snapshot_targets
       duration:
         description: Duración total en segundos
         default: 10
@@ -353,8 +356,9 @@ script:
         default: 10
     sequence:
       - variables:
+          snapshot_var_entity: "{{ snapshot_var | default('var.smart_light_sala_snapshot_targets') }}"
           targets: >
-            {{ states('var.sala_snapshot_targets') | default('{}', true) | from_json }}
+            {{ states(snapshot_var_entity) | default('{}', true) | from_json }}
           luces: "{{ (targets.keys() if targets is mapping else []) | list }}"
           steps_i: "{{ (steps | default(30)) | int }}"
           duration_s: "{{ (duration | default(10)) | float }}"

@@ -1,6 +1,6 @@
 # Smart Light Sala / motion_kilo
 
-Documentacion del package `packages/sala_auto_motion_kilo.yaml`.
+Documentacion del package `packages/smart_light_sala.yaml`.
 
 Ultima actualizacion de este documento: 2026-04-21.
 
@@ -22,8 +22,8 @@ El package tambien respeta `input_boolean.modo_cine`: mientras modo cine esta ac
 
 ## Archivos Relacionados
 
-- `packages/sala_auto_motion_kilo.yaml`: package principal.
-- `packages/sala_auto_motion_kilo.md`: esta documentacion.
+- `packages/smart_light_sala.yaml`: package principal.
+- `packages/smart_light_sala.md`: esta documentacion.
 - `scripts.yaml`: scripts editables desde UI, incluyendo la matriz `sala_mood_<mood>_<franja>`.
 - `automations.yaml`: integracion externa con modo cine.
 - `packages/sleep/yendo_a_dormir_v2.yaml`: integracion externa con modo dormir.
@@ -851,7 +851,7 @@ Version inicial del package `motion_kilo`:
 Validaciones locales hechas durante los cambios:
 
 - Parse YAML generico OK en:
-  - `packages/sala_auto_motion_kilo.yaml`
+  - `packages/smart_light_sala.yaml`
   - `packages/failsafe_apagado_luces.yaml`
   - `packages/sleep/yendo_a_dormir_v2.yaml`
   - `automations.yaml`

@@ -3941,3 +3941,140 @@ sala_mood_noche_madrugada:
     target:
       entity_id: script.sala_mood_chill_madrugada
   description: ''
+
+cocina_mood_normal_dia:
+  alias: Cocina Mood - Normal Dia
+  mode: restart
+  sequence:
+  - service: script.turn_on
+    target:
+      entity_id: script.luces_cocina_mediodia
+cocina_mood_normal_noche:
+  alias: Cocina Mood - Normal Noche
+  mode: restart
+  sequence:
+  - service: script.turn_on
+    target:
+      entity_id: script.luces_cocina_noche
+cocina_mood_normal_madrugada:
+  alias: Cocina Mood - Normal Madrugada
+  mode: restart
+  sequence:
+  - service: script.turn_on
+    target:
+      entity_id: script.luces_cocina_madrugada
+cocina_mood_cocinar_dia:
+  alias: Cocina Mood - Cocinar Dia
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      area_id: cocina
+    data:
+      brightness_pct: 100
+      color_temp_kelvin: 5500
+cocina_mood_cocinar_noche:
+  alias: Cocina Mood - Cocinar Noche
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      entity_id:
+      - light.cocina
+      - light.mesada
+    data:
+      brightness_pct: 100
+      color_temp_kelvin: 5000
+cocina_mood_cocinar_madrugada:
+  alias: Cocina Mood - Cocinar Madrugada
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      entity_id: light.mesada
+    data:
+      brightness_pct: 45
+      color_temp_kelvin: 2700
+  - service: light.turn_on
+    target:
+      entity_id: light.cocina
+    data:
+      brightness_pct: 25
+      color_temp_kelvin: 2400
+cocina_mood_cena_dia:
+  alias: Cocina Mood - Cena Dia
+  mode: restart
+  sequence:
+  - service: script.turn_on
+    target:
+      entity_id: script.luces_cocina_tarde
+cocina_mood_cena_noche:
+  alias: Cocina Mood - Cena Noche
+  mode: restart
+  sequence:
+  - service: script.turn_on
+    target:
+      entity_id: script.luces_cocina_noche
+cocina_mood_cena_madrugada:
+  alias: Cocina Mood - Cena Madrugada
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      entity_id: light.cocina
+    data:
+      brightness_pct: 20
+      color_temp_kelvin: 2200
+cocina_mood_noche_dia:
+  alias: Cocina Mood - Noche Dia
+  mode: restart
+  sequence:
+  - service: script.turn_on
+    target:
+      entity_id: script.luces_cocina_tarde
+cocina_mood_noche_noche:
+  alias: Cocina Mood - Noche Noche
+  mode: restart
+  sequence:
+  - service: script.turn_on
+    target:
+      entity_id: script.luces_cocina_noche
+cocina_mood_noche_madrugada:
+  alias: Cocina Mood - Noche Madrugada
+  mode: restart
+  sequence:
+  - service: script.turn_on
+    target:
+      entity_id: script.luces_cocina_madrugada
+cocina_mood_limpieza_dia:
+  alias: Cocina Mood - Limpieza Dia
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      area_id: cocina
+    data:
+      brightness_pct: 100
+      color_temp_kelvin: 6500
+cocina_mood_limpieza_noche:
+  alias: Cocina Mood - Limpieza Noche
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      area_id: cocina
+    data:
+      brightness_pct: 100
+      color_temp_kelvin: 5000
+cocina_mood_limpieza_madrugada:
+  alias: Cocina Mood - Limpieza Madrugada
+  mode: restart
+  sequence:
+  - service: light.turn_on
+    target:
+      entity_id:
+      - light.cocina
+      - light.mesada
+    data:
+      brightness_pct: 65
+      color_temp_kelvin: 3500
