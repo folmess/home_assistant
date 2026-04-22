@@ -23,7 +23,6 @@ var:
 input_select:
   smart_light_sala_state:
     name: SMART LIGHT SALA - Estado logico
-    icon: mdi:state-machine
     options:
       - ACTIVE
       - IDLE_COUNTDOWN
@@ -32,11 +31,19 @@ input_select:
       - WAITING_ARRIVAL
       - DISABLED
     initial: ACTIVE
+  smart_light_sala_mood:
+    name: SMART LIGHT SALA - Mood
+    options:
+      - normal
+      - chill
+      - tv
+      - cena
+      - noche
+    initial: normal
 
 input_boolean:
   smart_light_sala_debug_mode:
     name: SMART LIGHT SALA - Debug
-    icon: mdi:bug
     initial: off
   smart_light_sala_fade:
     name: SMART LIGHT SALA - Usar fade en PRE_NOTICE
@@ -47,7 +54,6 @@ input_boolean:
     icon: mdi:animation-play-outline
   smart_lights_sala:
     name: Smart Lights Sala
-    icon: mdi:lightbulb-auto
     initial: on
 
 # -------------------------
@@ -57,7 +63,6 @@ input_number:
   # Timeouts (min) por franja
   smart_light_sala_timeout_manana:
     name: Timeout - Manana
-    icon: mdi:timer-sand
     min: 1
     max: 60
     step: 1
@@ -65,7 +70,6 @@ input_number:
     initial: 5
   smart_light_sala_timeout_mediodia:
     name: Timeout - Mediodia
-    icon: mdi:timer-sand
     min: 1
     max: 60
     step: 1
@@ -73,7 +77,6 @@ input_number:
     initial: 5
   smart_light_sala_timeout_tarde:
     name: Timeout - Tarde
-    icon: mdi:timer-sand
     min: 1
     max: 60
     step: 1
@@ -81,7 +84,6 @@ input_number:
     initial: 5
   smart_light_sala_timeout_noche:
     name: Timeout - Noche
-    icon: mdi:timer-sand
     min: 1
     max: 60
     step: 1
@@ -89,7 +91,6 @@ input_number:
     initial: 5
   smart_light_sala_timeout_madrugada:
     name: Timeout - Madrugada
-    icon: mdi:timer-sand
     min: 1
     max: 60
     step: 1
@@ -99,7 +100,6 @@ input_number:
   # Arribo (ventana de restore, min) por franja
   smart_light_sala_arribo_manana:
     name: Arribo - Mañana
-    icon: mdi:home-clock-outline
     min: 1
     max: 120
     step: 1
@@ -107,7 +107,6 @@ input_number:
     initial: 4
   smart_light_sala_arribo_mediodia:
     name: Arribo - Mediodía
-    icon: mdi:home-clock-outline
     min: 1
     max: 120
     step: 1
@@ -115,7 +114,6 @@ input_number:
     initial: 4
   smart_light_sala_arribo_tarde:
     name: Arribo - Tarde
-    icon: mdi:home-clock-outline
     min: 1
     max: 120
     step: 1
@@ -123,7 +121,6 @@ input_number:
     initial: 4
   smart_light_sala_arribo_noche:
     name: Arribo - Noche
-    icon: mdi:home-clock-outline
     min: 1
     max: 120
     step: 1
@@ -131,7 +128,6 @@ input_number:
     initial: 4
   smart_light_sala_arribo_madrugada:
     name: Arribo - Madrugada
-    icon: mdi:home-clock-outline
     min: 1
     max: 120
     step: 1
@@ -141,35 +137,30 @@ input_number:
   # Brillos por franja (fallback encendido simple)
   smart_light_sala_brightness_manana:
     name: Brightness - Mañana
-    icon: mdi:brightness-6
     min: 0
     max: 255
     step: 1
     initial: 200
   smart_light_sala_brightness_mediodia:
     name: Brightness - Mediodia
-    icon: mdi:brightness-6
     min: 0
     max: 255
     step: 1
     initial: 200
   smart_light_sala_brightness_tarde:
     name: Brightness - Tarde
-    icon: mdi:brightness-6
     min: 0
     max: 255
     step: 1
     initial: 200
   smart_light_sala_brightness_noche:
     name: Brightness - Noche
-    icon: mdi:brightness-6
     min: 0
     max: 255
     step: 1
     initial: 150
   smart_light_sala_brightness_madrugada:
     name: Brightness - Madrugada
-    icon: mdi:brightness-6
     min: 0
     max: 255
     step: 1
@@ -178,7 +169,6 @@ input_number:
   # Reduccion instantanea (cuando fade OFF)
   smart_light_sala_reduction_percentage:
     name: Reduccion en PRE_NOTICE (%)
-    icon: mdi:brightness-percent
     min: 0
     max: 100
     step: 1
@@ -188,7 +178,6 @@ input_number:
   # Parametros de fade
   smart_light_sala_fade_sec:
     name: Fade duracion (s)
-    icon: mdi:timer-sand
     min: 5
     max: 600
     step: 5
@@ -196,7 +185,6 @@ input_number:
     initial: 20
   smart_light_sala_fade_reduce_pct:
     name: Fade - Reducir (% sobre % MIN actual)
-    icon: mdi:percent
     min: 0
     max: 100
     step: 5
@@ -204,32 +192,47 @@ input_number:
     initial: 50
 
 # -------------------------
-# Efectos por franja (nombres de scripts)
+# Efectos por franja (override opcional de scripts de mood)
 # -------------------------
 input_text:
   smart_light_sala_effect_script_name:
     name: Effect Script - Global
-    icon: mdi:magic-staff
-    initial: sala_arribo_global
+    initial: ""
   smart_light_sala_effect_script_manana:
     name: Effect Script - Mañana
-    icon: mdi:magic-staff
 
   smart_light_sala_effect_script_mediodia:
     name: Effect Script - Mediodia
-    icon: mdi:magic-staff
 
   smart_light_sala_effect_script_tarde:
     name: Effect Script - Tarde
-    icon: mdi:magic-staff
 
   smart_light_sala_effect_script_noche:
     name: Effect Script - Noche
-    icon: mdi:magic-staff
 
   smart_light_sala_effect_script_madrugada:
     name: Effect Script - Madrugada
-    icon: mdi:magic-staff
+  smart_light_sala_debug_message:
+    name: SMART LIGHT SALA - Debug message
+    max: 255
+  smart_light_sala_debug_context:
+    name: SMART LIGHT SALA - Debug context
+    max: 255
+  smart_light_sala_debug_history:
+    name: SMART LIGHT SALA - Debug history
+    max: 255
+
+input_datetime:
+  smart_light_sala_debug_last_update:
+    name: SMART LIGHT SALA - Debug last update
+    has_date: true
+    has_time: true
+
+counter:
+  smart_light_sala_debug_events:
+    name: SMART LIGHT SALA - Debug events
+    initial: 0
+    step: 1
 
 
 # -------------------------
@@ -238,15 +241,12 @@ input_text:
 timer:
   smart_light_sala_idle_timeout:
     name: Idle countdown
-    icon: mdi:timer-outline
     restore: true
   smart_light_sala_dim_notice:
     name: Pre-Notice
-    icon: mdi:timer-alert-outline
     restore: true
   smart_light_sala_restore_window:
     name: Restore Window
-    icon: mdi:timer-star-outline
     restore: true
 
 # -------------------------
@@ -254,140 +254,86 @@ timer:
 # -------------------------
 script:
 
-  # Guardar escena + volcar targets por-luz (JSON) en var.smart_light_sala_snapshot_targets
-  smart_light_sala_execute_prenotice:
-    alias: SMART LIGHT SALA - Execute Pre-Notice Fade/Dim
-    mode: restart
-    variables:
-      # Parámetros de fade/reducción
-      reduce_pct: "{{ states('input_number.smart_light_sala_fade_reduce_pct') | int(60) }}"
-      fade_sec: "{{ states('input_number.smart_light_sala_fade_sec') | int(30) }}"
-
-      # Objetivo "seguro": % mínimo de las encendidas * (1 - reduce/100) → evita subidas
-      leaf_lights: >
-        {{ state_attr('sensor.smart_light_sala_leaf_lights', 'entity_id') | default([]) }}
-      on_pcts: >
-        {% set vals = [] %}
-        {% for e in expand(leaf_lights) %}
-          {% if e.state == 'on' %}
-            {% set bri = state_attr(e.entity_id, 'brightness') | int(255) %}
-            {% set pct = (bri / 2.55) | round(0) | int %}
-            {% set vals = vals + [pct] %}
-          {% endif %}
-        {% endfor %}
-        {{ vals }}
-      min_pct_now: "{{ (on_pcts|min if (on_pcts|length > 0) else 100) | int }}"
-      target_pct_global: >
-        {{ ((min_pct_now * (100 - reduce_pct) / 100.0) | round(0) | int) }}
-
-      # Duración de la ventana de restore por franja (ARRIBO)
-      pd: "{{ states('sensor.parte_del_dia') }}"
-      arribo_min: >
-        {% set suffix_map = {
-          'manana':'manana',
-          'mediodia':'mediodia',
-          'tarde':'tarde',
-          'noche':'noche',
-          'madrugada':'madrugada'
-        } %}
-        {% set suffix = suffix_map.get(pd) %}
-        {% set entity = 'input_number.smart_light_sala_arribo_' ~ suffix if suffix else none %}
-        {{ states(entity)|int if entity else 15 }}
-      restore_sec: "{{ (arribo_min | int) * 60 }}"
+  smart_light_sala_debug_emit:
+    alias: SMART LIGHT SALA - Debug emit
+    mode: queued
+    max: 20
+    fields:
+      event:
+        name: Event
+        selector:
+          text: {}
+      message:
+        name: Message
+        selector:
+          text: {}
+      context:
+        name: Context
+        selector:
+          text: {}
+      level:
+        name: Level
+        selector:
+          select:
+            options:
+              - debug
+              - info
+              - warning
+              - error
     sequence:
-      # 1) Estado lógico a PRE_NOTICE
-      - service: input_select.select_option
-        target: { entity_id: input_select.smart_light_sala_state }
-        data: { option: PRE_NOTICE }
+      - condition: state
+        entity_id: input_boolean.smart_light_sala_debug_mode
+        state: "on"
+      - variables:
+          event_id: "{{ event | default('event') }}"
+          message_text: "{{ message | default('Evento de Smart Light Sala.') }}"
+          context_text: "{{ context | default('') }}"
+          level_text: "{{ level | default('info') }}"
+          stamp: "{{ now().strftime('%H:%M:%S') }}"
+          line: "{{ stamp ~ ' ' ~ event_id ~ ' - ' ~ message_text }}"
+          old_history: >-
+            {% set current = states('input_text.smart_light_sala_debug_history') %}
+            {{ '' if current in ['unknown', 'unavailable', 'none', None] else current }}
+          new_history: >-
+            {{ ([line] + (old_history.split('\n') if old_history else []))[:5] | join('\n') | truncate(255, true, '') }}
+          log_line: "{{ event_id ~ ' | ' ~ message_text ~ (' | ' ~ context_text if context_text else '') }}"
+      - service: system_log.write
+        data:
+          logger: smart_light_sala
+          level: "{{ level_text }}"
+          message: "{{ log_line }}"
+      - service: input_text.set_value
+        target: { entity_id: input_text.smart_light_sala_debug_message }
+        data:
+          value: "{{ message_text | truncate(255, true, '') }}"
+      - service: input_text.set_value
+        target: { entity_id: input_text.smart_light_sala_debug_context }
+        data:
+          value: "{{ context_text | truncate(255, true, '') }}"
+      - service: input_text.set_value
+        target: { entity_id: input_text.smart_light_sala_debug_history }
+        data:
+          value: "{{ new_history }}"
+      - service: input_datetime.set_datetime
+        target: { entity_id: input_datetime.smart_light_sala_debug_last_update }
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+      - service: counter.increment
+        target: { entity_id: counter.smart_light_sala_debug_events }
 
-      # 2) Guardar snapshot + targets (para restore suave)
-      - service: script.turn_on
-        target: { entity_id: script.smart_light_sala_save_scene }
-
-      # 3) Iniciar (en paralelo) la ventana de RESTORE_WINDOW (solo timer + flag UI)
-      - service: timer.cancel
-        target: { entity_id: timer.smart_light_sala_restore_window }
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ restore_sec | int > 0 }}"
-            sequence:
-              - service: timer.start
-                target: { entity_id: timer.smart_light_sala_restore_window }
-                data: { duration: "{{ restore_sec }}" }
-
-      # 4) Ejecutar dim/fade del PRE_NOTICE
-      - choose:
-          - conditions:
-              - condition: state
-                entity_id: input_boolean.smart_light_sala_fade
-                state: "on"
-            sequence:
-              - service: input_boolean.turn_on
-                target: { entity_id: input_boolean.smart_light_sala_fading_active }
-              - variables:
-                  reduce_pct: "{{ states('input_number.smart_light_sala_fade_reduce_pct') | int(50) }}"
-                  fade_sec: "{{ states('input_number.smart_light_sala_fade_sec') | int(20) }}"
-                  steps: "{{ fade_sec * 2 }}"
-                  step_delay_ms: "{{ ((fade_sec | float) * 1000 / steps) | int }}"
-                  leaf_lights: >
-                    {{ state_attr('sensor.smart_light_sala_leaf_lights', 'entity_id') | default([]) }}
-                  per_light_targets: >
-                    {% set ns = namespace(targets=[]) %}
-                    {% for e in expand(leaf_lights) %}
-                      {% set bri = state_attr(e.entity_id,'brightness') | int(0) %}
-                      {% set pct = (bri / 2.55) | round(0) | int %}
-                      {% set target_pct = (pct * (100 - reduce_pct) / 100.0) | round(0) | int %}
-                      {% set ns.targets = ns.targets + [{'entity': e.entity_id, 'pct': target_pct}] %}
-                    {% endfor %}
-                    {{ ns.targets }}
-              - repeat:
-                  for_each: "{{ per_light_targets }}"
-                  sequence:
-                    - variables:
-                        light_entity: "{{ repeat.item.entity }}"
-                        target_pct: "{{ repeat.item.pct }}"
-                        is_dimmable: >
-                          {% set modes = state_attr(light_entity, 'supported_color_modes') %}
-                          {% if modes is string %}
-                            {% set modes_list = [modes | lower] %}
-                          {% elif modes is iterable %}
-                            {% set modes_list = modes | map('lower') | list %}
-                          {% else %}
-                            {% set modes_list = [] %}
-                          {% endif %}
-                          {{ 'brightness' in modes_list or 'hs' in modes_list or 'rgb' in modes_list or 'color_temp' in modes_list }}
-                    - choose:
-                        - conditions:
-                            - condition: template
-                              value_template: "{{ is_dimmable }}"
-                          sequence:
-                            - service: script.turn_on
-                              target: { entity_id: script.gradual_brightness_worker }
-                              data:
-                                variables:
-                                  light: "{{ light_entity }}"
-                                  target_brightness: "{{ target_pct }}"
-                                  steps: "{{ steps }}"
-                                  step_delay_ms: "{{ step_delay_ms }}"
-                                  flag_entity: input_boolean.smart_light_sala_fading_active
-                        - conditions:
-                            - condition: template
-                              value_template: "{{ not is_dimmable }}"
-                          sequence:
-                            # Non-dimmable lights stay on during dim
-                            []
-        default:
-          - service: script.turn_on
-            target: { entity_id: script.smart_light_sala_reduce_brightness }
-
+  # Guardar escena + volcar targets por-luz (JSON) en var.smart_light_sala_snapshot_targets
   smart_light_sala_save_scene:
     alias: SMART LIGHT SALA - Guardar escena + targets JSON (leaf)
     mode: parallel
     sequence:
       - variables:
           leaf_lights: >
-            {{ state_attr('sensor.smart_light_sala_leaf_lights', 'entity_id') | default([]) }}
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
           targets_map: >
             {% set ns = namespace(d={}) %}
             {% for e in expand(leaf_lights) %}
@@ -420,30 +366,40 @@ script:
     mode: parallel
     sequence:
       - variables:
-          pd: "{{ states('sensor.parte_del_dia') }}"
-          map_bri: >
-            {{ {
-              'manana':'input_number.smart_light_sala_brightness_manana',
-              'mediodia':'input_number.smart_light_sala_brightness_mediodia',
-              'tarde':'input_number.smart_light_sala_brightness_tarde',
-              'noche':'input_number.smart_light_sala_brightness_noche',
-              'madrugada':'input_number.smart_light_sala_brightness_madrugada'
-            } }}
-          base: "{{ states(map_bri[pd])|int if pd in map_bri else 200 }}"
           red: "{{ states('input_number.smart_light_sala_reduction_percentage')|int }}"
-          target_bri: "{{ (base * (100 - red) / 100) | int }}"
           leaf_lights: >
-            {{ state_attr('sensor.smart_light_sala_leaf_lights', 'entity_id') | default([]) }}
-          on_lights: >
-            {{ expand(leaf_lights) | selectattr('state','equalto','on') | map(attribute='entity_id') | list }}
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
+          per_light_targets: >
+            {% set ns = namespace(targets=[]) %}
+            {% for e in expand(leaf_lights) %}
+              {% set modes = state_attr(e.entity_id, 'supported_color_modes') %}
+              {% set is_dimmable = modes and ('brightness' in modes or 'hs' in modes or 'rgb' in modes or 'color_temp' in modes) %}
+              {% if e.state == 'on' and is_dimmable %}
+                {% set current_bri = state_attr(e.entity_id, 'brightness') | int(255) %}
+                {% set reduced_bri = (current_bri * (100 - red) / 100) | round(0) | int %}
+                {% set target_bri = [reduced_bri, 1] | max %}
+                {% set ns.targets = ns.targets + [{'entity': e.entity_id, 'brightness': target_bri}] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.targets }}
       - choose:
           - conditions:
               - condition: template
-                value_template: "{{ on_lights | length > 0 }}"
+                value_template: "{{ per_light_targets | length > 0 }}"
             sequence:
-              - service: light.turn_on
-                target: { entity_id: "{{ on_lights }}" }
-                data: { brightness: "{{ target_bri }}", transition: 1 }
+              - repeat:
+                  for_each: "{{ per_light_targets }}"
+                  sequence:
+                    - service: light.turn_on
+                      target: { entity_id: "{{ repeat.item.entity }}" }
+                      data:
+                        brightness: "{{ repeat.item.brightness }}"
+                        transition: 1
 
   # Apagar todas las luces del area (leaf)
   smart_light_sala_turn_off_lights:
@@ -452,7 +408,12 @@ script:
     sequence:
       - variables:
           leaf_lights: >
-            {{ state_attr('sensor.smart_light_sala_leaf_lights', 'entity_id') | default([]) }}
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
       - service: light.turn_off
         target: { entity_id: "{{ leaf_lights }}" }
 
@@ -489,8 +450,56 @@ script:
             {{ pick }}
           effect_entity: >
             {{ ('script.' ~ effect_name) if (effect_name|length > 0) else '' }}
+          mood: >
+            {{ states('input_select.smart_light_sala_mood')
+               | lower
+               | replace(' ', '_')
+               | replace('-', '_') }}
+          mood_slot: >
+            {% if pd in ['manana', 'mediodia', 'tarde'] %}
+              dia
+            {% elif pd == 'noche' %}
+              noche
+            {% elif pd == 'madrugada' %}
+              madrugada
+            {% else %}
+              dia
+            {% endif %}
+          mood_script: "{{ 'script.sala_mood_' ~ mood ~ '_' ~ (mood_slot | trim) }}"
+          mood_day_script: "{{ 'script.sala_mood_' ~ mood ~ '_dia' }}"
+          normal_slot_script: "{{ 'script.sala_mood_normal_' ~ (mood_slot | trim) }}"
+          normal_day_script: script.sala_mood_normal_dia
+          selected_mood_script: >
+            {% set slot = mood_slot | trim %}
+            {% set candidates =
+              [mood_script]
+              + ([mood_day_script] if slot != 'dia' else [])
+              + ([normal_slot_script] if mood != 'normal' else [])
+              + ([normal_day_script] if mood != 'normal' and slot != 'dia' else [])
+            %}
+            {% set ns = namespace(entity='') %}
+            {% for entity in candidates %}
+              {% if ns.entity == '' and states(entity) != 'unknown' %}
+                {% set ns.entity = entity %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.entity }}
           leaf_lights: >
-            {{ state_attr('sensor.smart_light_sala_leaf_lights', 'entity_id') | default([]) }}
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
+      - service: script.smart_light_sala_debug_emit
+        data:
+          event: turn_on_lights
+          message: >-
+            Movimiento detectado. Resuelvo iluminacion para mood {{ mood }} y franja {{ mood_slot | trim }}.
+          context: >-
+            mood_script={{ selected_mood_script | trim if selected_mood_script | trim else 'none' }},
+            effect_override={{ effect_entity if effect_entity else 'none' }},
+            fallback_brightness={{ brightness }}
       - choose:
           - conditions:
               - condition: template
@@ -498,6 +507,11 @@ script:
                   {{ use_scene_var and
                      (state_attr('scene.smart_light_sala_snapshot','entity_id') | default([]) | count > 0) }}
             sequence:
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: turn_on_snapshot
+                  message: "Restauro la escena snapshot de Smart Light Sala."
+                  context: "scene=scene.smart_light_sala_snapshot"
               - service: scene.turn_on
                 target: { entity_id: scene.smart_light_sala_snapshot }
           - conditions:
@@ -507,12 +521,376 @@ script:
                      and (effect_entity|length > 0)
                      and (states(effect_entity) != 'unknown') }}
             sequence:
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: turn_on_effect_script
+                  message: "Ejecuto el efecto configurado como override por franja."
+                  context: "script={{ effect_entity }}"
               - service: script.turn_on
                 target: { entity_id: "{{ effect_entity }}" }
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ (not use_scene_var)
+                     and (selected_mood_script | trim | length > 0) }}
+            sequence:
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: turn_on_mood_script
+                  message: "Ejecuto el script de mood elegido para la sala."
+                  context: "script={{ selected_mood_script | trim }}"
+              - service: script.turn_on
+                target: { entity_id: "{{ selected_mood_script | trim }}" }
         default:
+          - service: script.smart_light_sala_debug_emit
+            data:
+              event: turn_on_fallback
+              message: "No encontre script de mood ni efecto. Uso encendido fallback por brillo."
+              context: "brightness={{ brightness }}, lights={{ leaf_lights | count }}"
           - service: light.turn_on
             target: { entity_id: "{{ leaf_lights }}" }
             data: { brightness: "{{ brightness }}", transition: 1 }
+
+  smart_light_sala_set_state:
+    alias: SMART LIGHT SALA - Set state
+    mode: parallel
+    fields:
+      target_state:
+        name: Target state
+        selector:
+          select:
+            options:
+              - ACTIVE
+              - IDLE_COUNTDOWN
+              - PRE_NOTICE
+              - RESTORE_WINDOW
+              - WAITING_ARRIVAL
+              - DISABLED
+    sequence:
+      - service: script.smart_light_sala_debug_emit
+        data:
+          event: set_state
+          message: "Cambio el estado interno a {{ target_state }}."
+          context: "from={{ states('input_select.smart_light_sala_state') }}, to={{ target_state }}"
+      - service: input_select.select_option
+        target: { entity_id: input_select.smart_light_sala_state }
+        data: { option: "{{ target_state }}" }
+
+  smart_light_sala_cancel_motion_runtime:
+    alias: SMART LIGHT SALA - Cancel runtime
+    mode: parallel
+    sequence:
+      - service: script.smart_light_sala_debug_emit
+        data:
+          event: cancel_runtime
+          message: "Cancelo timers, fades y workers activos de Smart Lights Sala."
+          context: >-
+            state={{ states('input_select.smart_light_sala_state') }},
+            idle={{ states('timer.smart_light_sala_idle_timeout') }},
+            dim={{ states('timer.smart_light_sala_dim_notice') }},
+            restore={{ states('timer.smart_light_sala_restore_window') }}
+      - service: timer.cancel
+        target:
+          entity_id:
+            - timer.smart_light_sala_idle_timeout
+            - timer.smart_light_sala_dim_notice
+            - timer.smart_light_sala_restore_window
+      - service: script.turn_off
+        target:
+          entity_id:
+            - script.gradual_brightness_change
+            - script.gradual_restore_from_snapshot
+            - script.gradual_brightness_worker
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.smart_light_sala_fading_active }
+
+  smart_light_sala_enter_disabled:
+    alias: SMART LIGHT SALA - Enter DISABLED
+    mode: restart
+    sequence:
+      - service: script.smart_light_sala_debug_emit
+        data:
+          event: enter_disabled
+          message: "Smart Lights Sala se desactivo. Limpio timers y no toco las luces."
+          context: "trigger=smart_lights_sala_off"
+      - service: script.smart_light_sala_set_state
+        data: { target_state: DISABLED }
+      - service: script.smart_light_sala_cancel_motion_runtime
+
+  smart_light_sala_enter_idle_countdown:
+    alias: SMART LIGHT SALA - Enter IDLE_COUNTDOWN
+    mode: restart
+    sequence:
+      - service: script.smart_light_sala_debug_emit
+        data:
+          event: enter_idle_countdown
+          message: "Sin movimiento en sala. Preparo la cuenta regresiva antes del preaviso."
+          context: "motion={{ states('binary_sensor.motion_sala') }}, mood={{ states('input_select.smart_light_sala_mood') }}"
+      - service: script.smart_light_sala_start_idle_flow
+
+  smart_light_sala_enter_pre_notice:
+    alias: SMART LIGHT SALA - Enter PRE_NOTICE
+    mode: restart
+    sequence:
+      - variables:
+          leaf_lights: >
+            {% set ns = namespace(leaf=[]) %}
+            {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
+              {% set m = state_attr(l,'entity_id') %}
+              {% set ns.leaf = ns.leaf + (m if m else [l]) %}
+            {% endfor %}
+            {{ ns.leaf | unique | list }}
+          on_pcts: >
+            {% set vals = [] %}
+            {% for e in expand(leaf_lights) %}
+              {% if e.state == 'on' %}
+                {% set bri = state_attr(e.entity_id, 'brightness') | int(255) %}
+                {% set pct = (bri / 2.55) | round(0) | int %}
+                {% set vals = vals + [pct] %}
+              {% endif %}
+            {% endfor %}
+            {{ vals }}
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.smart_lights_sala
+                state: "on"
+              - condition: state
+                entity_id: input_boolean.modo_cine
+                state: "off"
+              - condition: state
+                entity_id: binary_sensor.motion_sala
+                state: "off"
+              - condition: state
+                entity_id: input_select.smart_light_sala_state
+                state: IDLE_COUNTDOWN
+            sequence:
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: enter_pre_notice
+                  message: "Entro en preaviso. Guardo snapshot y preparo la reduccion de brillo."
+                  context: >-
+                    fade={{ states('input_boolean.smart_light_sala_fade') }},
+                    luces_encendidas={{ on_pcts | length }}
+              - service: script.smart_light_sala_set_state
+                data: { target_state: PRE_NOTICE }
+              - service: script.turn_on
+                target: { entity_id: script.smart_light_sala_save_scene }
+              - service: timer.cancel
+                target: { entity_id: timer.smart_light_sala_restore_window }
+              - choose:
+                  - conditions:
+                      - condition: state
+                        entity_id: input_boolean.smart_light_sala_fade
+                        state: "on"
+                    sequence:
+                      - service: input_boolean.turn_on
+                        target: { entity_id: input_boolean.smart_light_sala_fading_active }
+                      - variables:
+                          reduce_pct: "{{ states('input_number.smart_light_sala_fade_reduce_pct') | int(50) }}"
+                          fade_sec: "{{ states('input_number.smart_light_sala_fade_sec') | int(20) }}"
+                          steps: "{{ fade_sec * 2 }}"
+                          step_delay_ms: "{{ ((fade_sec | float) * 1000 / steps) | int }}"
+                          per_light_targets: >
+                            {% set ns = namespace(targets=[]) %}
+                            {% for e in expand(leaf_lights) %}
+                              {% set bri = state_attr(e.entity_id,'brightness') | int(0) %}
+                              {% set pct = (bri / 2.55) | round(0) | int %}
+                              {% set target_pct = (pct * (100 - reduce_pct) / 100.0) | round(0) | int %}
+                              {% set ns.targets = ns.targets + [{'entity': e.entity_id, 'pct': target_pct}] %}
+                            {% endfor %}
+                            {{ ns.targets }}
+                      - repeat:
+                          for_each: "{{ per_light_targets }}"
+                          sequence:
+                            - variables:
+                                light_entity: "{{ repeat.item.entity }}"
+                                target_pct: "{{ repeat.item.pct }}"
+                                is_dimmable: >
+                                  {% set modes = state_attr(light_entity, 'supported_color_modes') %}
+                                  {% if modes is string %}
+                                    {% set modes_list = [modes | lower] %}
+                                  {% elif modes is iterable %}
+                                    {% set modes_list = modes | map('lower') | list %}
+                                  {% else %}
+                                    {% set modes_list = [] %}
+                                  {% endif %}
+                                  {{ 'brightness' in modes_list or 'hs' in modes_list or 'rgb' in modes_list or 'color_temp' in modes_list }}
+                            - choose:
+                                - conditions:
+                                    - condition: template
+                                      value_template: "{{ is_dimmable }}"
+                                  sequence:
+                                    - service: script.turn_on
+                                      target: { entity_id: script.gradual_brightness_worker }
+                                      data:
+                                        variables:
+                                          light: "{{ light_entity }}"
+                                          target_brightness: "{{ target_pct }}"
+                                          steps: "{{ steps }}"
+                                          step_delay_ms: "{{ step_delay_ms }}"
+                                          flag_entity: input_boolean.smart_light_sala_fading_active
+                                - conditions:
+                                    - condition: template
+                                      value_template: "{{ not is_dimmable }}"
+                                  sequence:
+                                    []
+                default:
+                  - service: script.turn_on
+                    target: { entity_id: script.smart_light_sala_reduce_brightness }
+        default:
+          - service: script.smart_light_sala_debug_emit
+            data:
+              event: enter_pre_notice_ignored
+              message: "Ignore PRE_NOTICE porque el runtime no esta habilitado, volvio movimiento o el estado no era IDLE_COUNTDOWN."
+              context: "state={{ states('input_select.smart_light_sala_state') }}, smart_lights={{ states('input_boolean.smart_lights_sala') }}, cine={{ states('input_boolean.modo_cine') }}, motion={{ states('binary_sensor.motion_sala') }}"
+
+  smart_light_sala_enter_restore_window:
+    alias: SMART LIGHT SALA - Enter RESTORE_WINDOW
+    mode: restart
+    sequence:
+      - variables:
+          pd: "{{ states('sensor.parte_del_dia') }}"
+          arribo_min: >
+            {% set suffix_map = {
+              'manana':'manana',
+              'mediodia':'mediodia',
+              'tarde':'tarde',
+              'noche':'noche',
+              'madrugada':'madrugada'
+            } %}
+            {% set suffix = suffix_map.get(pd) %}
+            {% set entity = 'input_number.smart_light_sala_arribo_' ~ suffix if suffix else none %}
+            {{ states(entity)|int if entity else 15 }}
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.smart_lights_sala
+                state: "on"
+              - condition: state
+                entity_id: input_boolean.modo_cine
+                state: "off"
+              - condition: state
+                entity_id: binary_sensor.motion_sala
+                state: "off"
+              - condition: state
+                entity_id: input_select.smart_light_sala_state
+                state: PRE_NOTICE
+            sequence:
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: enter_restore_window
+                  message: "Termino el preaviso. Apago la sala y abro la ventana de restore."
+                  context: "arribo_min={{ arribo_min }}, parte={{ pd }}"
+              - service: input_boolean.turn_off
+                target: { entity_id: input_boolean.smart_light_sala_fading_active }
+              - service: script.turn_on
+                target: { entity_id: script.smart_light_sala_turn_off_lights }
+              - service: script.smart_light_sala_set_state
+                data: { target_state: RESTORE_WINDOW }
+              - service: timer.start
+                target: { entity_id: timer.smart_light_sala_restore_window }
+                data:
+                  duration: "{{ (arribo_min | int) * 60 }}"
+        default:
+          - service: script.smart_light_sala_debug_emit
+            data:
+              event: enter_restore_window_ignored
+              message: "Ignore RESTORE_WINDOW porque el runtime no esta habilitado, volvio movimiento o el estado no era PRE_NOTICE."
+              context: "state={{ states('input_select.smart_light_sala_state') }}, smart_lights={{ states('input_boolean.smart_lights_sala') }}, cine={{ states('input_boolean.modo_cine') }}, motion={{ states('binary_sensor.motion_sala') }}"
+
+  smart_light_sala_enter_waiting_arrival:
+    alias: SMART LIGHT SALA - Enter WAITING_ARRIVAL
+    mode: restart
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.smart_lights_sala
+                state: "on"
+              - condition: state
+                entity_id: input_boolean.modo_cine
+                state: "off"
+              - condition: state
+                entity_id: input_select.smart_light_sala_state
+                state: RESTORE_WINDOW
+            sequence:
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: enter_waiting_arrival
+                  message: "Termino la ventana de restore. Quedo esperando movimiento para aplicar el mood."
+                  context: "mood={{ states('input_select.smart_light_sala_mood') }}, parte={{ states('sensor.parte_del_dia') }}"
+              - service: script.smart_light_sala_set_state
+                data: { target_state: WAITING_ARRIVAL }
+        default:
+          - service: script.smart_light_sala_debug_emit
+            data:
+              event: enter_waiting_arrival_ignored
+              message: "Ignore WAITING_ARRIVAL porque el runtime no esta habilitado o el estado no era RESTORE_WINDOW."
+              context: "state={{ states('input_select.smart_light_sala_state') }}, smart_lights={{ states('input_boolean.smart_lights_sala') }}, cine={{ states('input_boolean.modo_cine') }}"
+
+
+  smart_light_sala_start_pre_notice_window:
+    alias: SMART LIGHT SALA - Start PRE_NOTICE timer
+    mode: restart
+    fields:
+      pre_notice_seconds:
+        name: Pre-notice seconds
+        selector:
+          number:
+            min: 1
+            max: 600
+            step: 1
+            unit_of_measurement: "s"
+    sequence:
+      - variables:
+          pd: "{{ states('sensor.parte_del_dia') }}"
+          timeout_suffix_map: >
+            {{ {
+              'manana':'manana',
+              'mediodia':'mediodia',
+              'tarde':'tarde',
+              'noche':'noche',
+              'madrugada':'madrugada'
+            } }}
+          timeout_entity: >
+            {% set suffix = timeout_suffix_map.get(pd) %}
+            {{ ('input_number.smart_light_sala_timeout_' ~ suffix) if suffix else none }}
+          timeout_sec: "{{ (states(timeout_entity)|int if timeout_entity else 10) * 60 }}"
+          pre_notice_sec: "{{ pre_notice_seconds | default(120 if timeout_sec|int >= 120 else timeout_sec|int) | int }}"
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.smart_lights_sala
+                state: "on"
+              - condition: state
+                entity_id: input_boolean.modo_cine
+                state: "off"
+              - condition: state
+                entity_id: binary_sensor.motion_sala
+                state: "off"
+              - condition: state
+                entity_id: input_select.smart_light_sala_state
+                state: IDLE_COUNTDOWN
+              - condition: template
+                value_template: "{{ pre_notice_sec | int > 0 }}"
+            sequence:
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: idle_to_pre_notice
+                  message: "La cuenta regresiva termino sin movimiento. Paso a preaviso."
+                  context: "pre_notice_sec={{ pre_notice_sec }}, parte={{ pd }}"
+              - service: timer.cancel
+                target: { entity_id: timer.smart_light_sala_idle_timeout }
+              - service: timer.start
+                target: { entity_id: timer.smart_light_sala_dim_notice }
+                data: { duration: "{{ pre_notice_sec }}" }
+        default:
+          - service: script.smart_light_sala_debug_emit
+            data:
+              event: idle_to_pre_notice_ignored
+              message: "No arranco PRE_NOTICE porque cambio el contexto de la sala."
+              context: "state={{ states('input_select.smart_light_sala_state') }}, motion={{ states('binary_sensor.motion_sala') }}, smart_lights={{ states('input_boolean.smart_lights_sala') }}, cine={{ states('input_boolean.modo_cine') }}"
 
 
   smart_light_sala_start_idle_flow:
@@ -560,12 +938,19 @@ script:
                 entity_id: input_boolean.smart_lights_sala
                 state: "on"
               - condition: state
+                entity_id: input_boolean.modo_cine
+                state: "off"
+              - condition: state
                 entity_id: binary_sensor.motion_sala
                 state: "off"
             sequence:
-              - service: input_select.select_option
-                target: { entity_id: input_select.smart_light_sala_state }
-                data: { option: IDLE_COUNTDOWN }
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: idle_flow_start
+                  message: "Arranco la cuenta regresiva de sala sin movimiento."
+                  context: "timeout_sec={{ timeout_sec }}, pre_notice_sec={{ pre_notice_sec }}, parte={{ pd }}"
+              - service: script.smart_light_sala_set_state
+                data: { target_state: IDLE_COUNTDOWN }
               - service: timer.cancel
                 target:
                   entity_id:
@@ -578,51 +963,18 @@ script:
               - choose:
                   - conditions:
                       - condition: template
-                        value_template: "{{ timeout_sec|int > 0 }}"
+                        value_template: "{{ wait_before_pre|int > 0 }}"
                     sequence:
                       - service: timer.start
                         target: { entity_id: timer.smart_light_sala_idle_timeout }
-                        data: { duration: "{{ timeout_sec }}" }
-                      - wait_for_trigger:
-                          - platform: state
-                            entity_id: binary_sensor.motion_sala
-                            to: "on"
-                          - platform: state
-                            entity_id: input_boolean.smart_lights_sala
-                            to: "off"
-                        timeout: "{{ wait_before_pre }}"
-                        continue_on_timeout: true
-                      - choose:
-                          - conditions:
-                              - condition: template
-                                value_template: "{{ not wait.completed }}"
-                              - condition: state
-                                entity_id: binary_sensor.motion_sala
-                                state: "off"
-                              - condition: state
-                                entity_id: input_boolean.smart_lights_sala
-                                state: "on"
-                              - condition: state
-                                entity_id: input_select.smart_light_sala_state
-                                state: IDLE_COUNTDOWN
-                              - condition: state
-                                entity_id: timer.smart_light_sala_idle_timeout
-                                state: "active"
-                            sequence:
-                              - service: timer.start
-                                target: { entity_id: timer.smart_light_sala_dim_notice }
-                                data: { duration: "{{ pre_notice_sec }}" }
-                              - service: timer.cancel
-                                target: { entity_id: timer.smart_light_sala_idle_timeout }
-                          - conditions:
-                              - condition: template
-                                value_template: "{{ wait.completed }}"
-                              - condition: state
-                                entity_id: timer.smart_light_sala_idle_timeout
-                                state: "active"
-                            sequence:
-                              - service: timer.cancel
-                                target: { entity_id: timer.smart_light_sala_idle_timeout }
+                        data: { duration: "{{ wait_before_pre }}" }
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ pre_notice_sec|int > 0 }}"
+                    sequence:
+                      - service: script.smart_light_sala_start_pre_notice_window
+                        data:
+                          pre_notice_seconds: "{{ pre_notice_sec }}"
         default: []
 
   smart_light_sala_toggle_smart_lights:
@@ -632,62 +984,102 @@ script:
       - service: input_boolean.toggle
         target: { entity_id: input_boolean.smart_lights_sala }
 
+  smart_light_sala_reset_runtime:
+    alias: SMART LIGHT SALA - Reset runtime
+    mode: restart
+    sequence:
+      - service: script.smart_light_sala_debug_emit
+        data:
+          event: reset_runtime
+          message: "Reset manual del runtime. Cancelo timers y recalculo desde el contexto actual."
+          context: "motion={{ states('binary_sensor.motion_sala') }}, smart_lights={{ states('input_boolean.smart_lights_sala') }}, cine={{ states('input_boolean.modo_cine') }}"
+      - service: script.smart_light_sala_cancel_motion_runtime
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ is_state('input_boolean.smart_lights_sala', 'off')
+                     or is_state('input_boolean.modo_cine', 'on') }}
+            sequence:
+              - service: script.smart_light_sala_enter_disabled
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.motion_sala
+                state: "on"
+            sequence:
+              - service: script.smart_light_sala_set_state
+                data: { target_state: ACTIVE }
+              - service: script.turn_on
+                target: { entity_id: script.smart_light_sala_turn_on_lights }
+                data:
+                  variables: { use_scene: false }
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.motion_sala
+                state: "off"
+            sequence:
+              - service: script.smart_light_sala_enter_idle_countdown
+
 ## ============================================
 ## Template sensor "dashboard-friendly"
 ## ============================================
 template:
   - sensor:
-      - name: "Smart Light Sala Leaf Lights"
-        unique_id: smart_light_sala_leaf_lights
-        state: "OK"
-        attributes:
-          entity_id: >-
-            {{ state_attr('sensor.smart_light_sala_leaf_lights', 'entity_id') | default([]) }}
-
       - name: "Smart Light Sala State"
         unique_id: smart_light_sala_state_sensor
         state: "{{ states('input_select.smart_light_sala_state') }}"
         attributes:
           # Mensaje "humano"
           next_action: >-
-            {{ {
-              'DISABLED': 'Luces configuradas manualmente, Smart Lights Sala apagado.',
-              'ACTIVE': 'Hay movimiento en sala.',
-              'IDLE_COUNTDOWN': 'Sin movimiento en sala; pronto se reducirá el brillo.',
-              'PRE_NOTICE': 'Reduciendo brillo; pronto se apagarán las luces.',
-              'RESTORE_WINDOW': 'Esperando movimiento para volver a prender las luces.',
-              'WAITING_ARRIVAL': 'Esperando arribo a casa para prender las luces automáticamente.'
-            }.get(states('input_select.smart_light_sala_state'), 'Algo salió mal. Estado desconocido.') }}
+            {% set s = states('input_select.smart_light_sala_state') %}
+            {% if s == 'DISABLED' %}
+              Luces configuradas manualmente, Smart Lights Sala apagado.
+            {% elif s == 'ACTIVE' %}
+              Hay movimiento en sala.
+            {% elif s == 'IDLE_COUNTDOWN' %}
+              Sin movimiento en sala; pronto se reducirá el brillo.
+            {% elif s == 'PRE_NOTICE' %}
+              Reduciendo brillo; pronto se apagarán las luces.
+            {% elif s == 'RESTORE_WINDOW' %}
+              Esperando movimiento para volver a prender las luces.
+            {% elif s == 'WAITING_ARRIVAL' %}
+              Esperando arribo a casa para prender las luces automáticamente.
+            {% else %}
+              Algo salió mal. Estado desconocido.
+            {% endif %}
 
           # Icono MDI sugerido para cada estado
           next_icon: >-
-            {{ {
-              'DISABLED': 'mdi:cancel',
-              'ACTIVE': 'mdi:run',
-              'IDLE_COUNTDOWN': 'mdi:timer-sand',
-              'PRE_NOTICE': 'mdi:brightness-4',
-              'RESTORE_WINDOW': 'mdi:backup-restore',
-              'WAITING_ARRIVAL': 'mdi:home-import-outline'
-            }.get(states('input_select.smart_light_sala_state'), 'mdi:help-circle') }}
+            {% set s = states('input_select.smart_light_sala_state') %}
+            {% if s == 'DISABLED' %}mdi:cancel
+            {% elif s == 'ACTIVE' %}mdi:run
+            {% elif s == 'IDLE_COUNTDOWN' %}mdi:timer-sand
+            {% elif s == 'PRE_NOTICE' %}mdi:brightness-4
+            {% elif s == 'RESTORE_WINDOW' %}mdi:backup-restore
+            {% elif s == 'WAITING_ARRIVAL' %}mdi:home-import-outline
+            {% else %}mdi:help-circle
+            {% endif %}
 
           # Color sugerido (para chips/cards que acepten icon_color)
           next_color: >-
-            {{ {
-              'DISABLED': 'grey',
-              'ACTIVE': 'green',
-              'IDLE_COUNTDOWN': 'orange',
-              'PRE_NOTICE': 'orange',
-              'RESTORE_WINDOW': 'blue',
-              'WAITING_ARRIVAL': 'teal'
-            }.get(states('input_select.smart_light_sala_state'), 'grey') }}
+            {% set s = states('input_select.smart_light_sala_state') %}
+            {% if s == 'DISABLED' %}grey
+            {% elif s == 'ACTIVE' %}green
+            {% elif s == 'IDLE_COUNTDOWN' %}orange
+            {% elif s == 'PRE_NOTICE' %}orange
+            {% elif s == 'RESTORE_WINDOW' %}blue
+            {% elif s == 'WAITING_ARRIVAL' %}teal
+            {% else %}grey
+            {% endif %}
 
           # Timer "vigente" según estado (útil para UI)
           timer_entity: >-
-            {{ {
-              'IDLE_COUNTDOWN': 'timer.smart_light_sala_idle_timeout',
-              'PRE_NOTICE': 'timer.smart_light_sala_dim_notice',
-              'RESTORE_WINDOW': 'timer.smart_light_sala_restore_window'
-            }.get(states('input_select.smart_light_sala_state'), 'none') }}
+            {% set s = states('input_select.smart_light_sala_state') %}
+            {% if s == 'IDLE_COUNTDOWN' %}timer.smart_light_sala_idle_timeout
+            {% elif s == 'PRE_NOTICE' %}timer.smart_light_sala_dim_notice
+            {% elif s == 'RESTORE_WINDOW' %}timer.smart_light_sala_restore_window
+            {% else %}none
+            {% endif %}
 
           # Remaining bruto (HH:MM:SS) del timer mapeado
           remaining: >-
@@ -705,14 +1097,105 @@ template:
           remaining_pretty: >-
             {% set raw = this.attributes.get('remaining', '') if this.attributes is defined else '' %}
             {% if raw and raw != '' %}
-              {% set p = strptime(raw, '%H:%M:%S') %}
-              {{ '%02d:%02d' | format(p.hour*60 + p.minute, p.second) }}
+              {% set without_fraction = raw.split('.')[0] %}
+              {% set day_count = without_fraction.split(' day')[0] | int(0) if 'day' in without_fraction else 0 %}
+              {% set time_part = without_fraction.split(',')[-1] | trim %}
+              {% set parts = time_part.split(':') %}
+              {% if parts | length == 3 %}
+                {% set total_minutes = (day_count * 1440) + (parts[0] | int(0) * 60) + (parts[1] | int(0)) %}
+                {{ '%02d:%02d' | format(total_minutes, parts[2] | int(0)) }}
+              {% else %}
+                {{ raw }}
+              {% endif %}
             {% else %}{{ '' }}{% endif %}
+      - name: "Smart Light Sala Debug"
+        unique_id: smart_light_sala_debug_sensor
+        state: "{{ states('input_text.smart_light_sala_debug_message') }}"
+        icon: mdi:bug-outline
+        attributes:
+          enabled: "{{ is_state('input_boolean.smart_light_sala_debug_mode', 'on') }}"
+          context: "{{ states('input_text.smart_light_sala_debug_context') }}"
+          history: "{{ states('input_text.smart_light_sala_debug_history') }}"
+          event_count: "{{ states('counter.smart_light_sala_debug_events') }}"
+          last_update: "{{ states('input_datetime.smart_light_sala_debug_last_update') }}"
 
 # -------------------------
 # AUTOMATIONS
 # -------------------------
 automation:
+
+  # HA START -> reconstruir estado logico desde timers/motion
+  - alias: smart_light_sala - HA START -> recover runtime
+    id: smart_light_sala_ha_start_recover_runtime
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      - delay: "00:00:10"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ is_state('input_boolean.smart_lights_sala', 'off')
+                     or is_state('input_boolean.modo_cine', 'on') }}
+            sequence:
+              - service: script.smart_light_sala_enter_disabled
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.motion_sala
+                state: "on"
+            sequence:
+              - service: script.smart_light_sala_set_state
+                data: { target_state: ACTIVE }
+              - service: script.smart_light_sala_cancel_motion_runtime
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: ha_start_recover_active
+                  message: "Home Assistant arranco con movimiento en sala. Recupero estado ACTIVE."
+                  context: "mood={{ states('input_select.smart_light_sala_mood') }}, parte={{ states('sensor.parte_del_dia') }}"
+          - conditions:
+              - condition: state
+                entity_id: timer.smart_light_sala_dim_notice
+                state: "active"
+            sequence:
+              - service: script.smart_light_sala_set_state
+                data: { target_state: PRE_NOTICE }
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: ha_start_recover_pre_notice
+                  message: "Home Assistant arranco con PRE_NOTICE activo. Reapunto el estado logico."
+                  context: "timer=timer.smart_light_sala_dim_notice"
+          - conditions:
+              - condition: state
+                entity_id: timer.smart_light_sala_restore_window
+                state: "active"
+            sequence:
+              - service: script.smart_light_sala_set_state
+                data: { target_state: RESTORE_WINDOW }
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: ha_start_recover_restore
+                  message: "Home Assistant arranco con RESTORE_WINDOW activo. Reapunto el estado logico."
+                  context: "timer=timer.smart_light_sala_restore_window"
+          - conditions:
+              - condition: state
+                entity_id: timer.smart_light_sala_idle_timeout
+                state: "active"
+            sequence:
+              - service: script.smart_light_sala_set_state
+                data: { target_state: IDLE_COUNTDOWN }
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: ha_start_recover_idle
+                  message: "Home Assistant arranco con IDLE_COUNTDOWN activo. Espero el timer restaurado."
+                  context: "timer=timer.smart_light_sala_idle_timeout"
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.motion_sala
+                state: "off"
+            sequence:
+              - service: script.smart_light_sala_enter_idle_countdown
 
   # SMART LIGHTS OFF -> DISABLED
   - alias: smart_light_sala - Smart Lights Sala OFF -> DISABLED
@@ -723,21 +1206,7 @@ automation:
         entity_id: input_boolean.smart_lights_sala
         to: "off"
     action:
-      - service: input_select.select_option
-        target: { entity_id: input_select.smart_light_sala_state }
-        data: { option: DISABLED }
-      - service: timer.cancel
-        target:
-          entity_id:
-            - timer.smart_light_sala_idle_timeout
-            - timer.smart_light_sala_dim_notice
-            - timer.smart_light_sala_restore_window
-      - service: script.turn_off
-        target: { entity_id: script.gradual_brightness_change }
-      - service: script.turn_off
-        target: { entity_id: script.gradual_restore_from_snapshot }
-      - service: input_boolean.turn_off
-        target: { entity_id: input_boolean.smart_light_sala_fading_active }
+      - service: script.smart_light_sala_enter_disabled
       # No tocar luces
 
   # SMART LIGHTS ON -> recompute por motion
@@ -748,6 +1217,10 @@ automation:
       - platform: state
         entity_id: input_boolean.smart_lights_sala
         to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.modo_cine
+        state: "off"
     action:
       - choose:
           - conditions:
@@ -755,16 +1228,24 @@ automation:
                 entity_id: binary_sensor.motion_sala
                 state: "on"
             sequence:
-              - service: input_select.select_option
-                target: { entity_id: input_select.smart_light_sala_state }
-                data: { option: ACTIVE }
+              - service: script.smart_light_sala_set_state
+                data: { target_state: ACTIVE }
+              - service: script.smart_light_sala_cancel_motion_runtime
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: smart_lights_on_motion_active
+                  message: "Smart Lights Sala se reactivo con movimiento presente. Aplico el mood actual."
+                  context: "mood={{ states('input_select.smart_light_sala_mood') }}, parte={{ states('sensor.parte_del_dia') }}"
+              - service: script.turn_on
+                target: { entity_id: script.smart_light_sala_turn_on_lights }
+                data:
+                  variables: { use_scene: false }
           - conditions:
               - condition: state
                 entity_id: binary_sensor.motion_sala
                 state: "off"
             sequence:
-              - service: script.turn_on
-                target: { entity_id: script.smart_light_sala_start_idle_flow }
+              - service: script.smart_light_sala_enter_idle_countdown
 
 
   # MOTION OFF -> IDLE_COUNTDOWN (inicia countdown, luego PRE_NOTICE si sigue off)
@@ -779,9 +1260,36 @@ automation:
       - condition: state
         entity_id: input_boolean.smart_lights_sala
         state: "on"
+      - condition: state
+        entity_id: input_boolean.modo_cine
+        state: "off"
     action:
-      - service: script.turn_on
-        target: { entity_id: script.smart_light_sala_start_idle_flow }
+      - service: script.smart_light_sala_enter_idle_countdown
+
+  # IDLE TIMER FIN -> PRE_NOTICE timer
+  - alias: smart_light_sala - IDLE FIN -> PRE_NOTICE timer
+    id: smart_light_sala_idle_finish_pre_notice
+    mode: single
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.smart_light_sala_idle_timeout
+    condition:
+      - condition: state
+        entity_id: input_boolean.smart_lights_sala
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.modo_cine
+        state: "off"
+      - condition: state
+        entity_id: binary_sensor.motion_sala
+        state: "off"
+      - condition: state
+        entity_id: input_select.smart_light_sala_state
+        state: IDLE_COUNTDOWN
+    action:
+      - service: script.smart_light_sala_start_pre_notice_window
   # MOTION ON -> ACTIVE (V2): cancela fade si estaba, y si venías de PRE_NOTICE/RESTORE -> restore suave
   - alias: smart_light_sala - Motion ON -> ACTIVE (V2 restore suave)
     id: smart_light_sala_motion_on_active_v2
@@ -794,37 +1302,21 @@ automation:
       - condition: state
         entity_id: input_boolean.smart_lights_sala
         state: "on"
+      - condition: state
+        entity_id: input_boolean.modo_cine
+        state: "off"
     variables:
       prev_state: "{{ states('input_select.smart_light_sala_state') }}"
       fade_sec: "{{ states('input_number.smart_light_sala_fade_sec') | int(30) }}"
       steps: "{{ fade_sec }}"   # 1 paso/seg
       min_pct_floor: 10
     action:
-      - service: input_select.select_option
-        target: { entity_id: input_select.smart_light_sala_state }
-        data: { option: ACTIVE }
+      - service: script.smart_light_sala_set_state
+        data: { target_state: ACTIVE }
 
       # Cancelar timers (ya no aplican al estar en ACTIVE)
-      - service: timer.cancel
-        target:
-          entity_id:
-            - timer.smart_light_sala_idle_timeout
-            - timer.smart_light_sala_dim_notice
-            - timer.smart_light_sala_restore_window
+      - service: script.smart_light_sala_cancel_motion_runtime
 
-      # Si había fade corriendo, cancelarlo y bajar flag
-      - choose:
-          - conditions:
-              - condition: state
-                entity_id: input_boolean.smart_light_sala_fading_active
-                state: "on"
-            sequence:
-              - service: script.turn_off
-                target: { entity_id: script.gradual_brightness_change }
-              - service: script.turn_off
-                target: { entity_id: script.gradual_brightness_worker }
-              - service: input_boolean.turn_off
-                target: { entity_id: input_boolean.smart_light_sala_fading_active }
 
       # Restaurar según estado previo
       - choose:
@@ -833,6 +1325,11 @@ automation:
               - condition: template
                 value_template: "{{ prev_state in ['PRE_NOTICE','RESTORE_WINDOW'] }}"
             sequence:
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: motion_restore_snapshot
+                  message: "Volvio movimiento durante preaviso/restore. Restauro suavemente el snapshot."
+                  context: "prev_state={{ prev_state }}, duration={{ fade_sec }}"
               - service: script.turn_on
                 target: { entity_id: script.gradual_restore_from_snapshot }
                 data:
@@ -852,16 +1349,22 @@ automation:
         default: []
 
   # PRE_NOTICE START - set estado, snapshot + (fade o reducción instantánea)
-  - alias: smart_light_sala - PRE_NOTICE START - snapshot + dim/fade + RESTORE WINDOW (parallel)
+  - alias: smart_light_sala - PRE_NOTICE START - snapshot + dim/fade
     id: smart_light_sala_pre_notice_start_parallel_restore
     mode: restart
     trigger:
       - platform: state
         entity_id: timer.smart_light_sala_dim_notice
         to: "active"
+    condition:
+      - condition: state
+        entity_id: input_boolean.modo_cine
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.smart_lights_sala
+        state: "on"
     action:
-      - service: script.turn_on
-        target: { entity_id: script.smart_light_sala_execute_prenotice }
+      - service: script.smart_light_sala_enter_pre_notice
   # PRE_NOTICE FIN - apagar + arrancar RESTORE_WINDOW (con Arribo por franja)
   - alias: smart_light_sala - PRE_NOTICE FIN - apagar + RESTORE START
     id: smart_light_sala_pre_notice_finish_off_restore
@@ -871,32 +1374,15 @@ automation:
         event_type: timer.finished
         event_data:
           entity_id: timer.smart_light_sala_dim_notice
-    variables:
-      pd: "{{ states('sensor.parte_del_dia') }}"
-      arribo_min: >
-        {% set suffix_map = {
-          'manana':'manana',
-          'mediodia':'mediodia',
-          'tarde':'tarde',
-          'noche':'noche',
-          'madrugada':'madrugada'
-        } %}
-        {% set suffix = suffix_map.get(pd) %}
-        {% set entity = 'input_number.smart_light_sala_arribo_' ~ suffix if suffix else none %}
-        {{ states(entity)|int if entity else 15 }}
+    condition:
+      - condition: state
+        entity_id: input_boolean.modo_cine
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.smart_lights_sala
+        state: "on"
     action:
-      - service: input_boolean.turn_off
-        target: { entity_id: input_boolean.smart_light_sala_fading_active }
-      - service: script.turn_on
-        target: { entity_id: script.smart_light_sala_turn_off_lights }
-
-      - service: input_select.select_option
-        target: { entity_id: input_select.smart_light_sala_state }
-        data: { option: RESTORE_WINDOW }
-      - service: timer.start
-        target: { entity_id: timer.smart_light_sala_restore_window }
-        data:
-          duration: "{{ (arribo_min | int) * 60 }}"
+      - service: script.smart_light_sala_enter_restore_window
 
   # RESTORE FIN - WAITING_ARRIVAL
   - alias: smart_light_sala - RESTORE FIN - WAITING_ARRIVAL
@@ -907,7 +1393,12 @@ automation:
         event_type: timer.finished
         event_data:
           entity_id: timer.smart_light_sala_restore_window
+    condition:
+      - condition: state
+        entity_id: input_boolean.modo_cine
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.smart_lights_sala
+        state: "on"
     action:
-      - service: input_select.select_option
-        target: { entity_id: input_select.smart_light_sala_state }
-        data: { option: WAITING_ARRIVAL }
+      - service: script.smart_light_sala_enter_waiting_arrival

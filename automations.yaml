@@ -363,7 +363,7 @@
         id: cine_off
       sequence:
       - target:
-          entity_id: input_boolean.sala_auto_bypass
+          entity_id: input_boolean.smart_lights_sala
         action: input_boolean.turn_on
         data: {}
       - action: light.turn_on

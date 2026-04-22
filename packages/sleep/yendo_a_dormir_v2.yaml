@@ -142,13 +142,13 @@ automation:
       - service: input_boolean.turn_off
         target: { entity_id: input_boolean.smart_lights_sala }
 
-      # Cancelar timers de sala_auto
+      # Cancelar timers de smart_light_sala
       - service: timer.cancel
         target:
           entity_id:
-            - timer.sala_auto_idle_timeout
-            - timer.sala_auto_dim_notice
-            - timer.sala_auto_restore_window
+            - timer.smart_light_sala_idle_timeout
+            - timer.smart_light_sala_dim_notice
+            - timer.smart_light_sala_restore_window
 
       # Cancelar timer propio (si venía corriendo)
       - service: timer.cancel
@@ -218,7 +218,7 @@ automation:
 
       # Forzar primero WAITING_ARRIVAL
       - service: input_select.select_option
-        target: { entity_id: input_select.sala_auto_state }
+        target: { entity_id: input_select.smart_light_sala_state }
         data: { option: WAITING_ARRIVAL }
 
       # Delay de seguridad (anti 'pisada' a ACTIVE)
@@ -230,7 +230,7 @@ automation:
 
       # Refuerzo final de estado
       - service: input_select.select_option
-        target: { entity_id: input_select.sala_auto_state }
+        target: { entity_id: input_select.smart_light_sala_state }
         data: { option: WAITING_ARRIVAL }
 
   # Horario dormir - ON at 22:00
@@ -313,7 +313,7 @@ automation:
 
       # Forzar primero WAITING_ARRIVAL
       - service: input_select.select_option
-        target: { entity_id: input_select.sala_auto_state }
+        target: { entity_id: input_select.smart_light_sala_state }
         data: { option: WAITING_ARRIVAL }
 
       # Delay de seguridad
@@ -325,5 +325,5 @@ automation:
 
       # Refuerzo final de estado
       - service: input_select.select_option
-        target: { entity_id: input_select.sala_auto_state }
+        target: { entity_id: input_select.smart_light_sala_state }
         data: { option: WAITING_ARRIVAL }
