@@ -262,15 +262,15 @@ script:
       event:
         name: Event
         selector:
-          text: {}
+          text:
       message:
         name: Message
         selector:
-          text: {}
+          text:
       context:
         name: Context
         selector:
-          text: {}
+          text:
       level:
         name: Level
         selector:
