@@ -58,6 +58,18 @@ input_boolean:
     icon: mdi:fan
     initial: false
 
+  # Description: Enables fixed weekday office-return precooling slots.
+  smart_climate_enfriar_al_volver_oficina:
+    name: "Enfriar al volver de la oficina"
+    icon: mdi:office-building-marker-outline
+    initial: false
+
+  # Description: If on, high indoor humidity lowers the effective cooling target.
+  smart_climate_use_humidity_comfort:
+    name: smart_climate_use_humidity_comfort
+    icon: mdi:water-percent
+    initial: false
+
 input_select:
   # Description: Legacy temperature source selector retained for dashboard compatibility.
   sensor_temp_fav:
@@ -126,6 +138,27 @@ input_number:
     mode: slider
     unit_of_measurement: "°C"
     initial: 19.0
+
+  smart_climate_humidity_high_threshold:
+    name: smart_climate_humidity_high_threshold
+    icon: mdi:water-percent-alert
+    min: 45
+    max: 85
+    step: 1
+    mode: slider
+    unit_of_measurement: "%"
+    initial: 65
+
+  smart_climate_humidity_target_adjustment:
+    name: smart_climate_humidity_target_adjustment
+    icon: mdi:thermometer-minus
+    min: 0
+    max: 2
+    step: 0.1
+    mode: slider
+    unit_of_measurement: "°C"
+    initial: 0.5
+
 input_datetime:
   smart_climate_last_action:
     name: smart_climate_last_action
@@ -251,6 +284,23 @@ template:
           {% set temp = states('sensor.clima_sala_temperatura') | float(default=none) %}
           {{ temp is not none }}
 
+      # Description: Exterior temperature from Pirate Weather, exposed as a sensor for history graphs.
+      - name: "Sala - Temp Exterior"
+        unique_id: sala_temp_exterior
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: >-
+          {% set temp = state_attr('weather.pirateweather', 'temperature') | float(default=none) %}
+          {% if temp is not none %}
+            {{ temp | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        availability: >-
+          {% set temp = state_attr('weather.pirateweather', 'temperature') | float(default=none) %}
+          {{ temp is not none }}
+
       # Description: Real control temperature for the system.
       # This is the only source the future controller should use for decisions.
       - name: smart_climate_temp_control
@@ -270,6 +320,35 @@ template:
           {% set source_temp = states('sensor.clima_sala_temperatura') | float(default=none) %}
           {% set temp_offset = states('input_number.smart_climate_temp_offset') | float(default=none) %}
           {{ source_temp is not none and temp_offset is not none }}
+
+      # Description: Cooling target after optional humidity comfort adjustment.
+      - name: smart_climate_target_temp_effective
+        unique_id: smart_climate_target_temp_effective
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: >-
+          {% set target_base = states('input_number.smart_climate_target_temp_home') | float(default=25.0) %}
+          {% set humidity = states('sensor.humidity_sala') | float(default=none) %}
+          {% set threshold = states('input_number.smart_climate_humidity_high_threshold') | float(default=65) %}
+          {% set adjustment = states('input_number.smart_climate_humidity_target_adjustment') | float(default=0.5) %}
+          {% if is_state('input_boolean.smart_climate_use_humidity_comfort', 'on')
+                and humidity is not none
+                and humidity >= threshold %}
+            {{ (target_base - adjustment) | round(1) }}
+          {% else %}
+            {{ target_base | round(1) }}
+          {% endif %}
+        attributes:
+          base_target: "{{ states('input_number.smart_climate_target_temp_home') | float(default=25.0) }}"
+          humidity: "{{ states('sensor.humidity_sala') }}"
+          humidity_comfort_active: >-
+            {% set humidity = states('sensor.humidity_sala') | float(default=none) %}
+            {% set threshold = states('input_number.smart_climate_humidity_high_threshold') | float(default=65) %}
+            {{ is_state('input_boolean.smart_climate_use_humidity_comfort', 'on')
+               and humidity is not none
+               and humidity >= threshold }}
+          humidity_adjustment: "{{ states('input_number.smart_climate_humidity_target_adjustment') | float(default=0.5) }}"
 
       # Description: Delta between current control temperature and 10-minute mean.
       # Useful for debug/trend visibility (positive = above mean, negative = below mean).
@@ -664,8 +743,9 @@ script:
   # ---------------------------------------------------------------------------
   smart_climate_exec_power_on:
     alias: smart_climate_exec_power_on
-    description: Turns on AC using LG with up to 3 attempts; falls back to IR if LG fails and cooldown is idle.
-    mode: single
+    description: Turns on AC using LG once; falls back to IR if LG fails and cooldown is idle.
+    mode: queued
+    max: 3
     max_exceeded: silent
     sequence:
       - service: script.smart_climate_sync_ir_cooldown
@@ -701,7 +781,7 @@ script:
           lg_success: false
 
       - repeat:
-          count: 3
+          count: 1
           sequence:
             - choose:
                 - conditions:
@@ -785,8 +865,9 @@ script:
   # ---------------------------------------------------------------------------
   smart_climate_exec_power_off:
     alias: smart_climate_exec_power_off
-    description: Turns off AC using LG with up to 3 attempts; falls back to IR if LG fails and cooldown is idle.
-    mode: single
+    description: Turns off AC using LG once; falls back to IR if LG fails and cooldown is idle.
+    mode: queued
+    max: 3
     max_exceeded: silent
     sequence:
       - service: script.smart_climate_sync_ir_cooldown
@@ -822,7 +903,7 @@ script:
           lg_success: false
 
       - repeat:
-          count: 3
+          count: 1
           sequence:
             - choose:
                 - conditions:
@@ -1133,7 +1214,8 @@ script:
   smart_climate_exec_apply:
     alias: smart_climate_exec_apply
     description: Idempotent wrapper that applies optional power/hvac_mode/temperature in a fixed order.
-    mode: single
+    mode: queued
+    max: 5
     max_exceeded: silent
     fields:
       power:
@@ -1294,7 +1376,7 @@ automation:
       - platform: state
         entity_id: sensor.smart_climate_effective_mode
       - platform: state
-        entity_id: input_number.smart_climate_target_temp_home
+        entity_id: sensor.smart_climate_target_temp_effective
       - platform: state
         entity_id: input_number.smart_climate_hysteresis
       - platform: state
@@ -1325,10 +1407,6 @@ automation:
         event_type: timer.finished
         event_data:
           entity_id: timer.smart_climate_min_off
-      - platform: event
-        event_type: timer.finished
-        event_data:
-          entity_id: timer.smart_climate_precooling
       - platform: time_pattern
         minutes: "/5"
     action:
@@ -1348,7 +1426,9 @@ automation:
           block_reason: "{{ states('sensor.smart_climate_action_block_reason') }}"
           is_home: "{{ is_state('binary_sensor.smart_climate_is_home', 'on') }}"
           temp: "{{ states('sensor.smart_climate_temp_control') | float(default=none) }}"
-          target_home: "{{ states('input_number.smart_climate_target_temp_home') | float(default=25.0) }}"
+          target_home: >-
+            {% set fallback_target = states('input_number.smart_climate_target_temp_home') | float(default=25.0) %}
+            {{ states('sensor.smart_climate_target_temp_effective') | float(default=fallback_target) }}
           hyst: "{{ states('input_number.smart_climate_hysteresis') | float(default=0.5) }}"
           precool_temp: "{{ states('input_number.smart_climate_precool_temp') | float(default=19.0) }}"
           allow_sleep_shutdown: "{{ is_state('input_boolean.smart_climate_allow_sleep_shutdown', 'on') }}"
@@ -1570,8 +1650,8 @@ automation:
               decision_text: "unknown effective_mode"
 
       - variables:
-          force_off_mode: "{{ effective_mode in ['away', 'error_lock'] }}"
-          off_failsafe_exception: "{{ desired_action == 'off' and effective_mode in ['away', 'error_lock'] }}"
+          force_off_mode: "{{ effective_mode in ['away', 'error_lock', 'off'] }}"
+          off_failsafe_exception: "{{ desired_action == 'off' and effective_mode in ['away', 'error_lock', 'off'] }}"
           execute_allowed: "{{ action_allowed or off_failsafe_exception }}"
           action_text: "none"
 
@@ -1845,7 +1925,7 @@ automation:
           entity_id: input_boolean.smart_climate_user_precool_request
   - id: smart_climate_precool_weekday_1150
     alias: smart_climate_precool_weekday_1150
-    description: Requests precooling at 11:50 on weekdays when away and the control temperature is above 24 C.
+    description: Office-return precooling slot at 11:50 on weekdays. Runs only when enabled and away.
     mode: single
     trigger:
       - platform: time
@@ -1861,9 +1941,9 @@ automation:
       - condition: state
         entity_id: binary_sensor.smart_climate_is_home
         state: "off"
-      - condition: numeric_state
-        entity_id: sensor.smart_climate_temp_control
-        above: 24
+      - condition: state
+        entity_id: input_boolean.smart_climate_enfriar_al_volver_oficina
+        state: "on"
     action:
       - service: input_boolean.turn_on
         target:
@@ -1871,7 +1951,7 @@ automation:
 
   - id: smart_climate_precool_weekday_1550
     alias: smart_climate_precool_weekday_1550
-    description: Requests precooling at 15:50 on weekdays when away and the control temperature is above 24 C.
+    description: Office-return precooling slot at 15:50 on weekdays. Runs only when enabled and away.
     mode: single
     trigger:
       - platform: time
@@ -1887,9 +1967,9 @@ automation:
       - condition: state
         entity_id: binary_sensor.smart_climate_is_home
         state: "off"
-      - condition: numeric_state
-        entity_id: sensor.smart_climate_temp_control
-        above: 24
+      - condition: state
+        entity_id: input_boolean.smart_climate_enfriar_al_volver_oficina
+        state: "on"
     action:
       - service: input_boolean.turn_on
         target:
