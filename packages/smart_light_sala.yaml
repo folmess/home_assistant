@@ -387,6 +387,7 @@ script:
               {% endif %}
             {% endfor %}
             {{ ns.targets }}
+          transition_sec: "{{ 1 if is_state('input_boolean.smart_light_sala_fade', 'on') else 0 }}"
       - choose:
           - conditions:
               - condition: template
@@ -399,7 +400,7 @@ script:
                       target: { entity_id: "{{ repeat.item.entity }}" }
                       data:
                         brightness: "{{ repeat.item.brightness }}"
-                        transition: 1
+                        transition: "{{ transition_sec }}"
 
   # Apagar todas las luces del area (leaf)
   smart_light_sala_turn_off_lights:
@@ -414,6 +415,7 @@ script:
               {% set ns.leaf = ns.leaf + (m if m else [l]) %}
             {% endfor %}
             {{ ns.leaf | unique | list }}
+          transition_sec: "{{ 1 if is_state('input_boolean.smart_light_sala_fade', 'on') else 0 }}"
       - service: light.turn_off
         target: { entity_id: "{{ leaf_lights }}" }
 
@@ -549,7 +551,7 @@ script:
               context: "brightness={{ brightness }}, lights={{ leaf_lights | count }}"
           - service: light.turn_on
             target: { entity_id: "{{ leaf_lights }}" }
-            data: { brightness: "{{ brightness }}", transition: 1 }
+            data: { brightness: "{{ brightness }}", transition: "{{ transition_sec }}" }
 
   smart_light_sala_set_state:
     alias: SMART LIGHT SALA - Set state
@@ -1323,7 +1325,7 @@ automation:
           # Desde PRE_NOTICE o RESTORE_WINDOW -> restauración suave (usa VAR)
           - conditions:
               - condition: template
-                value_template: "{{ prev_state in ['PRE_NOTICE','RESTORE_WINDOW'] }}"
+                value_template: "{{ prev_state in ['PRE_NOTICE','RESTORE_WINDOW'] and is_state('input_boolean.smart_light_sala_fade', 'on') }}"
             sequence:
               - service: script.smart_light_sala_debug_emit
                 data:
@@ -1338,6 +1340,19 @@ automation:
                     steps: "{{ steps }}"
                     min_pct: "{{ min_pct_floor }}"
                     snapshot_var: var.smart_light_sala_snapshot_targets
+          - conditions:
+              - condition: template
+                value_template: "{{ prev_state in ['PRE_NOTICE','RESTORE_WINDOW'] and is_state('input_boolean.smart_light_sala_fade', 'off') }}"
+            sequence:
+              - service: script.smart_light_sala_debug_emit
+                data:
+                  event: motion_restore_snapshot_instant
+                  message: "Volvio movimiento durante preaviso/restore. Restauro el snapshot sin transicion porque fade esta apagado."
+                  context: "prev_state={{ prev_state }}"
+              - service: scene.turn_on
+                target: { entity_id: scene.smart_light_sala_snapshot }
+                data:
+                  transition: 0
           # Desde WAITING_ARRIVAL -> encendido por efecto/franja
           - conditions:
               - condition: template

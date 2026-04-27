@@ -3778,7 +3778,7 @@ sala_mood_normal_noche:
       entity_id: "{{ leaf_lights }}"
     data:
       brightness: "{{ brightness }}"
-      transition: 1
+      transition: "{{ 1 if is_state('input_boolean.smart_light_sala_fade', 'on') else 0 }}"
   description: ''
 sala_mood_normal_madrugada:
   alias: Sala Mood - Normal Madrugada
@@ -3811,7 +3811,7 @@ sala_mood_chill_noche:
     data:
       brightness_pct: 20
       color_temp_kelvin: 2200
-      transition: 2
+      transition: "{{ 2 if is_state('input_boolean.smart_light_sala_fade', 'on') else 0 }}"
   description: ''
 sala_mood_chill_madrugada:
   alias: Sala Mood - Chill Madrugada
@@ -3825,7 +3825,7 @@ sala_mood_chill_madrugada:
     data:
       brightness_pct: 8
       color_temp_kelvin: 2000
-      transition: 2
+      transition: "{{ 2 if is_state('input_boolean.smart_light_sala_fade', 'on') else 0 }}"
   description: ''
 sala_mood_tv_dia:
   alias: Sala Mood - TV Dia
@@ -3839,7 +3839,7 @@ sala_mood_tv_dia:
     data:
       brightness_pct: 25
       color_temp_kelvin: 2500
-      transition: 2
+      transition: "{{ 2 if is_state('input_boolean.smart_light_sala_fade', 'on') else 0 }}"
   description: ''
 sala_mood_tv_noche:
   alias: Sala Mood - TV Noche
@@ -3853,7 +3853,7 @@ sala_mood_tv_noche:
     data:
       brightness_pct: 12
       color_temp_kelvin: 2200
-      transition: 2
+      transition: "{{ 2 if is_state('input_boolean.smart_light_sala_fade', 'on') else 0 }}"
   description: ''
 sala_mood_tv_madrugada:
   alias: Sala Mood - TV Madrugada
@@ -3867,7 +3867,7 @@ sala_mood_tv_madrugada:
     data:
       brightness_pct: 5
       color_temp_kelvin: 2000
-      transition: 2
+      transition: "{{ 2 if is_state('input_boolean.smart_light_sala_fade', 'on') else 0 }}"
   description: ''
 sala_mood_cena_dia:
   alias: Sala Mood - Cena Dia
@@ -3881,7 +3881,7 @@ sala_mood_cena_dia:
     data:
       brightness_pct: 55
       color_temp_kelvin: 2700
-      transition: 1
+      transition: "{{ 1 if is_state('input_boolean.smart_light_sala_fade', 'on') else 0 }}"
   description: ''
 sala_mood_cena_noche:
   alias: Sala Mood - Cena Noche
@@ -3895,7 +3895,7 @@ sala_mood_cena_noche:
     data:
       brightness_pct: 35
       color_temp_kelvin: 2400
-      transition: 1
+      transition: "{{ 1 if is_state('input_boolean.smart_light_sala_fade', 'on') else 0 }}"
   description: ''
 sala_mood_cena_madrugada:
   alias: Sala Mood - Cena Madrugada
@@ -3909,7 +3909,7 @@ sala_mood_cena_madrugada:
     data:
       brightness_pct: 12
       color_temp_kelvin: 2200
-      transition: 1
+      transition: "{{ 1 if is_state('input_boolean.smart_light_sala_fade', 'on') else 0 }}"
   description: ''
 sala_mood_noche_dia:
   alias: Sala Mood - Noche Dia
@@ -3931,7 +3931,7 @@ sala_mood_noche_noche:
     data:
       brightness_pct: 10
       color_temp_kelvin: 2000
-      transition: 2
+      transition: "{{ 2 if is_state('input_boolean.smart_light_sala_fade', 'on') else 0 }}"
   description: ''
 sala_mood_noche_madrugada:
   alias: Sala Mood - Noche Madrugada
