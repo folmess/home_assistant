@@ -1,10 +1,250 @@
-﻿# =========================
+# =========================
 # Script: Gradual Brightness Change
 # script: restore from snapshot with gradual brightness change
 # Allows gradual transition of one or more lights to a target brightness over a specified time
 # =========================
 
+input_text:
+  light_transition_sala_owner:
+    name: Light Transition Sala - Owner
+    max: 255
+  light_transition_sala_token:
+    name: Light Transition Sala - Token
+    max: 255
+  light_transition_cocina_owner:
+    name: Light Transition Cocina - Owner
+    max: 255
+  light_transition_cocina_token:
+    name: Light Transition Cocina - Token
+    max: 255
+
+input_boolean:
+  light_transition_sala_protected:
+    name: Light Transition Sala - Protected
+    icon: mdi:lock-outline
+  light_transition_cocina_protected:
+    name: Light Transition Cocina - Protected
+    icon: mdi:lock-outline
+
+input_datetime:
+  light_transition_sala_last_update:
+    name: Light Transition Sala - Last update
+    has_date: true
+    has_time: true
+  light_transition_cocina_last_update:
+    name: Light Transition Cocina - Last update
+    has_date: true
+    has_time: true
+
 script:
+  light_transition_claim_area:
+    alias: Light Transition - Claim area
+    mode: parallel
+    fields:
+      area_key:
+        name: Area key
+        selector:
+          text:
+      owner:
+        name: Owner
+        selector:
+          text:
+      token:
+        name: Token
+        selector:
+          text:
+      protected:
+        name: Protected
+        default: false
+        selector:
+          boolean:
+      force:
+        name: Force
+        default: false
+        selector:
+          boolean:
+    sequence:
+      - variables:
+          area_norm: >-
+            {% set a = area_key | default('') %}
+            {% if a in ['sala', 'sala_de_estar'] %}sala{% elif a == 'cocina' %}cocina{% else %}{{ a }}{% endif %}
+          owner_value: "{{ owner | default('') }}"
+          token_value: "{{ token | default('') }}"
+          protected_value: "{{ protected | default(false) | bool }}"
+          force_value: "{{ force | default(false) | bool }}"
+          owner_entity: >-
+            {% if area_norm == 'sala' %}input_text.light_transition_sala_owner{% elif area_norm == 'cocina' %}input_text.light_transition_cocina_owner{% endif %}
+          token_entity: >-
+            {% if area_norm == 'sala' %}input_text.light_transition_sala_token{% elif area_norm == 'cocina' %}input_text.light_transition_cocina_token{% endif %}
+          protected_entity: >-
+            {% if area_norm == 'sala' %}input_boolean.light_transition_sala_protected{% elif area_norm == 'cocina' %}input_boolean.light_transition_cocina_protected{% endif %}
+          last_update_entity: >-
+            {% if area_norm == 'sala' %}input_datetime.light_transition_sala_last_update{% elif area_norm == 'cocina' %}input_datetime.light_transition_cocina_last_update{% endif %}
+          current_owner: "{{ states(owner_entity) if owner_entity | length > 0 else '' }}"
+          current_protected: "{{ is_state(protected_entity, 'on') if protected_entity | length > 0 else false }}"
+          lock_is_free: "{{ current_owner in ['', 'unknown', 'unavailable', 'none'] }}"
+          can_claim: "{{ owner_entity | length > 0 and token_entity | length > 0 and ((force_value | bool) or (lock_is_free | bool) or not (current_protected | bool) or current_owner == owner_value) }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ can_claim }}"
+            sequence:
+              - service: input_text.set_value
+                target: { entity_id: "{{ owner_entity }}" }
+                data: { value: "{{ owner_value }}" }
+              - service: input_text.set_value
+                target: { entity_id: "{{ token_entity }}" }
+                data: { value: "{{ token_value }}" }
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ protected_value | bool }}"
+                    sequence:
+                      - service: input_boolean.turn_on
+                        target: { entity_id: "{{ protected_entity }}" }
+                default:
+                  - service: input_boolean.turn_off
+                    target: { entity_id: "{{ protected_entity }}" }
+              - service: input_datetime.set_datetime
+                target: { entity_id: "{{ last_update_entity }}" }
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+        default:
+          - service: system_log.write
+            data:
+              level: info
+              message: >-
+                light_transition_claim_area blocked: area={{ area_key }}, owner={{ owner_value }}, current_owner={{ current_owner }}, protected={{ current_protected }}
+
+  light_transition_release_area:
+    alias: Light Transition - Release area
+    mode: parallel
+    fields:
+      area_key:
+        name: Area key
+        selector:
+          text:
+      owner:
+        name: Owner
+        selector:
+          text:
+      token:
+        name: Token
+        selector:
+          text:
+      force:
+        name: Force
+        default: false
+        selector:
+          boolean:
+    sequence:
+      - variables:
+          area_norm: >-
+            {% set a = area_key | default('') %}
+            {% if a in ['sala', 'sala_de_estar'] %}sala{% elif a == 'cocina' %}cocina{% else %}{{ a }}{% endif %}
+          owner_value: "{{ owner | default('') }}"
+          token_value: "{{ token | default('') }}"
+          force_value: "{{ force | default(false) | bool }}"
+          owner_entity: >-
+            {% if area_norm == 'sala' %}input_text.light_transition_sala_owner{% elif area_norm == 'cocina' %}input_text.light_transition_cocina_owner{% endif %}
+          token_entity: >-
+            {% if area_norm == 'sala' %}input_text.light_transition_sala_token{% elif area_norm == 'cocina' %}input_text.light_transition_cocina_token{% endif %}
+          protected_entity: >-
+            {% if area_norm == 'sala' %}input_boolean.light_transition_sala_protected{% elif area_norm == 'cocina' %}input_boolean.light_transition_cocina_protected{% endif %}
+          last_update_entity: >-
+            {% if area_norm == 'sala' %}input_datetime.light_transition_sala_last_update{% elif area_norm == 'cocina' %}input_datetime.light_transition_cocina_last_update{% endif %}
+          owner_matches: "{{ owner_value == '' or states(owner_entity) == owner_value }}"
+          token_matches: "{{ token_value == '' or states(token_entity) == token_value }}"
+          can_release: "{{ owner_entity | length > 0 and token_entity | length > 0 and ((force_value | bool) or ((owner_matches | bool) and (token_matches | bool))) }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ can_release }}"
+            sequence:
+              - service: input_text.set_value
+                target: { entity_id: "{{ owner_entity }}" }
+                data: { value: "" }
+              - service: input_text.set_value
+                target: { entity_id: "{{ token_entity }}" }
+                data: { value: "" }
+              - service: input_boolean.turn_off
+                target: { entity_id: "{{ protected_entity }}" }
+              - service: input_datetime.set_datetime
+                target: { entity_id: "{{ last_update_entity }}" }
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+        default:
+          - service: system_log.write
+            data:
+              level: info
+              message: >-
+                light_transition_release_area ignored: area={{ area_key }}, owner={{ owner_value }}, token={{ token_value }}
+
+  light_transition_cancel_area:
+    alias: Light Transition - Cancel area
+    mode: parallel
+    fields:
+      area_key:
+        name: Area key
+        selector:
+          text:
+      owner:
+        name: Owner
+        default: cancel
+        selector:
+          text:
+      token:
+        name: Token
+        selector:
+          text:
+      force:
+        name: Force
+        default: false
+        selector:
+          boolean:
+    sequence:
+      - variables:
+          area_norm: >-
+            {% set a = area_key | default('') %}
+            {% if a in ['sala', 'sala_de_estar'] %}sala{% elif a == 'cocina' %}cocina{% else %}{{ a }}{% endif %}
+          owner_value: "{{ owner | default('cancel') }}"
+          token_value: "{{ token | default('cancel_' ~ now().timestamp()) }}"
+          force_value: "{{ force | default(false) | bool }}"
+          owner_entity: >-
+            {% if area_norm == 'sala' %}input_text.light_transition_sala_owner{% elif area_norm == 'cocina' %}input_text.light_transition_cocina_owner{% endif %}
+          token_entity: >-
+            {% if area_norm == 'sala' %}input_text.light_transition_sala_token{% elif area_norm == 'cocina' %}input_text.light_transition_cocina_token{% endif %}
+          protected_entity: >-
+            {% if area_norm == 'sala' %}input_boolean.light_transition_sala_protected{% elif area_norm == 'cocina' %}input_boolean.light_transition_cocina_protected{% endif %}
+          last_update_entity: >-
+            {% if area_norm == 'sala' %}input_datetime.light_transition_sala_last_update{% elif area_norm == 'cocina' %}input_datetime.light_transition_cocina_last_update{% endif %}
+          current_owner: "{{ states(owner_entity) if owner_entity | length > 0 else '' }}"
+          current_protected: "{{ is_state(protected_entity, 'on') if protected_entity | length > 0 else false }}"
+          can_cancel: "{{ owner_entity | length > 0 and token_entity | length > 0 and ((force_value | bool) or not (current_protected | bool) or current_owner == owner_value) }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ can_cancel }}"
+            sequence:
+              - service: input_text.set_value
+                target: { entity_id: "{{ owner_entity }}" }
+                data: { value: "{{ owner_value }}" }
+              - service: input_text.set_value
+                target: { entity_id: "{{ token_entity }}" }
+                data: { value: "{{ token_value }}" }
+              - service: input_boolean.turn_off
+                target: { entity_id: "{{ protected_entity }}" }
+              - service: input_datetime.set_datetime
+                target: { entity_id: "{{ last_update_entity }}" }
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+        default:
+          - service: system_log.write
+            data:
+              level: info
+              message: >-
+                light_transition_cancel_area blocked: area={{ area_key }}, owner={{ owner_value }}, current_owner={{ current_owner }}, protected={{ current_protected }}
+
   gradual_brightness_change:
     alias: Gradual Brightness Change
     mode: parallel
@@ -67,6 +307,17 @@ script:
         selector:
           entity:
             domain: input_boolean
+      lock_token_entity:
+        name: Lock token entity
+        description: Optional input_text token entity used to cancel stale workers.
+        selector:
+          entity:
+            domain: input_text
+      lock_token:
+        name: Lock token
+        description: Expected token value while the transition is allowed to run.
+        selector:
+          text:
     sequence:
       - variables:
           target_entities_raw: "{{ target.entity_id | default([]) }}"
@@ -142,6 +393,9 @@ script:
           dimmable_lights: "{{ dimmable_lights_all if include_off else dimmable_on }}"
           non_dimmable_off: "{{ non_dimmable_off_all if include_off else [] }}"
           flag_entity_id: "{{ flag_entity | default('') }}"
+          lock_token_entity_id: "{{ lock_token_entity | default('') }}"
+          lock_token_value: "{{ lock_token | default('') }}"
+          lock_valid: "{{ lock_token_entity_id == '' or states(lock_token_entity_id) == lock_token_value }}"
       - choose:
           - conditions:
               - condition: template
@@ -154,6 +408,11 @@ script:
               - stop: "No target lights"
           - conditions:
               - condition: template
+                value_template: "{{ lock_token_entity_id != '' and states(lock_token_entity_id) != lock_token_value }}"
+            sequence:
+              - stop: "Lock token changed before dispatch"
+          - conditions:
+              - condition: template
                 value_template: "{{ queue_mode == 'parallel' }}"
             sequence:
               - variables:
@@ -162,7 +421,7 @@ script:
               - choose:
                   - conditions:
                       - condition: template
-                        value_template: "{{ (target_brightness | float(0)) <= 0 and (non_dimmable_on | length) > 0 and (flag_entity_id == '' or states(flag_entity_id) == 'on') }}"
+                        value_template: "{{ (target_brightness | float(0)) <= 0 and (non_dimmable_on | length) > 0 and (flag_entity_id == '' or states(flag_entity_id) == 'on') and (lock_token_entity_id == '' or states(lock_token_entity_id) == lock_token_value) }}"
                     sequence:
                       - service: light.turn_off
                         target:
@@ -176,6 +435,11 @@ script:
                               value_template: "{{ flag_entity_id != '' and states(flag_entity_id) != 'on' }}"
                           sequence:
                             - stop: "Flag inactive"
+                        - conditions:
+                            - condition: template
+                              value_template: "{{ lock_token_entity_id != '' and states(lock_token_entity_id) != lock_token_value }}"
+                          sequence:
+                            - stop: "Lock token changed"
                     - service: script.turn_on
                       target:
                         entity_id: script.gradual_brightness_worker
@@ -186,10 +450,12 @@ script:
                           steps: "{{ steps_int }}"
                           step_delay_ms: "{{ step_delay_ms }}"
                           flag_entity: "{{ flag_entity_id }}"
+                          lock_token_entity: "{{ lock_token_entity_id }}"
+                          lock_token: "{{ lock_token_value }}"
               - choose:
                   - conditions:
                       - condition: template
-                        value_template: "{{ (target_brightness | float(0)) > 0 and (non_dimmable_off | length) > 0 and (flag_entity_id == '' or states(flag_entity_id) == 'on') }}"
+                        value_template: "{{ (target_brightness | float(0)) > 0 and (non_dimmable_off | length) > 0 and (flag_entity_id == '' or states(flag_entity_id) == 'on') and (lock_token_entity_id == '' or states(lock_token_entity_id) == lock_token_value) }}"
                     sequence:
                       - choose:
                           - conditions:
@@ -213,7 +479,7 @@ script:
               - choose:
                   - conditions:
                       - condition: template
-                        value_template: "{{ (target_brightness | float(0)) <= 0 and (non_dimmable_on | length) > 0 and (flag_entity_id == '' or states(flag_entity_id) == 'on') }}"
+                        value_template: "{{ (target_brightness | float(0)) <= 0 and (non_dimmable_on | length) > 0 and (flag_entity_id == '' or states(flag_entity_id) == 'on') and (lock_token_entity_id == '' or states(lock_token_entity_id) == lock_token_value) }}"
                     sequence:
                       - service: light.turn_off
                         target:
@@ -227,6 +493,11 @@ script:
                               value_template: "{{ flag_entity_id != '' and states(flag_entity_id) != 'on' }}"
                           sequence:
                             - stop: "Flag inactive"
+                        - conditions:
+                            - condition: template
+                              value_template: "{{ lock_token_entity_id != '' and states(lock_token_entity_id) != lock_token_value }}"
+                          sequence:
+                            - stop: "Lock token changed"
                     - service: script.gradual_brightness_worker
                       data:
                         variables:
@@ -235,10 +506,12 @@ script:
                           steps: "{{ steps_int }}"
                           step_delay_ms: "{{ step_delay_ms }}"
                           flag_entity: "{{ flag_entity_id }}"
+                          lock_token_entity: "{{ lock_token_entity_id }}"
+                          lock_token: "{{ lock_token_value }}"
               - choose:
                   - conditions:
                       - condition: template
-                        value_template: "{{ (target_brightness | float(0)) > 0 and (non_dimmable_off | length) > 0 and (flag_entity_id == '' or states(flag_entity_id) == 'on') }}"
+                        value_template: "{{ (target_brightness | float(0)) > 0 and (non_dimmable_off | length) > 0 and (flag_entity_id == '' or states(flag_entity_id) == 'on') and (lock_token_entity_id == '' or states(lock_token_entity_id) == lock_token_value) }}"
                     sequence:
                       - service: light.turn_on
                         target:
@@ -281,10 +554,23 @@ script:
         selector:
           entity:
             domain: input_boolean
+      lock_token_entity:
+        name: Lock token entity
+        description: Optional input_text token entity used to stop stale workers.
+        selector:
+          entity:
+            domain: input_text
+      lock_token:
+        name: Lock token
+        description: Expected token value while the worker is allowed to run.
+        selector:
+          text:
     sequence:
       - variables:
           is_off: "{{ states(light) == 'off' }}"
           run_flag: "{{ flag_entity | default('') }}"
+          lock_entity: "{{ lock_token_entity | default('') }}"
+          lock_value: "{{ lock_token | default('') }}"
           start_bri: "{{ state_attr(light, 'brightness') | int(0) }}"
           start_pct: "{{ (10 if is_off else (start_bri / 255 * 100)) | float }}"
           target_pct: "{{ target_brightness | float }}"
@@ -296,9 +582,14 @@ script:
                 value_template: "{{ run_flag != '' and states(run_flag) != 'on' }}"
             sequence:
               - stop: "Flag inactive before start"
+          - conditions:
+              - condition: template
+                value_template: "{{ lock_entity != '' and states(lock_entity) != lock_value }}"
+            sequence:
+              - stop: "Lock token changed before start"
       - if:
           - condition: template
-            value_template: "{{ is_off and (delta | float) > 0 }}"
+            value_template: "{{ is_off and (delta | float) > 0 and (lock_entity == '' or states(lock_entity) == lock_value) }}"
         then:
           - service: light.turn_on
             target:
@@ -319,6 +610,11 @@ script:
                           value_template: "{{ run_flag != '' and states(run_flag) != 'on' }}"
                       sequence:
                         - stop: "Flag inactive during run"
+                    - conditions:
+                        - condition: template
+                          value_template: "{{ lock_entity != '' and states(lock_entity) != lock_value }}"
+                      sequence:
+                        - stop: "Lock token changed during run"
                 - variables:
                     new_pct: "{{ (start_pct | float) + ((repeat.index | float) * (step_size | float)) }}"
                     new_pct_clamped: "{{ ([new_pct | float, 1.0] | max) if (target_pct | float) <= 0 else ([new_pct | float, 100.0] | min) }}"
@@ -332,7 +628,7 @@ script:
                     milliseconds: "{{ step_delay_ms | int }}"
           - if:
               - condition: template
-                value_template: "{{ (target_pct | float) <= 0 }}"
+                value_template: "{{ (target_pct | float) <= 0 and (lock_entity == '' or states(lock_entity) == lock_value) }}"
             then:
               - service: light.turn_off
                 target:
@@ -340,7 +636,7 @@ script:
   gradual_restore_from_snapshot:
     alias: Snapshot - Encendido suave desde snapshot
     description: Transicion hacia los brillos guardados en un var JSON de snapshot.
-    mode: restart
+    mode: parallel
     fields:
       snapshot_var:
         description: Entidad var que contiene el JSON de targets por luz
@@ -354,6 +650,15 @@ script:
       min_pct:
         description: Piso mínimo de brillo (para luces que no aceptan menos)
         default: 10
+      lock_token_entity:
+        description: Optional input_text token entity used to stop stale restores.
+        selector:
+          entity:
+            domain: input_text
+      lock_token:
+        description: Expected token value while the restore is allowed to run.
+        selector:
+          text:
     sequence:
       - variables:
           snapshot_var_entity: "{{ snapshot_var | default('var.smart_light_sala_snapshot_targets') }}"
@@ -365,15 +670,24 @@ script:
           intervalo_ms: >
             {{ (duration_s * 1000 / (steps_i if steps_i > 0 else 1)) | round(0) | int }}
           min_floor: "{{ (min_pct | default(10)) | int }}"
+          lock_entity: "{{ lock_token_entity | default('') }}"
+          lock_value: "{{ lock_token | default('') }}"
+          lock_valid: "{{ lock_entity == '' or states(lock_entity) == lock_value }}"
       - choose:
           - conditions:
               - condition: template
-                value_template: "{{ luces | length == 0 or steps_i <= 0 }}"
+                value_template: "{{ luces | length == 0 or steps_i <= 0 or (lock_entity != '' and states(lock_entity) != lock_value) }}"
             sequence: []
         default:
           - repeat:
               count: "{{ steps_i }}"
               sequence:
+                - choose:
+                    - conditions:
+                        - condition: template
+                          value_template: "{{ lock_entity != '' and states(lock_entity) != lock_value }}"
+                      sequence:
+                        - stop: "Lock token changed during restore"
                 - variables:
                     idx: "{{ repeat.index }}"
                     frac: "{{ (repeat.index | float) / (steps_i | float) }}"
@@ -408,7 +722,7 @@ script:
                       - choose:
                           - conditions:
                               - condition: template
-                                value_template: "{{ objetivo == 0 and idx == steps_i }}"
+                                value_template: "{{ objetivo == 0 and idx == steps_i and (lock_entity == '' or states(lock_entity) == lock_value) }}"
                             sequence:
                               - target:
                                   entity_id: "{{ e }}"

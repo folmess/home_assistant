@@ -486,6 +486,7 @@ script:
               {% endif %}
             {% endfor %}
             {{ ns.entity }}
+          transition_token: "smart_light_cocina_turn_on_{{ now().timestamp() }}_{{ range(100000, 999999) | random }}"
           leaf_lights: >
             {% set ns = namespace(leaf=[]) %}
             {% for l in area_entities('cocina') | select('match','light\\..*') %}
@@ -493,6 +494,24 @@ script:
               {% set ns.leaf = ns.leaf + (m if m else [l]) %}
             {% endfor %}
             {{ ns.leaf | unique | list }}
+      - service: script.light_transition_claim_area
+        data:
+          area_key: cocina
+          owner: smart_light_cocina
+          token: "{{ transition_token }}"
+          protected: false
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ states('input_text.light_transition_cocina_token') == transition_token }}"
+            sequence: []
+        default:
+          - service: script.smart_light_cocina_debug_emit
+            data:
+              event: turn_on_blocked_by_area_lock
+              message: "No cambio luces porque otra rutina tiene protegida el area."
+              context: "owner={{ states('input_text.light_transition_cocina_owner') }}, protected={{ states('input_boolean.light_transition_cocina_protected') }}"
+          - stop: "Area lock blocked turn on"
       - service: script.smart_light_cocina_debug_emit
         data:
           event: turn_on_lights
@@ -597,12 +616,11 @@ script:
             - timer.smart_light_cocina_idle_timeout
             - timer.smart_light_cocina_dim_notice
             - timer.smart_light_cocina_restore_window
-      - service: script.turn_off
-        target:
-          entity_id:
-            - script.gradual_brightness_change
-            - script.gradual_restore_from_snapshot
-            - script.gradual_brightness_worker
+      - service: script.light_transition_cancel_area
+        data:
+          area_key: cocina
+          owner: smart_light_cocina
+          token: "smart_light_cocina_cancel_{{ now().timestamp() }}"
       - service: input_boolean.turn_off
         target: { entity_id: input_boolean.smart_light_cocina_fading_active }
 
@@ -652,6 +670,7 @@ script:
               {% endif %}
             {% endfor %}
             {{ vals }}
+          transition_token: "smart_light_cocina_pre_notice_{{ now().timestamp() }}_{{ range(100000, 999999) | random }}"
       - choose:
           - conditions:
               - condition: state
@@ -664,6 +683,14 @@ script:
                 entity_id: input_select.smart_light_cocina_state
                 state: IDLE_COUNTDOWN
             sequence:
+              - service: script.light_transition_claim_area
+                data:
+                  area_key: cocina
+                  owner: smart_light_cocina
+                  token: "{{ transition_token }}"
+                  protected: false
+              - condition: template
+                value_template: "{{ states('input_text.light_transition_cocina_token') == transition_token }}"
               - service: script.smart_light_cocina_debug_emit
                 data:
                   event: enter_pre_notice
@@ -729,6 +756,8 @@ script:
                                           steps: "{{ steps }}"
                                           step_delay_ms: "{{ step_delay_ms }}"
                                           flag_entity: input_boolean.smart_light_cocina_fading_active
+                                          lock_token_entity: input_text.light_transition_cocina_token
+                                          lock_token: "{{ transition_token }}"
                                 - conditions:
                                     - condition: template
                                       value_template: "{{ not is_dimmable }}"
@@ -761,6 +790,7 @@ script:
             {% set suffix = suffix_map.get(pd) %}
             {% set entity = 'input_number.smart_light_cocina_arribo_' ~ suffix if suffix else none %}
             {{ states(entity)|int if entity else 15 }}
+          transition_token: "smart_light_cocina_restore_window_{{ now().timestamp() }}_{{ range(100000, 999999) | random }}"
       - choose:
           - conditions:
               - condition: state
@@ -773,6 +803,14 @@ script:
                 entity_id: input_select.smart_light_cocina_state
                 state: PRE_NOTICE
             sequence:
+              - service: script.light_transition_claim_area
+                data:
+                  area_key: cocina
+                  owner: smart_light_cocina
+                  token: "{{ transition_token }}"
+                  protected: false
+              - condition: template
+                value_template: "{{ states('input_text.light_transition_cocina_token') == transition_token }}"
               - service: script.smart_light_cocina_debug_emit
                 data:
                   event: enter_restore_window
@@ -1202,6 +1240,9 @@ automation:
       - platform: state
         entity_id: input_boolean.smart_lights_cocina
         to: "on"
+    condition:
+      - condition: template
+        value_template: "{{ not (is_state('input_boolean.light_transition_cocina_protected', 'on') and states('input_text.light_transition_cocina_owner') != 'smart_light_cocina') }}"
     action:
       - choose:
           - conditions:
@@ -1241,6 +1282,8 @@ automation:
       - condition: state
         entity_id: input_boolean.smart_lights_cocina
         state: "on"
+      - condition: template
+        value_template: "{{ not (is_state('input_boolean.light_transition_cocina_protected', 'on') and states('input_text.light_transition_cocina_owner') != 'smart_light_cocina') }}"
     action:
       - service: script.smart_light_cocina_enter_idle_countdown
 
@@ -1257,6 +1300,8 @@ automation:
       - condition: state
         entity_id: input_boolean.smart_lights_cocina
         state: "on"
+      - condition: template
+        value_template: "{{ not (is_state('input_boolean.light_transition_cocina_protected', 'on') and states('input_text.light_transition_cocina_owner') != 'smart_light_cocina') }}"
       - condition: state
         entity_id: binary_sensor.motion_cocina
         state: "off"
@@ -1277,20 +1322,29 @@ automation:
       - condition: state
         entity_id: input_boolean.smart_lights_cocina
         state: "on"
+      - condition: template
+        value_template: "{{ not (is_state('input_boolean.light_transition_cocina_protected', 'on') and states('input_text.light_transition_cocina_owner') != 'smart_light_cocina') }}"
     variables:
       prev_state: "{{ states('input_select.smart_light_cocina_state') }}"
       fade_sec: "{{ states('input_number.smart_light_cocina_fade_sec') | int(30) }}"
       steps: "{{ fade_sec }}"   # 1 paso/seg
       min_pct_floor: 10
+      transition_token: "smart_light_cocina_motion_on_{{ now().timestamp() }}_{{ range(100000, 999999) | random }}"
     action:
+      # Cancelar timers (ya no aplican al estar en ACTIVE)
+      - service: script.smart_light_cocina_cancel_motion_runtime
+      - service: script.light_transition_claim_area
+        data:
+          area_key: cocina
+          owner: smart_light_cocina
+          token: "{{ transition_token }}"
+          protected: false
+      - condition: template
+        value_template: "{{ states('input_text.light_transition_cocina_token') == transition_token }}"
       - service: script.smart_light_cocina_set_state
         data: { target_state: ACTIVE }
 
-      # Cancelar timers (ya no aplican al estar en ACTIVE)
-      - service: script.smart_light_cocina_cancel_motion_runtime
-
-
-      # Restaurar según estado previo
+      # Restaurar segun estado previo
       - choose:
           # Desde PRE_NOTICE o RESTORE_WINDOW -> restauración suave (usa VAR)
           - conditions:
@@ -1310,6 +1364,8 @@ automation:
                     steps: "{{ steps }}"
                     min_pct: "{{ min_pct_floor }}"
                     snapshot_var: var.smart_light_cocina_snapshot_targets
+                    lock_token_entity: input_text.light_transition_cocina_token
+                    lock_token: "{{ transition_token }}"
           - conditions:
               - condition: template
                 value_template: "{{ prev_state in ['PRE_NOTICE','RESTORE_WINDOW'] and is_state('input_boolean.smart_light_cocina_fade', 'off') }}"
@@ -1346,6 +1402,8 @@ automation:
       - condition: state
         entity_id: input_boolean.smart_lights_cocina
         state: "on"
+      - condition: template
+        value_template: "{{ not (is_state('input_boolean.light_transition_cocina_protected', 'on') and states('input_text.light_transition_cocina_owner') != 'smart_light_cocina') }}"
     action:
       - service: script.smart_light_cocina_enter_pre_notice
   # PRE_NOTICE FIN - apagar + arrancar RESTORE_WINDOW (con Arribo por franja)
@@ -1361,6 +1419,8 @@ automation:
       - condition: state
         entity_id: input_boolean.smart_lights_cocina
         state: "on"
+      - condition: template
+        value_template: "{{ not (is_state('input_boolean.light_transition_cocina_protected', 'on') and states('input_text.light_transition_cocina_owner') != 'smart_light_cocina') }}"
     action:
       - service: script.smart_light_cocina_enter_restore_window
 
@@ -1377,5 +1437,7 @@ automation:
       - condition: state
         entity_id: input_boolean.smart_lights_cocina
         state: "on"
+      - condition: template
+        value_template: "{{ not (is_state('input_boolean.light_transition_cocina_protected', 'on') and states('input_text.light_transition_cocina_owner') != 'smart_light_cocina') }}"
     action:
       - service: script.smart_light_cocina_enter_waiting_arrival

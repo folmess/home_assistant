@@ -1,20 +1,22 @@
 # ===========================================
 # Package: yendo_a_dormir_v2
 # Llama a script externo: script.gradual_brightness_change
-# Descripción:
+# Descripcion:
 #   Rutina para ir a dormir:
-#     - Al activar input_boolean.dormir_activo:
-#         - Desactiva smart_lights_sala (bypass ON)
-#         - Cancela timers de sala_auto y propios
+#     - Al activar input_boolean.yendo_a_dormir:
+#         - Activa input_boolean.modo_dormir_activo
+#         - Toma control protegido de sala_de_estar mientras dura la rutina
+#         - Desactiva smart_lights_sala
+#         - Cancela timers de Smart Light Sala y propios
 #         - Guarda escena actual de sala_de_estar
-#         - flash riel4 y otras acciones (script.dormir_01_inicio)
-#         - Fade gradual a target % en X segs
-#         - apaga luces secuencialmente (dejando 1 encendida)
-#         - apaga aire y tv (double check)
-#         - Enciende escena madrugada1
-#         - Inicia timer propio de countdown (fade + espera)
+#         - Ejecuta script.dormir_01_inicio
+#         - Inicia countdown de fade + espera
+#         - Baja luces gradualmente a target %
 #     - Al finalizar el countdown:
-#         - Apaga todo
+#         - Ejecuta acciones finales
+#         - Libera el control protegido de sala
+#         - Reactiva Smart Lights Sala y recalcula por motion
+#         - Deja modo_dormir_activo encendido
 # ===========================================
 
 ###############################################################
@@ -22,12 +24,14 @@
 ###############################################################
 
 input_boolean:
-   dormir_activo:
-     name: Dormir - Yendo a dormir
-     initial: off
-   horario_de_dormir:
-     name: Horario de dormir
-     initial: off
+  yendo_a_dormir:
+    name: Dormir - Yendo a dormir
+    initial: off
+  modo_dormir_activo:
+    name: Dormir - Modo dormir activo
+  horario_de_dormir:
+    name: Horario de dormir
+    initial: off
 
 input_number:
   dormir_reduccion_pct:
@@ -58,7 +62,7 @@ input_number:
 timer:
   dormir_countdown:
     name: Countdown iniciando dormir
-    duration: "00:01:00"   # se sobreescribe dinámicamente
+    duration: "00:01:00"   # se sobreescribe dinamicamente
     restore: true
  
 ###############################################################
@@ -93,7 +97,7 @@ script:
 
   dormir_sequential_off:
     alias: "dormir_sequential_off"
-    description: apagar luces una por una, dejar 1 encendida
+    description: Apagar luces una por una, dejar 1 encendida.
     mode: single
     sequence:
       - variables:
@@ -123,53 +127,60 @@ script:
 # AUTOMATIONS
 ###############################################################
 automation:
-  # ON → Inicia rutina dormir:
-  # BYPASS ON, cancelar sala_auto, snapshot, fade externo, iniciar countdown (fade+espera)
   - alias: Dormir - ON start
     id: dormir_on_start
     mode: restart
     trigger:
       - platform: state
-        entity_id: input_boolean.dormir_activo
+        entity_id: input_boolean.yendo_a_dormir
         to: "on"
     variables:
       fade_s: "{{ states('input_number.dormir_fade_sec') | int(60) }}"
       wait_s: "{{ states('input_number.dormir_wait_after_sec') | int(120) }}"
       total_s: "{{ fade_s + wait_s }}"
       pct: "{{ states('input_number.dormir_reduccion_pct') | int(10) }}"
+      sleep_lock_token: "sleep_{{ now().timestamp() }}_{{ range(100000, 999999) | random }}"
     action:
-      # desactivar smart lights sala (bypass ON)
+      - service: input_boolean.turn_on
+        target: { entity_id: input_boolean.modo_dormir_activo }
+
+      - service: script.light_transition_claim_area
+        data:
+          area_key: sala_de_estar
+          owner: sleep
+          token: "{{ sleep_lock_token }}"
+          protected: true
+          force: true
+
       - service: input_boolean.turn_off
         target: { entity_id: input_boolean.smart_lights_sala }
 
-      # Cancelar timers de smart_light_sala
       - service: timer.cancel
         target:
           entity_id:
             - timer.smart_light_sala_idle_timeout
             - timer.smart_light_sala_dim_notice
             - timer.smart_light_sala_restore_window
+            - timer.dormir_countdown
 
-      # Cancelar timer propio (si venía corriendo)
-      - service: timer.cancel
-        target: { entity_id: timer.dormir_countdown }
-
-      # Iniciar countdown total (fade + espera)
-      - service: timer.start
-        target: { entity_id: timer.dormir_countdown }
-        data:
-          duration: "{{ total_s }}"
-
-      # Guardar escena (posible restore si cancelás)
       - service: script.dormir_save_scene
 
-      # llama al script de acciones al inicio (flash riel4 y otras acciones)
       - service: script.dormir_01_inicio
       - wait_template: "{{ is_state('script.dormir_01_inicio', 'off') }}"
         timeout: "00:05:00"
         continue_on_timeout: false
 
-      # Fade gradual con script externo (1 paso/seg, paralelo)
+      - condition: state
+        entity_id: input_boolean.yendo_a_dormir
+        state: "on"
+      - condition: template
+        value_template: "{{ states('input_text.light_transition_sala_owner') == 'sleep' }}"
+
+      - service: timer.start
+        target: { entity_id: timer.dormir_countdown }
+        data:
+          duration: "{{ total_s }}"
+
       - service: script.gradual_brightness_change
         data:
           target:
@@ -179,31 +190,10 @@ automation:
           steps: "{{ fade_s }}"
           queue_mode: parallel
           include_off_lights: false
-      - wait_template: >
-          {{ is_state('script.gradual_brightness_change', 'off')
-             and (state_attr('script.gradual_brightness_worker', 'current') | int(0)) == 0 }}
-        timeout: "00:15:00"
-        continue_on_timeout: false
+          lock_token_entity: input_text.light_transition_sala_token
+          lock_token: "{{ sleep_lock_token }}"
 
-      - service: script.dormir_03_final
-      - wait_template: "{{ is_state('script.dormir_03_final', 'off') }}"
-        timeout: "00:05:00"
-        continue_on_timeout: false
-
-      - service: script.dormir_sequential_off
-      - wait_template: "{{ is_state('script.dormir_sequential_off', 'off') }}"
-        timeout: "00:15:00"
-        continue_on_timeout: false
-
-      - delay: 2
-         
-      - service: scene.turn_on
-        target:
-          entity_id: scene.madrugada1
-        data: {}
-
-  # FIN del countdown → apagar, forzar WAITING_ARRIVAL, delay 2s, bypass OFF, refuerzo WAITING_ARRIVAL, toggle OFF
-  - alias: Dormir - FIN
+  - alias: Dormir - FIN countdown
     id: dormir_finish
     mode: single
     trigger:
@@ -211,29 +201,186 @@ automation:
         event_type: timer.finished
         event_data:
           entity_id: timer.dormir_countdown
+    condition:
+      - condition: state
+        entity_id: input_boolean.yendo_a_dormir
+        state: "on"
     action:
-      # Apagar todo
-      - service: script.turn_on
-        target: { entity_id: script.dormir_turn_off_area }
+      - service: input_boolean.turn_on
+        target: { entity_id: input_boolean.modo_dormir_activo }
 
-      # Forzar primero WAITING_ARRIVAL
+      - service: script.dormir_03_final
+      - wait_template: "{{ is_state('script.dormir_03_final', 'off') }}"
+        timeout: "00:05:00"
+        continue_on_timeout: false
+
+      - condition: state
+        entity_id: input_boolean.yendo_a_dormir
+        state: "on"
+      - condition: template
+        value_template: "{{ states('input_text.light_transition_sala_owner') == 'sleep' }}"
+
+      - service: script.dormir_sequential_off
+      - wait_template: "{{ is_state('script.dormir_sequential_off', 'off') }}"
+        timeout: "00:15:00"
+        continue_on_timeout: false
+
+      - condition: state
+        entity_id: input_boolean.yendo_a_dormir
+        state: "on"
+      - delay: 2
+
+      - service: scene.turn_on
+        target: { entity_id: scene.madrugada1 }
+        data: {}
+
       - service: input_select.select_option
         target: { entity_id: input_select.smart_light_sala_state }
         data: { option: WAITING_ARRIVAL }
 
-      # Delay de seguridad (anti 'pisada' a ACTIVE)
-      - delay: "00:00:02"
+      - service: script.light_transition_release_area
+        data:
+          area_key: sala_de_estar
+          owner: sleep
+          force: true
 
-      # encender smart lights sala (bypass OFF)
       - service: input_boolean.turn_on
         target: { entity_id: input_boolean.smart_lights_sala }
 
-      # Refuerzo final de estado
+      - service: script.smart_light_sala_reset_runtime
+
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.yendo_a_dormir }
+
+  - alias: Dormir - OFF cancel + restore
+    id: dormir_off_cancel
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.yendo_a_dormir
+        to: "off"
+    condition:
+      - condition: template
+        value_template: >
+          {{ is_state('timer.dormir_countdown', 'active')
+             or states('input_text.light_transition_sala_owner') == 'sleep' }}
+    action:
+      - service: timer.cancel
+        target: { entity_id: timer.dormir_countdown }
+
+      - service: script.light_transition_claim_area
+        data:
+          area_key: sala_de_estar
+          owner: sleep
+          token: "sleep_cancel_{{ now().timestamp() }}"
+          protected: true
+          force: true
+
+      - service: scene.turn_on
+        target: { entity_id: scene.dormir_snapshot }
+
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.modo_dormir_activo }
+
       - service: input_select.select_option
         target: { entity_id: input_select.smart_light_sala_state }
         data: { option: WAITING_ARRIVAL }
 
-  # Horario dormir - ON at 22:00
+      - delay: "00:00:02"
+
+      - service: script.light_transition_release_area
+        data:
+          area_key: sala_de_estar
+          owner: sleep
+          force: true
+
+      - service: input_boolean.turn_on
+        target: { entity_id: input_boolean.smart_lights_sala }
+
+      - service: script.smart_light_sala_reset_runtime
+
+  - alias: Dormir - Modo dormir OFF -> release sala
+    id: dormir_modo_off_release_sala
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.modo_dormir_activo
+        to: "off"
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.yendo_a_dormir
+                state: "on"
+            sequence:
+              - service: input_boolean.turn_off
+                target: { entity_id: input_boolean.yendo_a_dormir }
+              - stop: "La cancelacion de yendo_a_dormir completa la limpieza"
+      - service: timer.cancel
+        target: { entity_id: timer.dormir_countdown }
+      - service: script.light_transition_release_area
+        data:
+          area_key: sala_de_estar
+          owner: sleep
+          force: true
+      - service: input_boolean.turn_on
+        target: { entity_id: input_boolean.smart_lights_sala }
+      - service: script.smart_light_sala_reset_runtime
+
+  - alias: Dormir - HA START -> recover runtime
+    id: dormir_ha_start_recover_runtime
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      - delay: "00:00:10"
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.yendo_a_dormir
+                state: "on"
+              - condition: state
+                entity_id: timer.dormir_countdown
+                state: "active"
+            sequence:
+              - service: input_boolean.turn_on
+                target: { entity_id: input_boolean.modo_dormir_activo }
+              - service: script.light_transition_claim_area
+                data:
+                  area_key: sala_de_estar
+                  owner: sleep
+                  token: "sleep_recover_{{ now().timestamp() }}"
+                  protected: true
+                  force: true
+              - service: input_boolean.turn_off
+                target: { entity_id: input_boolean.smart_lights_sala }
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.yendo_a_dormir
+                state: "on"
+            sequence:
+              - service: input_boolean.turn_off
+                target: { entity_id: input_boolean.yendo_a_dormir }
+              - service: script.light_transition_release_area
+                data:
+                  area_key: sala_de_estar
+                  owner: sleep
+                  force: true
+              - service: input_boolean.turn_on
+                target: { entity_id: input_boolean.smart_lights_sala }
+              - service: script.smart_light_sala_reset_runtime
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.modo_dormir_activo
+                state: "on"
+            sequence:
+              - service: script.light_transition_release_area
+                data:
+                  area_key: sala_de_estar
+                  owner: sleep
+                  force: true
+
   - alias: Horario dormir - ON at 22:00
     id: horario_dormir_on
     mode: single
@@ -244,7 +391,6 @@ automation:
       - service: input_boolean.turn_on
         target: { entity_id: input_boolean.horario_de_dormir }
 
-  # Horario dormir - OFF at 02:00
   - alias: Horario dormir - OFF at 02:00
     id: horario_dormir_off
     mode: single
@@ -255,7 +401,6 @@ automation:
       - service: input_boolean.turn_off
         target: { entity_id: input_boolean.horario_de_dormir }
 
-  # Apagar yendo a dormir - OFF at 08:00
   - alias: dormir_off
     id: dormir_off
     mode: single
@@ -263,11 +408,19 @@ automation:
       - platform: time
         at: "08:00:00"
     action:
-      # Apagar el toggle maestro
       - service: input_boolean.turn_off
-        target: { entity_id: input_boolean.dormir_activo }
+        target:
+          entity_id:
+            - input_boolean.modo_dormir_activo
+            - input_boolean.yendo_a_dormir
+      - service: timer.cancel
+        target: { entity_id: timer.dormir_countdown }
+      - service: script.light_transition_release_area
+        data:
+          area_key: sala_de_estar
+          owner: sleep
+          force: true
 
-  # Horario dormir - Sync al reiniciar HA
   - alias: Horario dormir - Sync al reiniciar HA
     id: horario_dormir_sync_on_start
     mode: single
@@ -285,45 +438,3 @@ automation:
         default:
           - service: input_boolean.turn_off
             target: { entity_id: input_boolean.horario_de_dormir }
-  # OFF manual antes de terminar → cancelar y restaurar escena, luego misma salida con delay 2s
-  - alias: Dormir - OFF cancel + restore
-    id: dormir_off_cancel
-    mode: single
-    trigger:
-      - platform: state
-        entity_id: input_boolean.dormir_activo
-        to: "off"
-    condition:
-      - condition: state
-        entity_id: timer.dormir_countdown
-        state: "active"
-    action:
-      # Cancelar countdown
-      - service: timer.cancel
-        target: { entity_id: timer.dormir_countdown }
-
-      # Intentar detener el script externo (best-effort)
-      - service: script.turn_off
-        target: { entity_id: script.gradual_brightness_change }
-      - service: script.turn_off
-        target: { entity_id: script.gradual_brightness_worker }
-      # Restaurar snapshot
-      - service: scene.turn_on
-        target: { entity_id: scene.dormir_snapshot }
-
-      # Forzar primero WAITING_ARRIVAL
-      - service: input_select.select_option
-        target: { entity_id: input_select.smart_light_sala_state }
-        data: { option: WAITING_ARRIVAL }
-
-      # Delay de seguridad
-      - delay: "00:00:02"
-
-      # Apagar bypass
-      - service: input_boolean.turn_on
-        target: { entity_id: input_boolean.smart_lights_sala }
-
-      # Refuerzo final de estado
-      - service: input_select.select_option
-        target: { entity_id: input_select.smart_light_sala_state }
-        data: { option: WAITING_ARRIVAL }
