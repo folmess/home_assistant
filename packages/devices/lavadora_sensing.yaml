@@ -185,8 +185,8 @@ template:
           {% set machine = states('sensor.lavadora_estado_de_la_maquina') %}
           {% set work = states('sensor.lavadora_estado_del_trabajo') %}
           {% if work == 'Delay wash' %} delay
-          {% elif machine == 'Running' %} running
           {% elif work == 'Finish' %} finished
+          {% elif machine == 'Running' %} running
           {% else %} idle
           {% endif %}
         attributes:
@@ -271,6 +271,38 @@ template:
             {% else %}0
             {% endif %}
 
+          # Sensores y controles del device SmartThings
+          water_temperature: "{{ states('select.lavadora_water_temperature') }}"
+          selected_cycle: "{{ states('select.lavadora') }}"
+          child_lock: "{{ is_state('binary_sensor.lavadora_bloqueo_infantil', 'on') }}"
+          remote_control: "{{ is_state('binary_sensor.lavadora_control_remoto', 'on') }}"
+          energy_active: "{{ is_state('binary_sensor.lavadora_energia', 'on') }}"
+          bubble_soak: "{{ is_state('switch.lavadora_bano_de_burbujas', 'on') }}"
+          power_w: "{{ states('sensor.lavadora_potencia') | float(0) }}"
+          energy_total: "{{ states('sensor.lavadora_energia') | float(0) }}"
+          energy_electric: "{{ states('sensor.lavadora_energia_electrica') | float(0) }}"
+          energy_saved: "{{ states('sensor.lavadora_energia_ahorrada') | float(0) }}"
+          energy_difference: "{{ states('sensor.lavadora_diferencia_de_energia') | float(0) }}"
+          source_entities: >-
+            {{ [
+              'binary_sensor.lavadora_bloqueo_infantil',
+              'binary_sensor.lavadora_control_remoto',
+              'binary_sensor.lavadora_energia',
+              'number.lavadora_ciclos_de_enjuague',
+              'select.lavadora',
+              'select.lavadora_nivel_de_centrifugado',
+              'select.lavadora_water_temperature',
+              'sensor.lavadora_diferencia_de_energia',
+              'sensor.lavadora_energia',
+              'sensor.lavadora_energia_ahorrada',
+              'sensor.lavadora_energia_electrica',
+              'sensor.lavadora_estado_de_la_maquina',
+              'sensor.lavadora_estado_del_trabajo',
+              'sensor.lavadora_potencia',
+              'sensor.lavadora_tiempo_de_finalizacion',
+              'switch.lavadora_bano_de_burbujas'
+            ] | to_json }}
+
           # Textos listos para la cabecera
           title_text: >-
             {% if is_state('sensor.lavadora_estado_del_trabajo','Delay wash') %}
@@ -285,6 +317,87 @@ template:
           line2_text: >-
             {% set t = state_attr('sensor.lavadora','end_time_text') %}
             {{ 'Finaliza a las ' ~ t if t else '' }}
+
+      # --- Estado en lenguaje amigable ---
+      - name: "Lavadora - Estado amigable"
+        unique_id: lavadora_estado_amigable
+        icon: >-
+          {% set work = states('sensor.lavadora_estado_del_trabajo') %}
+          {% if work == 'Finish' %}mdi:check-circle
+          {% elif work == 'Delay wash' %}mdi:timer-sand
+          {% elif states('sensor.lavadora_estado_de_la_maquina') == 'Running' %}mdi:washing-machine
+          {% else %}mdi:washing-machine-off
+          {% endif %}
+        state: >-
+          {% set work = states('sensor.lavadora_estado_del_trabajo') %}
+          {% set machine = states('sensor.lavadora_estado_de_la_maquina') %}
+          {% set fin = as_datetime(states('sensor.lavadora_tiempo_de_finalizacion'), none) %}
+          {% set fin_txt = as_local(fin).strftime('%H:%M') if fin is not none else '' %}
+          {% if work == 'Finish' %}
+            Lavado terminado
+          {% elif work == 'Delay wash' %}
+            {% set inicio = as_datetime(states('input_datetime.lavadora_inicio'), none) %}
+            {% set inicio_txt = as_local(inicio).strftime('%H:%M') if inicio is not none else '' %}
+            {{ 'Lavado programado para las ' ~ inicio_txt if inicio_txt else 'Lavado programado' }}
+          {% elif work == 'Wash' %}
+            {{ 'Lavando ropa... finalizará a las ' ~ fin_txt if fin_txt else 'Lavando ropa...' }}
+          {% elif work == 'Rinse' %}
+            {{ 'Enjuagando... finalizará a las ' ~ fin_txt if fin_txt else 'Enjuagando...' }}
+          {% elif work == 'Spin' %}
+            {{ 'Centrifugando... finalizará a las ' ~ fin_txt if fin_txt else 'Centrifugando...' }}
+          {% elif work == 'Drying' %}
+            {{ 'Secando... finalizará a las ' ~ fin_txt if fin_txt else 'Secando...' }}
+          {% elif work == 'Weight sensing' %}
+            Pesando la ropa...
+          {% elif machine == 'Running' or states('select.lavadora') == 'running' %}
+            {{ 'Lavando ropa... finalizará a las ' ~ fin_txt if fin_txt else 'Lavando ropa...' }}
+          {% else %}
+            Lavadora disponible
+          {% endif %}
+        attributes:
+          phase: >-
+            {% set work = states('sensor.lavadora_estado_del_trabajo') %}
+            {% set machine = states('sensor.lavadora_estado_de_la_maquina') %}
+            {% if work == 'Finish' %}finished
+            {% elif work == 'Delay wash' %}delay
+            {% elif machine == 'Running' or states('select.lavadora') == 'running' %}running
+            {% else %}idle
+            {% endif %}
+          headline: >-
+            {% set work = states('sensor.lavadora_estado_del_trabajo') %}
+            {% if work == 'Finish' %}Lavado terminado
+            {% elif work == 'Delay wash' %}Lavado programado
+            {% elif work == 'Rinse' %}Enjuagando
+            {% elif work == 'Spin' %}Centrifugando
+            {% elif work == 'Drying' %}Secando
+            {% elif work == 'Weight sensing' %}Pesando la ropa
+            {% elif states('sensor.lavadora_estado_de_la_maquina') == 'Running' or states('select.lavadora') == 'running' %}Lavando ropa
+            {% else %}Lavadora disponible
+            {% endif %}
+          detail: >-
+            {% set work = states('sensor.lavadora_estado_del_trabajo') %}
+            {% set fin = as_datetime(states('sensor.lavadora_tiempo_de_finalizacion'), none) %}
+            {% set fin_txt = as_local(fin).strftime('%H:%M') if fin is not none else '' %}
+            {% if work == 'Finish' %}
+              El ciclo ya terminó
+            {% elif work == 'Delay wash' %}
+              {% set inicio = as_datetime(states('input_datetime.lavadora_inicio'), none) %}
+              {% set inicio_txt = as_local(inicio).strftime('%H:%M') if inicio is not none else '' %}
+              {{ 'Comenzará a las ' ~ inicio_txt if inicio_txt else 'Esperando el inicio programado' }}
+            {% elif fin_txt %}
+              Finalizará a las {{ fin_txt }}
+            {% elif states('sensor.lavadora_estado_de_la_maquina') == 'Running' or states('select.lavadora') == 'running' %}
+              Ciclo en curso
+            {% else %}
+              Sin ciclo activo
+            {% endif %}
+          end_time_text: >-
+            {% set fin = as_datetime(states('sensor.lavadora_tiempo_de_finalizacion'), none) %}
+            {{ as_local(fin).strftime('%H:%M') if fin is not none else '' }}
+          source_state: "{{ states('sensor.lavadora') }}"
+          work_state: "{{ states('sensor.lavadora_estado_del_trabajo') }}"
+          machine_state: "{{ states('sensor.lavadora_estado_de_la_maquina') }}"
+          raw_selected_cycle: "{{ states('select.lavadora') }}"
 
       # --- Minutos adelantados (si el fin actual es antes que el baseline) ---
       - name: "Lavadora - Min adelantados"
@@ -303,6 +416,6 @@ template:
       - name: "Lavadora - Fin adelantado"
         unique_id: lavadora_fin_adelantado
         state: >-
-          {% set mins = states('sensor.lavadora_-_min_adelantados') | int(0) %}
+          {% set mins = states('sensor.lavadora_min_adelantados') | int(0) %}
           {% set thr  = states('input_number.lavadora_umbral_adelanto_min') | int(10) %}
           {{ mins >= thr }}
