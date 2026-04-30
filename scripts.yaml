@@ -2496,6 +2496,100 @@ luces_manana:
       entity_id: light.barra2
   alias: arribo_global
   description: ''
+sala_arribo_puerta:
+  alias: Sala - Arribo por puerta
+  description: "Bienvenida desde puerta principal. Editable desde la UI."
+  mode: restart
+  sequence:
+  - action: light.turn_on
+    metadata: {}
+    data:
+      brightness_pct: 20
+    target:
+      entity_id: light.barra1
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      brightness_pct: 20
+    target:
+      entity_id: light.barra2
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2200
+      brightness_pct: 35
+    target:
+      entity_id: light.riel1
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2300
+      brightness_pct: 45
+    target:
+      entity_id: light.riel2
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2500
+      brightness_pct: 55
+    target:
+      entity_id: light.riel3
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      color_temp_kelvin: 2700
+      brightness_pct: 65
+    target:
+      entity_id: light.riel4
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data:
+      hs_color:
+      - 28
+      - 65
+      brightness_pct: 70
+    target:
+      entity_id: light.rgb
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: light.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: light.luz_rack
 luces_tarde:
   sequence:
   - action: light.turn_on

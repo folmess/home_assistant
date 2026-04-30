@@ -79,6 +79,40 @@ stateDiagram-v2
     DISABLED --> IDLE_COUNTDOWN: smart_lights_sala on + motion off
 ```
 
+## Coordinador Global de Transiciones
+
+Smart Light Sala no es el unico flujo que puede querer tocar las luces de la sala. Tambien existen Dormir, Modo Cine, Puerta Principal / Arribo y scripts manuales. Para evitar que dos flujos peleen por las mismas luces, se usa un coordinador global de transiciones por area.
+
+La idea funcional es simple:
+
+1. Cada flujo que va a cambiar luces reclama un area, por ejemplo `sala_de_estar`.
+2. El reclamo guarda un `owner`, un `token` y si el lock esta protegido.
+3. Los workers largos, como fades o restores, verifican que el token siga siendo el actual.
+4. Si otro flujo toma el area, el token cambia y los workers viejos se detienen solos.
+
+Entidades principales para sala:
+
+- `input_text.light_transition_sala_owner`: quien tiene el control actual.
+- `input_text.light_transition_sala_token`: identificador interno del reclamo actual.
+- `input_boolean.light_transition_sala_protected`: indica si otro owner puede interrumpir el flujo.
+- `input_datetime.light_transition_sala_last_update`: ultima vez que cambio el lock.
+
+Scripts globales:
+
+- `script.light_transition_claim_area`: reclama un area.
+- `script.light_transition_release_area`: libera el area si coincide owner/token.
+- `script.light_transition_cancel_area`: cambia el token para cortar workers activos.
+
+Reglas practicas:
+
+- Smart Light Sala usa locks no protegidos para sus fades/restores normales.
+- `input_boolean.yendo_a_dormir` usa lock protegido con `owner: sleep`.
+- Puerta Principal / Arribo usa lock protegido temporal con `owner: puerta_principal_arribo`.
+- Mientras un lock protegido pertenece a otro owner, Smart Light Sala no debe restaurar, subir brillo ni aplicar mood.
+- Cuando el lock se libera, Smart Light Sala vuelve a recalcular desde motion, timers y contexto.
+
+El token es un detalle interno. Para operar o debuggear el sistema alcanza con mirar el owner, si el lock esta protegido y que flujo esta activo.
+
 ## Como Usarlo
 
 ### Encender o apagar la automatizacion
@@ -655,6 +689,20 @@ El objetivo es que mientras modo cine esta activo, las luces no vuelvan al compo
 - `timer.smart_light_sala_restore_window`
 
 Esto reemplaza referencias antiguas `sala_auto_*`.
+
+### Puerta principal / arribo
+
+`packages/puerta_principal.yaml` usa `input_boolean.flag_acceso_entro` como senal de llegada a casa.
+
+Cuando se confirma un arribo:
+
+- reclama `sala_de_estar` con `owner: puerta_principal_arribo`;
+- protege el lock para que motion de Smart Light Sala no pise la bienvenida;
+- ejecuta `script.sala_arribo_puerta`;
+- mantiene una pausa configurable con `timer.sala_arribo_puerta_hold`;
+- libera el area y entrega el control de vuelta a Smart Light Sala.
+
+Si al terminar la pausa sigue habiendo motion, Smart Light Sala queda en `ACTIVE` sin reaplicar mood. Si ya no hay motion, entra al flujo normal de idle/countdown.
 
 ### Failsafe de apagado
 

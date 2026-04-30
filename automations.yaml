@@ -383,7 +383,7 @@
       - action: scene.create
         metadata: {}
         data:
-          scene_id: cine_custom
+          scene_id: cine_previo
           snapshot_entities:
           - light.riel1
           - light.riel2
@@ -410,11 +410,22 @@
         entity_id: input_boolean.modo_cine
         state: 'on'
       sequence:
-      - action: scene.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id: scene.cine_previo
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ states('scene.cine_previo') not in ['unknown', 'unavailable'] }}"
+          sequence:
+          - action: scene.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id: scene.cine_previo
+        default:
+        - action: scene.turn_on
+          metadata: {}
+          data: {}
+          target:
+            entity_id: scene.cine1
   mode: restart
 - id: '1757571923685'
   alias: turn off luz noche

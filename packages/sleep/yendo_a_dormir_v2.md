@@ -246,6 +246,24 @@ Después del final exitoso:
 
 Esto permite que `modo_dormir_activo` siga encendido sin bloquear la sala. El modo nocturno queda como contexto; la rutina temporal es la que bloquea.
 
+## Coordinador de Transiciones
+
+Dormir participa del coordinador global de transiciones por area.
+
+En la practica, esto significa:
+
+- `yendo_a_dormir` reclama `sala_de_estar` con `owner: sleep`.
+- El lock queda protegido mientras la rutina esta corriendo.
+- Smart Light Sala, Puerta Principal / Arribo y otros flujos no deberian cambiar las luces de sala mientras ese lock protegido siga activo.
+- Al finalizar o cancelar la rutina, Dormir libera el lock y Smart Light Sala puede volver a responder al movimiento.
+
+El detalle del token es interno. Lo importante para dashboard y debug es mirar:
+
+- `input_text.light_transition_sala_owner`
+- `input_boolean.light_transition_sala_protected`
+- `input_boolean.yendo_a_dormir`
+- `input_boolean.modo_dormir_activo`
+
 ## Integración con Gradual Brightness
 
 El fade usa:

@@ -139,7 +139,7 @@ automation:
       wait_s: "{{ states('input_number.dormir_wait_after_sec') | int(120) }}"
       total_s: "{{ fade_s + wait_s }}"
       pct: "{{ states('input_number.dormir_reduccion_pct') | int(10) }}"
-      sleep_lock_token: "sleep_{{ now().timestamp() }}_{{ range(100000, 999999) | random }}"
+      sleep_lock_token: "sleep_{{ now().timestamp() }}"
     action:
       - service: input_boolean.turn_on
         target: { entity_id: input_boolean.modo_dormir_activo }

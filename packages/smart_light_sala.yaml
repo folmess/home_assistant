@@ -486,7 +486,7 @@ script:
               {% endif %}
             {% endfor %}
             {{ ns.entity }}
-          transition_token: "smart_light_sala_turn_on_{{ now().timestamp() }}_{{ range(100000, 999999) | random }}"
+          transition_token: "smart_light_sala_turn_on_{{ now().timestamp() }}"
           leaf_lights: >
             {% set ns = namespace(leaf=[]) %}
             {% for l in area_entities('sala_de_estar') | select('match','light\\..*') %}
@@ -670,7 +670,7 @@ script:
               {% endif %}
             {% endfor %}
             {{ vals }}
-          transition_token: "smart_light_sala_pre_notice_{{ now().timestamp() }}_{{ range(100000, 999999) | random }}"
+          transition_token: "smart_light_sala_pre_notice_{{ now().timestamp() }}"
       - choose:
           - conditions:
               - condition: state
@@ -793,7 +793,7 @@ script:
             {% set suffix = suffix_map.get(pd) %}
             {% set entity = 'input_number.smart_light_sala_arribo_' ~ suffix if suffix else none %}
             {{ states(entity)|int if entity else 15 }}
-          transition_token: "smart_light_sala_restore_window_{{ now().timestamp() }}_{{ range(100000, 999999) | random }}"
+          transition_token: "smart_light_sala_restore_window_{{ now().timestamp() }}"
       - choose:
           - conditions:
               - condition: state
@@ -1360,7 +1360,7 @@ automation:
       fade_sec: "{{ states('input_number.smart_light_sala_fade_sec') | int(30) }}"
       steps: "{{ fade_sec }}"   # 1 paso/seg
       min_pct_floor: 10
-      transition_token: "smart_light_sala_motion_on_{{ now().timestamp() }}_{{ range(100000, 999999) | random }}"
+      transition_token: "smart_light_sala_motion_on_{{ now().timestamp() }}"
     action:
       # Cancelar timers (ya no aplican al estar en ACTIVE)
       - service: script.smart_light_sala_cancel_motion_runtime
